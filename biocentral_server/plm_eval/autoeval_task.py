@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional
 from importlib import resources
 from collections import namedtuple
 
-from ..prediction_models import BiotrainerProcess
+from ..prediction_models import BiotrainerTask
 from ..server_management import TaskInterface, TaskStatus, FileManager, StorageFileType, EmbeddingsDatabase
 
 logger = logging.getLogger(__name__)
@@ -64,9 +64,9 @@ class AutoEvalTask(TaskInterface):
         # TODO [Optimization] Embed sequence file for some splits before training
 
         # TODO [Optimization] Sub-Process handling via process manager
-        biotrainer_process = BiotrainerProcess(config_path=config_path, config_dict=config,
-                                               database_instance=self.embeddings_db_instance,
-                                               log_path=log_path)
+        biotrainer_process = BiotrainerTask(config_path=config_path, config_dict=config,
+                                            database_instance=self.embeddings_db_instance,
+                                            log_path=log_path)
         self.current_process = _ProcessTuple(biotrainer_process, dataset_name, split_name)
         self.results[_process_name(self.current_process)] = {'config': config}
         logger.info(f"[AUTOEVAL] Starting process for dataset {dataset_name} - split {split_name}!")

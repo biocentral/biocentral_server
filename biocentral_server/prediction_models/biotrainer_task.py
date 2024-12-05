@@ -14,7 +14,7 @@ from ..server_management import TaskInterface, TaskStatus, EmbeddingsDatabase
 from ..embeddings import compute_embeddings_and_save_to_db
 
 
-class BiotrainerProcess(TaskInterface):
+class BiotrainerTask(TaskInterface):
     process: torch_mp.Process = None
 
     def __init__(self, config_path: Path, config_dict: dict, database_instance: EmbeddingsDatabase, log_path: Path):

@@ -1,15 +1,11 @@
-import asyncio
-import threading
-
 import yaml
-import flask
 
 from flask import request, jsonify, Blueprint, current_app
 
 from biotrainer.protocols import Protocol
 from biotrainer.config import Configurator, ConfigurationException
 
-from .biotrainer_process import BiotrainerProcess
+from .biotrainer_task import BiotrainerTask
 
 from ..server_management import ProcessManager, UserManager, FileManager, \
     StorageFileType, TaskStatus
@@ -115,9 +111,9 @@ def start_training():
                                           file_type=StorageFileType.BIOTRAINER_LOGGING,
                                           model_hash=model_hash, check_exists=False)
 
-    biotrainer_process = BiotrainerProcess(config_path=config_file_path, config_dict=config_dict,
-                                           database_instance=current_app.config["EMBEDDINGS_DATABASE"],
-                                           log_path=log_path)
+    biotrainer_process = BiotrainerTask(config_path=config_file_path, config_dict=config_dict,
+                                        database_instance=current_app.config["EMBEDDINGS_DATABASE"],
+                                        log_path=log_path)
     ProcessManager.add_task(task_id=model_hash, task=biotrainer_process)
     ProcessManager.start_task(task_id=model_hash)
 
