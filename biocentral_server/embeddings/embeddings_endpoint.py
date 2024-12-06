@@ -41,12 +41,14 @@ def embed():
     except FileNotFoundError as e:
         return jsonify({"error": str(e)})
 
+    embeddings_database = current_app.config["EMBEDDINGS_DATABASE"]
     embedding_task = EmbeddingTask(embedder_name=embedder_name,
                                    sequence_file_path=sequence_file_path,
                                    embeddings_out_path=embeddings_out_path,
                                    protocol=reduce_by_protocol,
                                    use_half_precision=use_half_precision,
-                                   device=device)
+                                   device=device,
+                                   embeddings_database=embeddings_database)
 
     task_id = TaskManager().add_task(embedding_task)
 
