@@ -54,5 +54,7 @@ def task_status(task_id):
     # Return the task status
     task_manager = TaskManager()
     if task_manager.is_task_finished(task_id=task_id):
-        return jsonify(task_manager.get_task_result(task_id=task_id))
-    return jsonify(task_manager.get_task_update(task_id=task_id))
+        result = task_manager.get_task_result(task_id=task_id)
+        return jsonify(result)
+    update = task_manager.get_task_update(task_id=task_id)
+    return jsonify(update)

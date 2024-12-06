@@ -8,10 +8,10 @@ from typing import Dict, Any
 from biotrainer.utilities.cli import headless_main
 
 from ..embeddings import EmbeddingTask
-from ..server_management import MultiprocessingTask, EmbeddingsDatabase
+from ..server_management import TaskInterface, EmbeddingsDatabase
 
 
-class BiotrainerTask(MultiprocessingTask):
+class BiotrainerTask(TaskInterface):
 
     def __init__(self, config_path: Path, config_dict: dict, database_instance: EmbeddingsDatabase, log_path: Path):
         super().__init__()
@@ -21,12 +21,12 @@ class BiotrainerTask(MultiprocessingTask):
         self.log_path = log_path
         self._last_read_position_in_log_file = 0
 
-    async def _run_task(self):
-        await self._pre_embed_with_db()
+    def run(self) -> Any:
+        self._pre_embed_with_db()
         headless_main(config_file_path=str(self.config_path))
         self._result = 1  # TODO Result
 
-    async def _pre_embed_with_db(self):
+    def _pre_embed_with_db(self):
         sequence_file_path = self.config_dict['sequence_file']
 
         embedder_name = self.config_dict['embedder_name']
@@ -41,7 +41,7 @@ class BiotrainerTask(MultiprocessingTask):
                                            protocol=protocol,
                                            use_half_precision=False,
                                            device=device)
-            embedding_triples = await self.run_subtask(embedding_task)
+            embedding_triples = self.run_subtask(embedding_task)
 
             # TODO [Optimization] Try to avoid double reading and saving of embedding files
             EmbeddingsDatabase.export_embeddings_to_hdf5(triples=embedding_triples, output_path=output_path)
