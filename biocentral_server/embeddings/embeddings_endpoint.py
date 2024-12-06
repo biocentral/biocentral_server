@@ -18,16 +18,6 @@ logger = logging.getLogger(__name__)
 embeddings_service_route = Blueprint("embeddings_service", __name__)
 
 
-def _round_embeddings(embeddings: dict, reduced: bool):
-    # TODO Document rounding
-    if reduced:
-        return {sequence_id: [round(val, 4) for val in embedding.tolist()] for sequence_id, embedding in
-                embeddings.items()}
-    return {sequence_id: [[round(val, 4) for val in perResidue.tolist()] for perResidue in embedding] for
-            sequence_id, embedding in
-            embeddings.items()}
-
-
 # Endpoint for embeddings calculation of biotrainer
 @embeddings_service_route.route('/embeddings_service/embed', methods=['POST'])
 def embed():
@@ -52,6 +42,12 @@ def embed():
         return jsonify({"error": str(e)})
 
     # TODO Separate Thread: Embeddings Task
+    embedding_task = EmbeddingTask(embedder_name=embedder_name,
+                                   sequence_file_path=sequence_file_path,
+                                   embeddings_out_path=temp_embeddings_path,
+                                   protocol=protocol,
+                                   use_half_precision=False,
+                                   device=device)
 
     all_seq_records = read_FASTA(str(sequence_file_path))
     all_seqs = {seq.id: str(seq.seq) for seq in all_seq_records}

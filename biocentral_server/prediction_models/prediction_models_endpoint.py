@@ -7,7 +7,7 @@ from biotrainer.config import Configurator, ConfigurationException
 
 from .biotrainer_task import BiotrainerTask
 
-from ..server_management import ProcessManager, UserManager, FileManager, \
+from ..server_management import TaskManager, UserManager, FileManager, \
     StorageFileType, TaskStatus
 
 prediction_models_service_route = Blueprint("prediction_models_service", __name__)
@@ -114,19 +114,9 @@ def start_training():
     biotrainer_process = BiotrainerTask(config_path=config_file_path, config_dict=config_dict,
                                         database_instance=current_app.config["EMBEDDINGS_DATABASE"],
                                         log_path=log_path)
-    ProcessManager.add_task(task_id=model_hash, task=biotrainer_process)
-    ProcessManager.start_task(task_id=model_hash)
+    task_id = TaskManager().add_task(task=biotrainer_process)
 
-    return jsonify({"model_hash": model_hash})
-
-
-# Endpoint to check task status
-@prediction_models_service_route.route('/prediction_models_service/training_status/<model_hash>', methods=['GET'])
-def training_status(model_hash):
-    # Check the status of the task based on model_hash
-    # Retrieve task status from the distributed server or backend system
-    # Return the task status
-    return ProcessManager.get_task_update(task_id=model_hash)
+    return jsonify({"task_id": task_id})
 
 
 # Endpoint to retrieve model files after training is finished
@@ -136,7 +126,7 @@ def model_files():
     database_hash = model_file_data.get("database_hash")
     model_hash = model_file_data.get("model_hash")
 
-    task_status = ProcessManager.get_task_status(model_hash)
+    task_status = TaskManager().get_task_status(model_hash)
     if task_status != TaskStatus.FINISHED:
         return jsonify({"error": "Trying to retrieve model files before task has finished!"})
 
