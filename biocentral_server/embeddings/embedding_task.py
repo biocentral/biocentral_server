@@ -1,5 +1,5 @@
 import threading
-from typing import Dict, Any
+from typing import Dict, Any, Callable
 
 from biotrainer.protocols import Protocol
 from biotrainer.utilities import read_FASTA, get_device
@@ -20,7 +20,7 @@ class EmbeddingTask(TaskInterface):
         self.device = get_device(device)
         self.embeddings_database = embeddings_database
 
-    def run(self) -> Any:
+    def run_task(self, update_dto_callback: Callable) -> Any:
         all_seq_records = read_FASTA(str(self.sequence_file_path))
         all_seqs = {seq.id: str(seq.seq) for seq in all_seq_records}
 
@@ -39,9 +39,6 @@ class EmbeddingTask(TaskInterface):
             embedder_name += "-HalfPrecision"
 
         return {"embeddings_file": {embedder_name: rounded_embeddings}}
-
-    def get_status_update(self) -> Dict[str, Any]:
-        return {}  # This task doesn't provide updates during execution
 
     @staticmethod
     def _round_embeddings(embeddings: dict, reduced: bool):

@@ -9,5 +9,5 @@ def run_subtask_util(subtask) -> Any:
     subtask_id = task_manager.add_task(subtask)
     while not task_manager.is_task_finished(subtask_id):
         time.sleep(0.1)
-    task_result = task_manager.get_task_result(subtask_id)
-    return task_result
+    task_dto = task_manager.get_task_dto(subtask_id)
+    return task_dto

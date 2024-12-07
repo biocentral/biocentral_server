@@ -52,9 +52,5 @@ def task_status(task_id):
     # Check the status of the task based on task_id
     # Retrieve task status from the distributed server or backend system
     # Return the task status
-    task_manager = TaskManager()
-    if task_manager.is_task_finished(task_id=task_id):
-        result = task_manager.get_task_result(task_id=task_id)
-        return jsonify(result)
-    update = task_manager.get_task_update(task_id=task_id)
-    return jsonify(update)
+    dto = TaskManager().get_task_dto(task_id=task_id)
+    return jsonify(dto.dict())
