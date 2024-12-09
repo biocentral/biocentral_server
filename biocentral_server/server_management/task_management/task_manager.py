@@ -35,7 +35,8 @@ class TaskManager:
         return task_id
 
     def get_unique_task_id(self, task: Type) -> str:
-        return self._generate_task_id(task=task)
+        with self._lock:
+            return self._generate_task_id(task=task)
 
     @staticmethod
     def _generate_task_id(task):
@@ -65,19 +66,22 @@ class TaskManager:
             self._task_dtos[task_id] = task_dto
 
     def get_task_status(self, task_id: str) -> TaskStatus:
-        return self._task_dtos[task_id].status
+        with self._lock:
+            return self._task_dtos[task_id].status
 
     def is_task_finished(self, task_id: str) -> bool:
-        return self.get_task_status(task_id) in [TaskStatus.FINISHED, TaskStatus.FAILED]
+        with self._lock:
+            return self.get_task_status(task_id) in [TaskStatus.FINISHED, TaskStatus.FAILED]
 
     def get_task_dto(self, task_id: str) -> Any:
-        # TODO Use lock here?
-        if task_id in self._task_dtos:
-            return self._task_dtos[task_id]
+        with self._lock:
+            if task_id in self._task_dtos:
+                return self._task_dtos[task_id]
         return TaskDTO.failed(error=f"task {task_id} not found on server!")
 
     def get_current_number_of_running_tasks(self) -> int:
-        return sum(1 for dto in self._task_dtos.values() if dto.status == TaskStatus.RUNNING)
+        with self._lock:
+            return sum(1 for dto in self._task_dtos.values() if dto.status == TaskStatus.RUNNING)
 
     def __del__(self):
         self._executor.shutdown(wait=True)
