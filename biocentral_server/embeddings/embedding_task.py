@@ -1,12 +1,11 @@
-import threading
-from typing import Dict, Any, Callable
+from typing import Any, Callable
 
 from biotrainer.protocols import Protocol
 from biotrainer.utilities import read_FASTA, get_device
 
 from .embed import compute_embeddings_and_save_to_db
 
-from ..server_management import TaskStatus, TaskInterface
+from ..server_management import TaskInterface
 
 
 class EmbeddingTask(TaskInterface):
