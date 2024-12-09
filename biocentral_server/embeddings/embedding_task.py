@@ -23,6 +23,9 @@ class EmbeddingTask(TaskInterface):
     def run_task(self, update_dto_callback: Callable) -> Any:
         all_seq_records = read_FASTA(str(self.sequence_file_path))
         all_seqs = {seq.id: str(seq.seq) for seq in all_seq_records}
+        embedder_name = self.embedder_name
+        if self.use_half_precision:
+            embedder_name += "-HalfPrecision"
 
         embedding_triples = compute_embeddings_and_save_to_db(embedder_name=self.embedder_name,
                                                               all_seqs=all_seqs,
@@ -34,9 +37,6 @@ class EmbeddingTask(TaskInterface):
 
         rounded_embeddings = self._round_embeddings({triple.id: triple.embd for triple in embedding_triples},
                                                     reduced=self.protocol in Protocol.per_sequence_protocols())
-        embedder_name = self.embedder_name.split("/")[-1]
-        if self.use_half_precision:
-            embedder_name += "-HalfPrecision"
 
         return {"embeddings_file": {embedder_name: rounded_embeddings}}
 

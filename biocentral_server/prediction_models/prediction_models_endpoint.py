@@ -97,24 +97,27 @@ def start_training():
     if str(embeddings_file) != "":
         config_dict["embedder_name"] = ""
 
-    model_hash = str(hash(str(config_dict)))
-    model_path = file_manager.get_biotrainer_model_path(database_hash=database_hash, model_hash=model_hash)
+    task_manager = TaskManager()
+    # TODO Replace this by a appropriate model hash in the future to avoid costly retraining
+    task_id = task_manager.get_unique_task_id(task=BiotrainerTask)
+
+    model_path = file_manager.get_biotrainer_model_path(database_hash=database_hash, model_hash=task_id)
     if model_path.exists():
-        return jsonify({"model_hash": model_hash})
+        return jsonify({"task_id": task_id})
 
     config_dict["output_dir"] = str(model_path.absolute())
 
     config_file_yaml = yaml.dump(config_dict)
     config_file_path = file_manager.save_file(database_hash=database_hash, file_type=StorageFileType.BIOTRAINER_CONFIG,
-                                              file_content=config_file_yaml, model_hash=model_hash)
+                                              file_content=config_file_yaml, model_hash=task_id)
     log_path = file_manager.get_file_path(database_hash=database_hash,
                                           file_type=StorageFileType.BIOTRAINER_LOGGING,
-                                          model_hash=model_hash, check_exists=False)
+                                          model_hash=task_id, check_exists=False)
 
     biotrainer_process = BiotrainerTask(config_path=config_file_path, config_dict=config_dict,
                                         database_instance=current_app.config["EMBEDDINGS_DATABASE"],
                                         log_path=log_path)
-    task_id = TaskManager().add_task(task=biotrainer_process)
+    task_id = task_manager.add_task(task=biotrainer_process, task_id=task_id)
 
     return jsonify({"task_id": task_id})
 

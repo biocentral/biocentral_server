@@ -3,7 +3,7 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Manager
-from typing import Dict, Any
+from typing import Dict, Any, Type
 
 from .task_interface import TaskStatus, TaskInterface, TaskDTO
 
@@ -26,19 +26,24 @@ class TaskManager:
         self._executor = ThreadPoolExecutor(max_workers=_max_concurrent_tasks)
         self._lock = threading.Lock()
 
-    def add_task(self, task: TaskInterface) -> str:
-        task_id = self._generate_task_id()
+    def add_task(self, task: TaskInterface, task_id: str = "") -> str:
+        if task_id == "" or "biocentral" not in task_id:  # biocentral: Sanity check
+            task_id = self._generate_task_id(task=task.__class__)
         self._task_dtos[task_id] = TaskDTO.pending()
         future = self._executor.submit(self._execute_task, task_id, task)
         future.add_done_callback(lambda f: self._task_completed_callback(task_id, f))
         return task_id
 
+    def get_unique_task_id(self, task: Type) -> str:
+        return self._generate_task_id(task=task)
+
     @staticmethod
-    def _generate_task_id():
-        return f"biocentral-server-task-{str(uuid.uuid4())}"
+    def _generate_task_id(task):
+        return f"biocentral-{task.__name__}-{str(uuid.uuid4())}"
 
     def _execute_task(self, task_id: str, task: TaskInterface):
         self._task_dtos[task_id] = TaskDTO.running()
+
         # TODO Add subtask execution
 
         def dto_callback(dto: TaskDTO):
@@ -52,7 +57,7 @@ class TaskManager:
             with self._lock:
                 self._task_dtos[task_id] = TaskDTO.finished(result)
         except Exception as e:
-            logger.error(f"Task {task_id} failed with error: {str(e)}")
+            logger.error(f"Task {task_id} failed with error: {e}")
             self._task_dtos[task_id] = TaskDTO.failed(str(e))
 
     def _update_task_dto_callback(self, task_id: str, task_dto: TaskDTO):
@@ -66,6 +71,7 @@ class TaskManager:
         return self.get_task_status(task_id) in [TaskStatus.FINISHED, TaskStatus.FAILED]
 
     def get_task_dto(self, task_id: str) -> Any:
+        # TODO Use lock here?
         if task_id in self._task_dtos:
             return self._task_dtos[task_id]
         return TaskDTO.failed(error=f"task {task_id} not found on server!")

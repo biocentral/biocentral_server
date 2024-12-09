@@ -37,7 +37,8 @@ class TaskDTO:
     def failed(cls, error: str):
         return TaskDTO(status=TaskStatus.FAILED, error=error, update={})
 
-    def update(self, update: Dict[str, Any]) -> TaskDTO:
+    # TODO How to ensure that all of the logs are transmitted?
+    def add_update(self, update: Dict[str, Any]) -> TaskDTO:
         return TaskDTO(status=self.status, error=self.error, update=update)
 
     def dict(self):
