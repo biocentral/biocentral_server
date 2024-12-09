@@ -38,8 +38,6 @@ class BiotrainerTask(TaskInterface):
         self._log_output = ""
 
     def run_task(self, update_dto_callback: Callable) -> Any:
-        self._pre_embed_with_db()
-
         # Add our custom handler to the root logger
         root_logger = logging.getLogger()
         root_logger.addHandler(self.log_capture_handler)
@@ -47,6 +45,8 @@ class BiotrainerTask(TaskInterface):
         # Start a thread to read the log output
         read_thread = threading.Thread(target=self._read_logs, args=(update_dto_callback,))
         read_thread.start()
+
+        self._pre_embed_with_db()
 
         try:
             result = headless_main(config_file_path=str(self.config_path))
