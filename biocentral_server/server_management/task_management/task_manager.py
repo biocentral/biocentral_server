@@ -24,7 +24,7 @@ class TaskManager:
         self._task_dtos = self._manager.dict()
         _max_concurrent_tasks = 5  # TODO [CONFIG] Make this configurable from config and UI
         self._executor = ThreadPoolExecutor(max_workers=_max_concurrent_tasks)
-        self._lock = threading.Lock()
+        self._lock = threading.Lock()  # TODO [OPTIMIZATION] Maybe use a log-free data structure
 
     def add_task(self, task: TaskInterface, task_id: str = "") -> str:
         if task_id == "" or "biocentral" not in task_id:  # biocentral: Sanity check
@@ -35,8 +35,7 @@ class TaskManager:
         return task_id
 
     def get_unique_task_id(self, task: Type) -> str:
-        with self._lock:
-            return self._generate_task_id(task=task)
+        return self._generate_task_id(task=task)
 
     @staticmethod
     def _generate_task_id(task):
@@ -44,8 +43,6 @@ class TaskManager:
 
     def _execute_task(self, task_id: str, task: TaskInterface):
         self._task_dtos[task_id] = TaskDTO.running()
-
-        # TODO Add subtask execution
 
         def dto_callback(dto: TaskDTO):
             self._update_task_dto_callback(task_id=task_id, task_dto=dto)
@@ -66,22 +63,18 @@ class TaskManager:
             self._task_dtos[task_id] = task_dto
 
     def get_task_status(self, task_id: str) -> TaskStatus:
-        with self._lock:
-            return self._task_dtos[task_id].status
+        return self._task_dtos[task_id].status
 
     def is_task_finished(self, task_id: str) -> bool:
-        with self._lock:
-            return self.get_task_status(task_id) in [TaskStatus.FINISHED, TaskStatus.FAILED]
+        return self.get_task_status(task_id) in [TaskStatus.FINISHED, TaskStatus.FAILED]
 
     def get_task_dto(self, task_id: str) -> Any:
-        with self._lock:
-            if task_id in self._task_dtos:
-                return self._task_dtos[task_id]
+        if task_id in self._task_dtos:
+            return self._task_dtos[task_id]
         return TaskDTO.failed(error=f"task {task_id} not found on server!")
 
     def get_current_number_of_running_tasks(self) -> int:
-        with self._lock:
-            return sum(1 for dto in self._task_dtos.values() if dto.status == TaskStatus.RUNNING)
+        return sum(1 for dto in self._task_dtos.values() if dto.status == TaskStatus.RUNNING)
 
     def __del__(self):
         self._executor.shutdown(wait=True)

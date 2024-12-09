@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Callable
+from typing import Any, Dict, Callable, Generator
 
 from .task_utils import run_subtask_util
 
@@ -51,5 +51,5 @@ class TaskInterface(ABC):
         pass
 
     @staticmethod
-    def run_subtask(subtask: TaskInterface) -> Any:
-        return run_subtask_util(subtask=subtask)
+    def run_subtask(subtask: TaskInterface) -> Generator[TaskDTO, None, None]:
+        yield from run_subtask_util(subtask=subtask)

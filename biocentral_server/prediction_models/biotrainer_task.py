@@ -92,7 +92,9 @@ class BiotrainerTask(TaskInterface):
                                            use_half_precision=False,
                                            device=device,
                                            embeddings_database=self.database_instance)
-            embedding_dto = self.run_subtask(embedding_task)
+            embedding_dto: TaskDTO
+            for current_dto in self.run_subtask(embedding_task):
+                embedding_dto = current_dto
 
             embeddings_task_result = embedding_dto.update["embeddings_file"][embedder_name]
             # TODO [Optimization] Try to avoid double reading and saving of embedding files
