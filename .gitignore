@@ -5,3 +5,4 @@
 /server_config.txt
 /poetry.lock
 /releases/
+__pycache__/
