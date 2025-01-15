@@ -13,6 +13,7 @@ from ..protein_analysis import protein_analysis_route
 from ..embeddings import embeddings_service_route
 from ..biocentral import biocentral_service_route
 from ..prediction_models import prediction_models_service_route
+from ..bayesian_optimization import bayesian_optimization_service_route
 
 from .server_thread import ServerThread
 
@@ -28,6 +29,7 @@ def create_server_app(postgresql_user="embeddingsuser", postgresql_pwd="embeddin
     app.register_blueprint(embeddings_service_route)
     app.register_blueprint(protein_analysis_route)
     app.register_blueprint(plm_eval_service_route)
+    app.register_blueprint(bayesian_optimization_service_route)
 
     @app.after_request
     def apply_caching(response):
