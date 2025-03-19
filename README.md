@@ -56,10 +56,10 @@ poetry install
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
 # Run with visual control panel
-poetry run run-biocentral_server.py
+poetry run python3 run-biocentral_server.py
 
 # Run headless
-poetry run run-biocentral_server.py --headless
+poetry run python3 run-biocentral_server.py --headless
 ```
 
 ### Additional setup
