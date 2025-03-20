@@ -6,6 +6,7 @@ from flask import request, jsonify, Blueprint
 
 from biotrainer.protocols import Protocol
 from biotrainer.config import Configurator, ConfigurationException
+import yaml
 
 from .bayesian_optimization_task import BayesTask
 
@@ -165,16 +166,40 @@ def train_and_inference():
     return jsonify({"task_id": task_id})
 
 
+def verify_request(req_body: dict):
+    database_hash = req_body.get("database_hash")
+    task_id = req_body.get("task_id")
+    if (
+        database_hash is None
+        or task_id is None
+        or not isinstance(database_hash, str)
+        or not isinstance(task_id, str)
+    ):
+        raise KeyError(
+            "model_results require database_hash :: str and tasl_id :: str in request"
+        )
+
+
 @bayesian_optimization_service_route.route(
     "/bayesian_optimization_service/model_results/", methods=["POST"]
 )
 def model_results():
-    model_file_data: dict = request.get_json()
-    database_hash = model_file_data.get("database_hash")
-    task_id = model_file_data.get("task_id")
-
-    task_status = TaskManager().get_task_status(task_id)
+    req_body: dict = request.get_json()
+    try:
+        verify_request(req_body)
+    except Exception as e:
+        return jsonify({"error": str(e)})
+    database_hash = req_body.get("database_hash")
+    task_id = req_body.get("task_id")
+    task_manager = TaskManager()
+    # error could occur if is_task_finished executed before is_task_running
+    if not task_manager.is_task_running(task_id) and not task_manager.is_task_finished(
+        task_id
+    ):
+        return jsonify({"error": "Invalid task_id"})
+    task_status = task_manager.get_task_status(task_id)
     # print(TaskManager().get_task_dto(task_id))
+    # make distinction
     if task_status != TaskStatus.FINISHED:
         return jsonify(
             {"error": "Trying to retrieve model files before task has finished!"}
@@ -182,7 +207,22 @@ def model_results():
     user_id = UserManager.get_user_id_from_request(request)
     file_manager = FileManager(user_id=user_id)
     # read from storage/{user_id}/{database_hash}/models/{model_hash}/out.yml
-    model_file_dict = file_manager.get_biotrainer_result_files(
-        database_hash=database_hash, model_hash=task_id
+    out_file = (
+        file_manager.get_biotrainer_model_path(
+            database_hash=database_hash, model_hash=task_id
+        )
+        / "out.yml"
     )
-    return jsonify(model_file_dict)
+    if not out_file.exists():
+        return jsonify(
+            {
+                "error": f"Server error: task finished but result file {out_file} not found"
+            }
+        )
+    with out_file.open("r") as f:
+        results_data = yaml.load(f, Loader=yaml.FullLoader)
+        return jsonify(results_data)
+    # model_file_dict = file_manager.get_biotrainer_result_files(
+    #     database_hash=database_hash, model_hash=task_id
+    # )
+    # return jsonify(model_file_dict)

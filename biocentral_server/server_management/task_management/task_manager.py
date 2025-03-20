@@ -71,6 +71,9 @@ class TaskManager:
         queue = self._task_dtos.get(task_id)
         return queue.queue[-1].status if queue and not queue.empty() else TaskStatus.PENDING
 
+    def is_task_running(self, task_id: str) -> bool:
+        return task_id in self._task_dtos
+
     def is_task_finished(self, task_id: str) -> bool:
         return task_id in self._finished_tasks
 
