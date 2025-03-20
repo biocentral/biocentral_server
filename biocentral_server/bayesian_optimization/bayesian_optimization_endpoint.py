@@ -122,6 +122,66 @@ def verify_optim_target(config_dict: dict):
     "/bayesian_optimization_service/training", methods=["POST"]
 )
 def train_and_inference():
+    """
+    Launch Bayesian Optimization model training and inference.
+
+    This endpoint takes a configuration dictionary, validates it, and starts
+    a Bayesian Optimization task that will:
+    1. Load sequence data from the specified database hash
+    2. Embed sequences using one-hot encoding
+    3. Train a Bayesian Optimization model with the specified parameters
+    4. Return a task ID for tracking progress and retrieving results
+
+    ### Request
+        POST with JSON body containing:
+        - database_hash (str): Identifier for the sequence database
+        - model_type (str): Type of model (currently only "gaussian_process")
+        - coefficient (float): Value between 0-1 controlling exploration vs. exploitation
+        - discrete (bool): Whether target is discrete or continuous
+
+        For discrete targets:
+        - discrete_labels (list): All possible labels
+        - discrete_targets (list): Subset of labels that are targets
+
+        For continuous targets:
+        - target_interval_lb (float): Lower bound of target interval
+        - target_interval_ub (float): Upper bound of target interval
+        - value_preference (str): Strategy for scoring ("maximize", "minimize", or "neutral")
+
+    ### Returns
+        JSON with:
+        - task_id (str): Unique identifier for tracking the task
+        - error (str, optional): Error message if request is invalid
+    ### Examples
+
+    Example for continuous target:
+        {
+            "database_hash": "hello",
+            "model_type": "gaussian_process",
+            "discrete": false,
+            "target_interval_lb": 100,
+            "target_interval_ub": 2000,
+            "value_preference": "neutral",
+            "coefficient": 0.7
+        }
+
+    Example for discrete target:
+        {
+            "database_hash": "hello",
+            "model_type": "gaussian_process",
+            "discrete": true,
+            "discrete_labels": ["red", "green", "blue", "yellow"],
+            "discrete_targets": ["red", "yellow"],
+            "coefficient": 0.7
+        }
+
+    Example response:
+        {"task_id": "biocentral-bayesian_optimization-a2ec2679c8b88fa808583ccd39e6adac"}
+
+    Example error:
+        {"error": "[verify_config]: targets should be true subset of labels"}
+
+    """
     # verify configuration dict
     config_dict: dict = request.get_json()
     try:
@@ -184,6 +244,50 @@ def verify_request(req_body: dict):
     "/bayesian_optimization_service/model_results/", methods=["POST"]
 )
 def model_results():
+    """
+    Fetch recommendation score for each sequence
+
+    This endpoint checks if specified task has completed.
+    If so, returns sequences ordered descending by its score.
+
+    ### Request
+        POST with JSON body containing:
+        - database_hash (str): Identifier for the sequence database
+        - task_id (str): Task identifier returned from the training endpoint
+
+    ### Returns
+        If successful:
+        - JSON array of ranked results, each containing:
+          - id (str): Sequence identifier
+          - score (float): Optimization score (higher is better)
+          - sequence (str): The sequence data
+
+        If unsuccessful:
+        - JSON with error message explaining why results aren't available
+
+
+    ### Examples
+    Example request
+
+        {
+            "database_hash": "hello",
+            "task_id": "biocentral-bayesian_optimization-a2ec2679c8b88fa808583ccd39e6adac"
+        }
+
+    Example response
+        [
+            {
+                "id": "EJF35357.1",
+                "score": 0.790058,
+                "sequence": "MSEEIRYLAGVVAELKRRLDAAPS..."
+            },
+            {
+                "id": "YP_096167.1",
+                "score": 0.490486,
+                "sequence": "MRTLFYSQLMYEAAKRQPHPHRCA..."
+            }
+        ]
+    """
     req_body: dict = request.get_json()
     try:
         verify_request(req_body)
