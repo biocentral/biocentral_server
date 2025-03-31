@@ -1,5 +1,6 @@
 import hashlib
 import json
+from ..utils import str2bool
 from flask import current_app
 
 from flask import request, jsonify, Blueprint
@@ -64,7 +65,7 @@ def verify_config(config_dict: dict):
     """
     database_hash: str = config_dict.get("database_hash")
     model_type: str = config_dict.get("model_type").lower()
-    coefficient: float = config_dict.get("coefficient")
+    coefficient: float = float(config_dict.get("coefficient"))
     if (
         not isinstance(database_hash, str)
         or not isinstance(model_type, str)
@@ -83,7 +84,7 @@ def verify_config(config_dict: dict):
 
 
 def verify_optim_target(config_dict: dict):
-    is_discrete: bool = config_dict.get("discrete")
+    is_discrete: bool = str2bool(config_dict.get("discrete"))
     if is_discrete is None:
         raise KeyError("[verify_config]: Config need to include: is_discrete :: bool")
     if is_discrete:
@@ -99,15 +100,16 @@ def verify_optim_target(config_dict: dict):
     else:
         lb = config_dict.get("target_interval_lb")
         ub = config_dict.get("target_interval_ub")
-        if not (lb and ub):
+        value_preference = config_dict.get("value_preference")
+        if value_preference == "neutral" and not (lb and ub):
             raise KeyError(
                 "[verify_config]: Config for continuous target need to include target_interval_lb and target_interval_ub field"
             )
-        if lb >= ub:
+        if value_preference == "neutral" and lb > ub:
             raise ValueError(
                 "[verify_config]: target_interval_lb should < target_interval_ub"
             )
-        value_preference = config_dict.get("value_preference")
+
         if not value_preference or value_preference not in {
             "maximize",
             "minimize",
@@ -181,9 +183,12 @@ def train_and_inference():
     Example error:
         {"error": "[verify_config]: targets should be true subset of labels"}
 
+
     """
     # verify configuration dict
     config_dict: dict = request.get_json()
+    print(config_dict)
+    print(request.get_json)
     try:
         verify_config(config_dict)
     except Exception as e:
