@@ -129,6 +129,11 @@ The project uses changesets for version management and release notes:
 ## Commit Best Practices
 
 Focus on WHY, not WHAT:
+
 - Concise and purposeful
 - Explain value/impact, not technical details
 - Template: `[Action] [What] - [Why needed/benefit]`
+
+## PR Best Practices
+
+Always include the GitHub PR template checklist in PR descriptions and ensure all items are completed before requesting review. Never sign PRs with Claude Code attribution in the description. Focus on why and the high-level overview. Only include necessary details to understand the concepts.
