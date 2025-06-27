@@ -10,16 +10,16 @@ Biocentral Server is a Flask-based Python REST API server that provides bioinfor
 
 ### Local Development Setup
 ```bash
-# Install dependencies (requires Python 3.11 and Poetry)
-poetry install
+# Install dependencies (requires Python 3.11 and UV package manager)
+uv sync --group dev
 
 # For local development with workers and dependencies
 cp .env.local .env
 docker compose -f docker-compose.dev.yml up -d
-poetry run python run-local.py
+uv run python run-local.py
 
 # For simple server-only development
-poetry run python run-biocentral_server.py
+uv run python run-biocentral_server.py
 ```
 
 ### Production Setup
@@ -31,11 +31,26 @@ docker compose up -d
 ### Testing
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Security audit
-poetry run pip-audit
+uv run pip-audit
 ```
+
+### UV Package Manager
+The project uses UV (not Poetry) for dependency management:
+- `uv sync --group dev` - Install all dependencies including dev tools
+- `uv add package` - Add new dependency
+- `uv run command` - Run command in virtual environment
+- `uv tree` - Show dependency tree
+
+### Changesets
+The project uses changesets for version management and release notes:
+- `npx @changesets/cli add` - Create new changeset for changes
+- `npx @changesets/cli version` - Apply changesets and update versions
+- `npx @changesets/cli publish` - Publish releases
+- Always create changesets using the CLI, not manually
+- Use appropriate semver levels: patch, minor, major
 
 ## Architecture
 
@@ -80,12 +95,13 @@ poetry run pip-audit
 - Unit tests for pure functions and server_management classes
 - Integration tests required for all endpoints
 - Test discovery: `find biocentral_server -name "*_endpoint.py" | xargs grep "@.*_route.route"`
-- Run with: `pytest`
+- Run with: `uv run pytest`
 
-### Development Notes
-- Uses Poetry for dependency management with Python 3.11 requirement
+### Development Workflow
+- Uses UV for dependency management with Python 3.11 requirement
 - Git workflow follows modified GitFlow with `main` and `develop` branches
 - Branch naming: `<module_name>/feature/description` or `biocentral/feature/description`
+- **Always create changesets for changes**: Use `npx @changesets/cli add` (never create manually)
 - Server runs multi-process architecture with separate worker processes for compute-intensive tasks
 
 ## Documentation References
