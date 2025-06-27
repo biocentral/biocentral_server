@@ -133,6 +133,7 @@ Focus on WHY, not WHAT:
 - Concise and purposeful
 - Explain value/impact, not technical details
 - Template: `[Action] [What] - [Why needed/benefit]`
+- Sign off each commit with the original author; Signed-off-by: Author Name <authoremail@example.com>
 
 ## PR Best Practices
 
