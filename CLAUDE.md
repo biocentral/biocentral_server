@@ -35,6 +35,9 @@ uv run pytest
 
 # Security audit
 uv run pip-audit
+
+# Run pre-commit hooks manually
+uv run pre-commit run --all-files
 ```
 
 ### UV Package Manager
@@ -57,6 +60,7 @@ The project uses changesets for version management and release notes:
 ## Architecture
 
 ### Core Application Structure
+
 - **Entry Point**: `ServerAppState` singleton in `server_entrypoint/server_app_state.py` manages Flask app initialization
 - **Modular Design**: Each service module (`embeddings/`, `predict/`, `ppi/`, etc.) has its own blueprint and endpoint handlers
 - **Task Management**: Uses Redis Queue (RQ) for background job processing with worker processes
@@ -64,6 +68,7 @@ The project uses changesets for version management and release notes:
 - **File Storage**: SeaweedFS for distributed file storage
 
 ### Key Service Modules
+
 - `embeddings/`: Protein sequence embedding generation using biotrainer
 - `predict/`: Pre-trained model predictions (TMbed, VespaG, etc.)
 - `prediction_models/`: Model training and evaluation workflows
@@ -74,32 +79,37 @@ The project uses changesets for version management and release notes:
 - `protein_analysis/`: General protein sequence analysis functions
 
 ### Server Management
+
 - `server_management/`: Core infrastructure components
-  - `task_management/`: RQ task interface and management
-  - `embedding_database/`: PostgreSQL strategy pattern for embeddings
-  - `file_management/`: Abstracted file storage backends
-  - `server_initialization/`: Module initialization orchestration
-  - `user_manager.py`: Request validation and user management
+- `task_management/`: RQ task interface and management
+- `embedding_database/`: PostgreSQL strategy pattern for embeddings
+- `file_management/`: Abstracted file storage backends
+- `server_initialization/`: Module initialization orchestration
+- `user_manager.py`: Request validation and user management
 
 ### Configuration
+
 - Environment variables defined in `.env.example` and `.env.local`
 - Key paths: `EMBEDDINGS_DATA_DIR`, `FILES_DATA_DIR`, `SERVER_TEMP_DATA_DIR`
 - Services: PostgreSQL (embeddings), Redis (jobs), SeaweedFS (files)
 - Default server port: 9540
 
 ### Dependencies
+
 - Core ML libraries via git dependencies: biotrainer, autoeval, hvi_toolkit, vespag, tmbed, protspace
 - Flask ecosystem with gunicorn for production serving
 - Task processing via RQ (Redis Queue)
 - Database via psycopg for PostgreSQL
 
 ### Testing Strategy
+
 - Unit tests for pure functions and server_management classes
 - Integration tests required for all endpoints
 - Test discovery: `find biocentral_server -name "*_endpoint.py" | xargs grep "@.*_route.route"`
 - Run with: `uv run pytest`
 
 ### Development Workflow
+
 - Uses UV for dependency management with Python 3.11 requirement
 - Git workflow follows modified GitFlow with `main` and `develop` branches
 - Branch naming: `<module_name>/feature/description` or `biocentral/feature/description`
@@ -115,3 +125,10 @@ The project uses changesets for version management and release notes:
 
 - Architecture evaluation can be found in `docs/architecture`
 - Migration plan can be found in `docs/migrations`
+
+## Commit Best Practices
+
+Focus on WHY, not WHAT:
+- Concise and purposeful
+- Explain value/impact, not technical details
+- Template: `[Action] [What] - [Why needed/benefit]`

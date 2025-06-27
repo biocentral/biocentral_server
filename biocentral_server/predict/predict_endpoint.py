@@ -9,6 +9,7 @@ from ..server_management import TaskManager
 
 prediction_service_route = Blueprint("prediction_service_predict", __name__)
 
+
 def verify_sequences(sequence_input: dict[str, str]) -> str:
     min_seq_length = 7
     max_seq_length = 5000  # TODO Make this configurable
@@ -24,7 +25,7 @@ def verify_sequences(sequence_input: dict[str, str]) -> str:
 
 
 # Endpoint for ProtSpace dimensionality reduction methods for sequences
-@prediction_service_route.route('/prediction_service/predict', methods=['POST'])
+@prediction_service_route.route("/prediction_service/predict", methods=["POST"])
 def predict():
     request_data = PredictionRequestData(**request.get_json())
     model_names = request_data.model_names
@@ -39,9 +40,9 @@ def predict():
         return jsonify({"error": sequence_verification_error})
 
     models = filter_models(model_names=model_names)
-    prediction_task = MultiPredictionTask(models=models,
-                                          sequence_input=sequence_input,
-                                          batch_size=request_data.batch_size)
+    prediction_task = MultiPredictionTask(
+        models=models, sequence_input=sequence_input, batch_size=request_data.batch_size
+    )
     task_id = TaskManager().add_task(prediction_task)
     return jsonify({"task_id": task_id})
 

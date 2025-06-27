@@ -8,7 +8,7 @@ Migrate from Poetry to UV package manager
 
 - Package manager changed from Poetry to UV
 - Use `uv sync --group dev` instead of `poetry install`
-- Use `uv run` instead of `poetry run` 
+- Use `uv run` instead of `poetry run`
 - Virtual environment now managed by UV in `.venv/`
 
 **Changes:**

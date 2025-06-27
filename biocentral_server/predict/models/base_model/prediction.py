@@ -7,6 +7,7 @@ from biotrainer.protocols import Protocol
 @dataclass
 class Prediction:
     """Base class for all model predictions."""
+
     model_name: str
     prediction_name: str
     protocol: Protocol

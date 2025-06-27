@@ -6,11 +6,11 @@ Flask-based python server using REST API that provides functionality for the bio
 
 These are the currently provided modules:
 
-| Module            |                    Features                     | External Dependencies | 
+| Module            |                    Features                     | External Dependencies |
 |-------------------|:-----------------------------------------------:|:---------------------:|
-| protein_analysis  |                       wip                       |                       | 
-| embeddings        |             Embed protein sequences             |     [biotrainer]      | 
-| ppi               |     Work with protein-protein interactions      |     [hvi_toolkit]     | 
+| protein_analysis  |                       wip                       |                       |
+| embeddings        |             Embed protein sequences             |     [biotrainer]      |
+| ppi               |     Work with protein-protein interactions      |     [hvi_toolkit]     |
 | predict           |   Create predictions from pre-trained models    |   [TMbed], [VespaG]   |
 | prediction_models | Train and evaluate models trained on embeddings |     [biotrainer]      |
 | proteins          |             Work with protein data              |       [taxoniq]       |
@@ -81,7 +81,7 @@ For full migration details, see the changeset documentation.
 
 # Citation
 
-Please cite the [biocentral main repository](https://github.com/biocentral/biocentral) if you are using 
+Please cite the [biocentral main repository](https://github.com/biocentral/biocentral) if you are using
 biocentral_server in your scientific publication:
 
 ```text

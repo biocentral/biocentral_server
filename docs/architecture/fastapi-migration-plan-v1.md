@@ -88,7 +88,7 @@ biocentral_server/
 │   │       ├── __init__.py
 │   │       └── embedding_router.py
 │   │
-│   ├── protein_predictions/       # CORE DOMAIN  
+│   ├── protein_predictions/       # CORE DOMAIN
 │   │   ├── models/
 │   │   │   ├── __init__.py
 │   │   │   ├── prediction_request.py
@@ -142,7 +142,7 @@ class SupportedEmbeddingModel(str, Enum):
 
 class EmbeddingRequest(BaseModel):
     sequences: List[str] = Field(
-        ..., 
+        ...,
         description="Protein sequences to embed",
         min_items=1,
         max_items=1000
@@ -152,7 +152,7 @@ class EmbeddingRequest(BaseModel):
         description="Embedding model to use"
     )
     batch_size: Optional[int] = Field(
-        32, 
+        32,
         description="Batch size for processing",
         ge=1,
         le=128
@@ -161,7 +161,7 @@ class EmbeddingRequest(BaseModel):
         False,
         description="Return full embeddings or just store them"
     )
-    
+
     @validator('sequences')
     def validate_sequences(cls, v):
         for seq in v:
@@ -191,7 +191,7 @@ from ...shared.task_management.task_manager import TaskManager
 
 class ProteinEmbeddingService:
     """Core domain service for protein embeddings - decoupled from web framework"""
-    
+
     def __init__(
         self,
         embedding_repository: EmbeddingRepository,
@@ -199,25 +199,25 @@ class ProteinEmbeddingService:
     ):
         self.embedding_repo = embedding_repository
         self.task_manager = task_manager
-    
+
     async def process_embedding_request(
-        self, 
+        self,
         request: EmbeddingRequest,
         user_id: str
     ) -> Union[EmbeddingResponse, EmbeddingTaskResponse]:
         """Main embedding workflow orchestration"""
-        
+
         # Check which embeddings already exist
         missing_sequences = await self.embedding_repo.get_missing_embeddings(
-            request.sequences, 
+            request.sequences,
             request.model_name
         )
-        
+
         if not missing_sequences:
             # All embeddings exist, return immediately
             if request.return_raw_embeddings:
                 embeddings = await self.embedding_repo.get_embeddings(
-                    request.sequences, 
+                    request.sequences,
                     request.model_name
                 )
                 return EmbeddingResponse(
@@ -231,7 +231,7 @@ class ProteinEmbeddingService:
                     model_used=request.model_name,
                     cached=True
                 )
-        
+
         # Start background task for missing embeddings
         task_id = await self.task_manager.enqueue_embedding_task(
             sequences=missing_sequences,
@@ -240,7 +240,7 @@ class ProteinEmbeddingService:
             user_id=user_id,
             return_embeddings=request.return_raw_embeddings
         )
-        
+
         return EmbeddingTaskResponse(
             task_id=task_id,
             status="pending",
@@ -248,7 +248,7 @@ class ProteinEmbeddingService:
             total_sequences=len(request.sequences),
             missing_sequences=len(missing_sequences)
         )
-    
+
     async def get_embeddings_for_prediction(
         self,
         sequences: List[str],
@@ -256,7 +256,7 @@ class ProteinEmbeddingService:
     ) -> Dict[str, np.ndarray]:
         """Specialized method for prediction workflows"""
         return await self.embedding_repo.get_embeddings_as_arrays(
-            sequences, 
+            sequences,
             model_name
         )
 ```
@@ -272,7 +272,7 @@ from enum import Enum
 
 class SupportedPredictionModel(str, Enum):
     TMBED = "TMbed"                    # Membrane topology
-    VESPAG = "VespaG"                  # Variant effects  
+    VESPAG = "VespaG"                  # Variant effects
     SETH = "SETH"                      # Disorder prediction
     LIGHT_ATTENTION = "LightAttention" # Subcellular localization
     PROTT5_CONSERVATION = "ProtT5Conservation"
@@ -280,7 +280,7 @@ class SupportedPredictionModel(str, Enum):
 
 class PredictionRequest(BaseModel):
     sequences: List[str] = Field(
-        ..., 
+        ...,
         description="Protein sequences for prediction",
         min_items=1,
         max_items=100  # Smaller batch for predictions
@@ -297,7 +297,7 @@ class PredictionRequest(BaseModel):
         True,
         description="Include confidence scores in results"
     )
-    
+
 class TMbedPredictionRequest(PredictionRequest):
     """Specialized request for membrane topology prediction"""
     prediction_type: Literal[SupportedPredictionModel.TMBED] = SupportedPredictionModel.TMBED
@@ -307,7 +307,7 @@ class VespaGPredictionRequest(PredictionRequest):
     """Specialized request for variant effect prediction"""
     prediction_type: Literal[SupportedPredictionModel.VESPAG] = SupportedPredictionModel.VESPAG
     variants: List[str] = Field(..., description="Variant specifications (e.g., 'A123G')")
-    
+
 class BatchPredictionRequest(BaseModel):
     """For processing multiple prediction types on same sequences"""
     sequences: List[str] = Field(..., description="Protein sequences")
@@ -326,7 +326,7 @@ from ..repositories.model_repository import ModelRepository
 
 class ProteinPredictionService:
     """Core domain service orchestrating prediction workflows"""
-    
+
     def __init__(
         self,
         embedding_service: ProteinEmbeddingService,
@@ -336,26 +336,26 @@ class ProteinPredictionService:
         self.embedding_service = embedding_service
         self.model_repo = model_repository
         self.task_manager = task_manager
-        
+
         # Initialize prediction-specific services
         self.tmbed_service = TMbedService(model_repository)
         self.vespag_service = VespaGService(model_repository)
         self.disorder_service = DisorderService(model_repository)
         self.localization_service = LocalizationService(model_repository)
-    
+
     async def process_prediction_request(
         self,
         request: PredictionRequest,
         user_id: str
     ) -> Union[PredictionResponse, PredictionTaskResponse]:
         """Main prediction workflow: embeddings → predictions"""
-        
+
         # Step 1: Ensure embeddings exist
         embeddings = await self.embedding_service.get_embeddings_for_prediction(
             sequences=request.sequences,
             model_name=request.embedding_model
         )
-        
+
         # Check if we need to compute embeddings first
         if not embeddings:
             # Start embedding task, then prediction task
@@ -371,10 +371,10 @@ class ProteinPredictionService:
                 message="Computing embeddings before prediction",
                 workflow_stage="embedding"
             )
-        
+
         # Step 2: Route to appropriate prediction service
         prediction_service = self._get_prediction_service(request.prediction_type)
-        
+
         # For fast predictions, return immediately
         if prediction_service.is_fast_prediction():
             results = await prediction_service.predict(
@@ -387,21 +387,21 @@ class ProteinPredictionService:
                 embedding_model=request.embedding_model,
                 cached=False
             )
-        
+
         # For slow predictions, use background task
         task_id = await self.task_manager.enqueue_prediction_task(
             embeddings=embeddings,
             prediction_request=request,
             user_id=user_id
         )
-        
+
         return PredictionTaskResponse(
             task_id=task_id,
-            status="pending", 
+            status="pending",
             message=f"Running {request.prediction_type} prediction",
             workflow_stage="prediction"
         )
-    
+
     def _get_prediction_service(self, prediction_type: str):
         """Route to appropriate specialized service"""
         services_map = {
@@ -414,34 +414,34 @@ class ProteinPredictionService:
 
 class TMbedService:
     """Specialized service for membrane topology prediction"""
-    
+
     def __init__(self, model_repository: ModelRepository):
         self.model_repo = model_repository
-    
+
     def is_fast_prediction(self) -> bool:
         return True  # TMbed is relatively fast
-    
+
     async def predict(
-        self, 
+        self,
         embeddings: Dict[str, np.ndarray],
         request: TMbedPredictionRequest
     ) -> List[Dict[str, Any]]:
         """Run TMbed prediction on embeddings"""
         model = await self.model_repo.get_tmbed_model()
-        
+
         results = []
         for seq_id, embedding in embeddings.items():
             # TMbed-specific prediction logic
             topology_pred = model.predict_topology(embedding)
             confidence = model.get_confidence(embedding)
-            
+
             results.append({
                 "sequence_id": seq_id,
                 "topology": topology_pred,
                 "confidence": confidence if request.include_confidence else None,
                 "transmembrane_regions": model.get_tm_regions(topology_pred)
             })
-        
+
         return results
 ```
 
@@ -462,7 +462,7 @@ def create_app() -> FastAPI:
         description="Protein analysis server with domain-oriented architecture",
         version="0.3.0"
     )
-    
+
     # CORS Middleware
     app.add_middleware(
         CORSMiddleware,
@@ -471,22 +471,22 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     # Custom middleware
     app.add_middleware(UserTrackingMiddleware)
-    
+
     # CORE DOMAIN ROUTERS (Priority 1)
     app.include_router(
-        embedding_router, 
-        prefix="/api/v1/embeddings", 
+        embedding_router,
+        prefix="/api/v1/embeddings",
         tags=["Protein Embeddings"]
     )
     app.include_router(
-        prediction_router, 
-        prefix="/api/v1/predictions", 
+        prediction_router,
+        prefix="/api/v1/predictions",
         tags=["Protein Predictions"]
     )
-    
+
     # Core workflow endpoint - embeddings + predictions combined
     @app.post("/api/v1/analyze", tags=["Core Workflow"])
     async def analyze_proteins(
@@ -497,7 +497,7 @@ def create_app() -> FastAPI:
         """One-shot endpoint for complete protein analysis workflow"""
         # This would orchestrate embeddings → predictions
         pass
-    
+
     return app
 
 app = create_app()
@@ -513,7 +513,7 @@ app = create_app()
 
 ### 2. **Biotrainer Decoupling in Domain Context** (High Priority)
 - **Problem**: Biotrainer logic is embedded throughout prediction models
-- **Current Files**: `prediction_models/biotrainer_task.py`, `predict/models/*/` 
+- **Current Files**: `prediction_models/biotrainer_task.py`, `predict/models/*/`
 - **Domain Solution**: Create ML framework adapter within prediction domain
 - **Complexity**: High - affects core prediction functionality
 
@@ -548,16 +548,16 @@ def test_single_sequence_embedding(client, auth_headers):
         "model_name": "ProtT5",
         "return_raw_embeddings": True
     }
-    
+
     response = client.post(
         "/api/v1/embeddings/embed",
         json=request_data,
         headers=auth_headers
     )
-    
+
     assert response.status_code == 200
     data = response.json()
-    
+
     # Check for immediate response or task creation
     if "embeddings" in data:
         assert len(data["embeddings"]) == 1
@@ -572,17 +572,17 @@ def test_single_sequence_embedding(client, auth_headers):
 def test_batch_embedding_processing(client):
     """Test batch embedding with cache checking"""
     sequences = ["MKLLVLGLSG", "MKLLVLGLSGAA", "UNKNOWN_SEQUENCE"]
-    
+
     # First, check missing embeddings
     missing_response = client.post(
         "/api/v1/embeddings/missing",
         json={"sequences": sequences, "model_name": "ProtT5"}
     )
-    
+
     assert missing_response.status_code == 200
     missing_data = missing_response.json()
     assert "missing_sequences" in missing_data
-    
+
     # Then request embeddings for missing ones
     if missing_data["missing_sequences"]:
         embed_response = client.post(
@@ -607,16 +607,16 @@ def test_tmbed_prediction_workflow(client, auth_headers):
         "embedding_model": "ProtT5",
         "topology_threshold": 0.6
     }
-    
+
     response = client.post(
         "/api/v1/predictions/predict",
         json=request_data,
         headers=auth_headers
     )
-    
+
     assert response.status_code == 200
     data = response.json()
-    
+
     # Check for immediate response or task creation
     if "predictions" in data:
         # Fast prediction completed
@@ -637,19 +637,19 @@ def test_vespag_prediction_workflow(client):
     """Test VespaG variant effect prediction"""
     request_data = {
         "sequences": ["MKLLVLGLSG"],
-        "prediction_type": "VespaG", 
+        "prediction_type": "VespaG",
         "variants": ["M1A", "K2R", "L3P"],
         "embedding_model": "ProtT5"
     }
-    
+
     response = client.post(
         "/api/v1/predictions/predict",
         json=request_data
     )
-    
+
     assert response.status_code == 200
     data = response.json()
-    
+
     if "predictions" in data:
         prediction = data["predictions"][0]
         assert "variant_effects" in prediction
@@ -664,33 +664,33 @@ def test_vespag_prediction_workflow(client):
 ```python
 def test_embedding_prediction_pipeline(client):
     """Test the complete embeddings → predictions workflow"""
-    
+
     # Step 1: Start with fresh sequences (no cached embeddings)
     sequences = [f"MKLLVLGLSG{i}" for i in range(3)]  # Unique sequences
-    
+
     # Step 2: Request prediction (should trigger embedding first)
     prediction_request = {
         "sequences": sequences,
         "prediction_type": "TMbed",
         "embedding_model": "ProtT5"
     }
-    
+
     prediction_response = client.post(
         "/api/v1/predictions/predict",
         json=prediction_request
     )
-    
+
     assert prediction_response.status_code == 200
     pred_data = prediction_response.json()
-    
+
     if "task_id" in pred_data:
         task_id = pred_data["task_id"]
-        
+
         # Step 3: Check task status progression
         # Should go: embedding → prediction → completed
         status_response = client.get(f"/api/v1/tasks/{task_id}/status")
         assert status_response.status_code == 200
-        
+
         # Step 4: Verify embeddings are now cached
         embedding_check = client.post(
             "/api/v1/embeddings/missing",
@@ -708,15 +708,15 @@ def test_batch_multi_prediction(client):
         "prediction_types": ["TMbed", "SETH", "LightAttention"],
         "embedding_model": "ProtT5"
     }
-    
+
     response = client.post(
         "/api/v1/predictions/batch_predict",
         json=request_data
     )
-    
+
     assert response.status_code == 200
     data = response.json()
-    
+
     if "predictions" in data:
         # All predictions completed immediately
         assert len(data["predictions"]) == 2  # 2 sequences
@@ -735,7 +735,7 @@ def test_concurrent_embedding_requests(client):
     """Test domain services handle concurrent requests"""
     import asyncio
     import aiohttp
-    
+
     async def make_embedding_request(session, sequence_id):
         request_data = {
             "sequences": [f"MKLLVLGLSG{sequence_id}"],
@@ -746,18 +746,18 @@ def test_concurrent_embedding_requests(client):
             json=request_data
         ) as response:
             return await response.json()
-    
+
     async def test_concurrent():
         async with aiohttp.ClientSession() as session:
             tasks = [
-                make_embedding_request(session, i) 
+                make_embedding_request(session, i)
                 for i in range(50)
             ]
             results = await asyncio.gather(*tasks)
-            
+
             # All requests should succeed
             assert all("task_id" in result or "embeddings" in result for result in results)
-    
+
     asyncio.run(test_concurrent())
 ```
 
@@ -765,7 +765,7 @@ def test_concurrent_embedding_requests(client):
 ```python
 def test_domain_service_resource_management(client):
     """Test that domain services properly manage ML model resources"""
-    
+
     # Make multiple prediction requests
     for prediction_type in ["TMbed", "VespaG", "SETH"]:
         response = client.post(
@@ -776,7 +776,7 @@ def test_domain_service_resource_management(client):
             }
         )
         assert response.status_code == 200
-    
+
     # Check memory usage doesn't grow indefinitely
     # (This would be monitored via system metrics)
 ```
@@ -787,7 +787,7 @@ def test_domain_service_resource_management(client):
 ```python
 def test_feature_parity_with_flask_version():
     """Ensure all Flask functionality is preserved in domain architecture"""
-    
+
     # Test all supported embedding models
     embedding_models = ["ProtT5", "ESM-2", "Ankh"]
     for model in embedding_models:
@@ -796,12 +796,12 @@ def test_feature_parity_with_flask_version():
             json={"sequences": ["MKLLVLGLSG"], "model_name": model}
         )
         assert response.status_code == 200
-    
+
     # Test all supported prediction models
     prediction_models = ["TMbed", "VespaG", "SETH", "LightAttention"]
     for model in prediction_models:
         response = client.post(
-            "/api/v1/predictions/predict", 
+            "/api/v1/predictions/predict",
             json={"sequences": ["MKLLVLGLSG"], "prediction_type": model}
         )
         assert response.status_code == 200
@@ -811,7 +811,7 @@ def test_feature_parity_with_flask_version():
 ```python
 def test_background_task_system_still_works():
     """Ensure Redis Queue system works with domain architecture"""
-    
+
     # Submit a complex task that requires background processing
     response = client.post(
         "/api/v1/predictions/predict",
@@ -820,11 +820,11 @@ def test_background_task_system_still_works():
             "prediction_type": "VespaG"
         }
     )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert "task_id" in data
-    
+
     # Verify task appears in Redis queue
     # (This would check Redis directly or via monitoring endpoint)
 ```
@@ -840,7 +840,7 @@ def test_background_task_system_still_works():
 - [ ] Implement embedding Pydantic models with validation
 - [ ] Create embedding repository layer
 
-#### Week 2: Embedding Service Implementation  
+#### Week 2: Embedding Service Implementation
 - [ ] Implement `ProteinEmbeddingService` with workflow orchestration
 - [ ] Migrate embedding computation logic from Flask blueprints
 - [ ] Integrate with existing Redis Queue (RQ) system
@@ -947,9 +947,9 @@ def test_background_task_system_still_works():
 # Comprehensive validation test
 def test_complete_workflow_parity():
     """Validate that domain architecture produces identical results to Flask version"""
-    
+
     test_sequences = ["MKLLVLGLSG", "AAAAGGGGCCCC", "MEMBRANE_PROTEIN_SEQUENCE"]
-    
+
     # Test each embedding model
     for embedding_model in ["ProtT5", "ESM-2", "Ankh"]:
         # Test each prediction model
@@ -959,28 +959,28 @@ def test_complete_workflow_parity():
                 "prediction_types": [prediction_model],
                 "embedding_model": embedding_model
             })
-            
+
             assert response.status_code == 200
             # Validate against known good results from Flask version
 ```
 
-#### **Performance Regression Testing** 
+#### **Performance Regression Testing**
 ```python
 def test_performance_regression():
     """Ensure performance meets or exceeds Flask baseline"""
-    
+
     import time
     start_time = time.time()
-    
+
     # Run standardized performance test
     response = client.post("/api/v1/embeddings/embed", json={
         "sequences": ["PROTEIN_SEQUENCE"] * 100,
         "model_name": "ProtT5"
     })
-    
+
     end_time = time.time()
     response_time = end_time - start_time
-    
+
     # Should be within 10% of Flask baseline
     assert response_time <= FLASK_BASELINE_TIME * 1.1
 ```

@@ -7,13 +7,13 @@ Brief description of the change.
 ## Essential Checklist
 
 - [ ] **Tests passing**: `uv run pytest` ✅
-- [ ] **Changeset created**: `npx @changesets/cli add` ✅  
+- [ ] **Changeset created**: `npx @changesets/cli add` ✅
 - [ ] **Documentation updated** (if user-facing changes) ✅
 - [ ] **Code reviewed using LLM** ✅
 
 ## Type
 - [ ] Bug fix
-- [ ] Feature 
+- [ ] Feature
 - [ ] Documentation
 - [ ] Refactoring
 

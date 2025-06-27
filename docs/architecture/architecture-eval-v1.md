@@ -156,10 +156,10 @@ While the server management layer is well-designed, it creates coupling through:
 class MLFrameworkAdapter(ABC):
     @abstractmethod
     def train_model(self, config: TrainingConfig) -> ModelResult
-    
-    @abstractmethod  
+
+    @abstractmethod
     def embed_sequences(self, sequences: List[str]) -> np.ndarray
-    
+
     @abstractmethod
     def evaluate_model(self, model_path: str, test_data: Dataset) -> EvaluationResult
 ```
