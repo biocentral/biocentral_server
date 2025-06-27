@@ -38,6 +38,7 @@ uv run pip-audit
 ```
 
 ### UV Package Manager
+
 The project uses UV (not Poetry) for dependency management:
 - `uv sync --group dev` - Install all dependencies including dev tools
 - `uv add package` - Add new dependency
@@ -45,6 +46,7 @@ The project uses UV (not Poetry) for dependency management:
 - `uv tree` - Show dependency tree
 
 ### Changesets
+
 The project uses changesets for version management and release notes:
 - `npx @changesets/cli add` - Create new changeset for changes
 - `npx @changesets/cli version` - Apply changesets and update versions
@@ -102,6 +104,11 @@ The project uses changesets for version management and release notes:
 - Git workflow follows modified GitFlow with `main` and `develop` branches
 - Branch naming: `<module_name>/feature/description` or `biocentral/feature/description`
 - **Always create changesets for changes**: Use `npx @changesets/cli add` (never create manually)
+- **PR Requirements**: Use PR templates and complete all checklist items
+  - Tests must pass: `uv run pytest`
+  - Changeset required for all changes
+  - Documentation updates for user-facing changes
+  - LLM code review completed
 - Server runs multi-process architecture with separate worker processes for compute-intensive tasks
 
 ## Documentation References
