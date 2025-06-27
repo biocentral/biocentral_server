@@ -22,7 +22,7 @@ dependencies = [
     "python-dotenv>=1.0.1,<2.0.0",
     "gpytorch>=1.14,<2.0",
     "onnxruntime>=1.16.0,<2.0.0",
-    
+
     # Git Dependencies
     "autoeval @ git+https://github.com/J-SNACKKB/autoeval.git@master",
     "biotrainer @ git+https://github.com/biocentral/biotrainer.git@breaking/v-1-0-0",
@@ -36,6 +36,8 @@ dependencies = [
 dev = [
     "pytest==8.3.1",
     "pip-audit>=2.7.3,<3.0.0",
+    "ruff>=0.12.1",
+    "pre-commit>=4.2.0",
 ]
 
 [build-system]
