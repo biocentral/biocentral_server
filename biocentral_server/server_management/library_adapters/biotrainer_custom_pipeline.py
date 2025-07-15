@@ -11,11 +11,16 @@ from biotrainer.input_files import BiotrainerSequenceRecord, read_FASTA
 from biotrainer.embedders import get_embedding_service, EmbeddingService
 from biotrainer.trainers.pipeline.pipeline_step import PipelineStep, PipelineStepType
 
+MOCK_CONFIG = {}
 
-def get_custom_training_pipeline_ohe() -> Pipeline:
+
+def get_custom_training_pipeline_memory(embedder_name: str) -> Pipeline:
+    """For in-memory embeddings: Calculate directly during pipeline"""
     return (
-        DefaultPipeline()
-        .with_custom_steps(custom_embedding_step=OHEEmbeddingStep())
+        DefaultPipeline(config=MOCK_CONFIG)
+        .with_custom_steps(
+            custom_embedding_step=MemoryEmbeddingStep(embedder_name=embedder_name)
+        )
         .pipeline
     )
 
@@ -23,8 +28,9 @@ def get_custom_training_pipeline_ohe() -> Pipeline:
 def get_custom_training_pipeline_injection(
     embeddings: List[BiotrainerSequenceRecord],
 ) -> Pipeline:
+    """For Biotrainer: Directly inject all calculated embeddings"""
     return (
-        DefaultPipeline()
+        DefaultPipeline(config=MOCK_CONFIG)
         .with_custom_steps(
             custom_embedding_step=InjectionEmbeddingStep(embeddings=embeddings)
         )
@@ -35,8 +41,9 @@ def get_custom_training_pipeline_injection(
 def get_custom_training_pipeline_loading(
     embedder_name: str, embeddings_db: EmbeddingsDatabase
 ) -> Pipeline:
+    """For Autoeval: Only load relevant embeddings for task"""
     return (
-        DefaultPipeline()
+        DefaultPipeline(config=MOCK_CONFIG)
         .with_custom_steps(
             custom_embedding_step=DatabaseLoadEmbeddingStep(
                 embedder_name=embedder_name, embeddings_db=embeddings_db
@@ -94,7 +101,10 @@ class DatabaseLoadEmbeddingStep(PipelineStep):
         return context
 
 
-class OHEEmbeddingStep(PipelineStep):
+class MemoryEmbeddingStep(PipelineStep):
+    def __init__(self, embedder_name: str):
+        self.embedder_name = embedder_name
+
     def get_step_type(self) -> PipelineStepType:
         return PipelineStepType.EMBEDDING
 
@@ -105,7 +115,7 @@ class OHEEmbeddingStep(PipelineStep):
         seq_records = read_FASTA(input_file)
 
         embedding_service: EmbeddingService = get_embedding_service(
-            embedder_name="one_hot_encoding",
+            embedder_name=self.embedder_name,
             custom_tokenizer_config=None,
             use_half_precision=False,
             device=torch.device("cpu"),
@@ -118,7 +128,9 @@ class OHEEmbeddingStep(PipelineStep):
         )
 
         logger = get_logger(__name__)
-        logger.info(f"Calculated {len(embd_record_tuples)} one hot encodings")
+        logger.info(
+            f"Calculated {len(embd_record_tuples)} embeddings for {self.embedder_name}"
+        )
 
         context.id2emb = {
             seq_record.get_hash(): torch.tensor(embd)

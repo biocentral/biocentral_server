@@ -9,11 +9,11 @@ from ..server_management import EmbeddingsDatabase
 logger = get_logger(__name__)
 
 
-def compute_one_hot_encodings(
-    all_seqs: Dict[str, str], reduced: bool
+def compute_memory_encodings(
+    embedder_name: str, all_seqs: Dict[str, str], reduced: bool
 ) -> List[BiotrainerSequenceRecord]:
     embedding_service: EmbeddingService = get_embedding_service(
-        embedder_name="one_hot_encoding",
+        embedder_name=embedder_name,
         use_half_precision=False,
         custom_tokenizer_config=None,
         device="cpu",

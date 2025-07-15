@@ -6,7 +6,7 @@ from .server_initialization import ServerInitializationManager, ServerModuleInit
 from .library_adapters import (
     get_custom_training_pipeline_injection,
     get_custom_training_pipeline_loading,
-    get_custom_training_pipeline_ohe,
+    get_custom_training_pipeline_memory,
     TrainingDTOObserver,
 )
 
@@ -23,7 +23,7 @@ __all__ = [
     "EmbeddingsDatabase",
     "get_custom_training_pipeline_injection",
     "get_custom_training_pipeline_loading",
-    "get_custom_training_pipeline_ohe",
+    "get_custom_training_pipeline_memory",
     "TrainingDTOObserver",
     "ServerInitializationManager",
     "ServerModuleInitializer",

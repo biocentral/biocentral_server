@@ -156,7 +156,7 @@ class BindEmbed(BaseModel):
                     Prediction(
                         model_name=model_name,
                         prediction_name=binding_type,
-                        protocol=protocol,
+                        protocol=protocol.name,
                         prediction=prediction,
                     )
                 )

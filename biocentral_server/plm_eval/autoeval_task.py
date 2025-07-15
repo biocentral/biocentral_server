@@ -1,7 +1,10 @@
+import os
+
 from collections import namedtuple
 from biotrainer.trainers import Pipeline
 from biotrainer.utilities import get_device
 from typing import Optional, Callable
+from biotrainer.embedders import get_predefined_embedder_names
 from biotrainer.autoeval import autoeval_pipeline, get_unique_framework_sequences
 
 from ..utils import get_logger
@@ -14,7 +17,7 @@ from ..server_management import (
     EmbeddingDatabaseFactory,
     FileContextManager,
     get_custom_training_pipeline_loading,
-    get_custom_training_pipeline_ohe,
+    get_custom_training_pipeline_memory,
     TrainingDTOObserver,
 )
 
@@ -65,6 +68,7 @@ class AutoEvalTask(TaskInterface):
         custom_observer = TrainingDTOObserver(
             self._wrap_dto_callback(update_dto_callback)
         )
+        custom_storage_path = os.environ.get("AUTOEVAL_DATA_DIR", None)
         file_context_manager = FileContextManager()
         with file_context_manager.storage_write(autoeval_path) as output_dir:
             for progress in autoeval_pipeline(
@@ -76,6 +80,7 @@ class AutoEvalTask(TaskInterface):
                 max_seq_length=self.MAX_SEQ_LENGTH,
                 custom_pipeline=custom_pipeline,
                 custom_output_observers=[custom_observer],
+                custom_storage_path=custom_storage_path,
             ):
                 update_dto_callback(
                     TaskDTO.running().add_update(
@@ -93,8 +98,8 @@ class AutoEvalTask(TaskInterface):
         return TaskDTO.finished(result=progress.final_report)
 
     def _get_pipeline(self, update_dto_callback: Callable) -> Pipeline:
-        if self.embedder_name == "one_hot_encoding":
-            return get_custom_training_pipeline_ohe()
+        if self.embedder_name in get_predefined_embedder_names():
+            return get_custom_training_pipeline_memory(embedder_name=self.embedder_name)
         else:
             self._embed_all(update_dto_callback)
             embeddings_db = EmbeddingDatabaseFactory().get_embeddings_db()
@@ -103,8 +108,6 @@ class AutoEvalTask(TaskInterface):
             )
 
     def _embed_all(self, update_dto_callback: Callable):
-        # TODO Storage path on mounted container for flip
-        # custom_framework_path = None  # Unused variable
         _, unique_per_residue, unique_per_sequence = get_unique_framework_sequences(
             framework=self.FRAMEWORK,
             min_seq_length=self.MIN_SEQ_LENGTH,

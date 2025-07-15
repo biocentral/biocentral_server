@@ -1,7 +1,6 @@
 from typing import Union
 from dataclasses import dataclass
 from vespag.utils import Mutation
-from biotrainer.protocols import Protocol
 
 
 @dataclass
@@ -10,7 +9,7 @@ class Prediction:
 
     model_name: str
     prediction_name: str
-    protocol: Protocol
+    protocol: str
     prediction: Union[str, float]
 
 
