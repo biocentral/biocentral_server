@@ -1,0 +1,12 @@
+{
+  "name": "biocentral-server",
+  "version": "0.2.5",
+  "description": "Compute server for the biocentral frontend",
+  "private": true,
+  "scripts": {
+    "changeset": "npx @changesets/cli",
+    "changeset:add": "npx @changesets/cli add",
+    "changeset:version": "npx @changesets/cli version",
+    "changeset:publish": "npx @changesets/cli publish"
+  }
+}
