@@ -7,13 +7,14 @@ from biotrainer.protocols import Protocol
 from ..base_model import (
     BaseModel,
     ModelMetadata,
-    Prediction,
     ModelOutput,
     OutputClass,
     OutputType,
     LocalOnnxInferenceMixin,
     TritonInferenceMixin,
 )
+
+from ....server_management import Prediction
 
 
 class ProtT5Conservation(BaseModel, LocalOnnxInferenceMixin, TritonInferenceMixin):
@@ -24,19 +25,19 @@ class ProtT5Conservation(BaseModel, LocalOnnxInferenceMixin, TritonInferenceMixi
     """
 
     # Triton configuration
-    
-    @property
-    def TRITON_MODEL_NAME(self) -> str:
+
+    @staticmethod
+    def TRITON_MODEL_NAME() -> str:
         """Name of model in Triton repository."""
         return "prott5_cons"
-    
-    @property
-    def TRITON_INPUT_NAMES(self) -> List[str]:
+
+    @staticmethod
+    def TRITON_INPUT_NAMES() -> List[str]:
         """Names of input tensors."""
         return ["input"]
-    
-    @property
-    def TRITON_OUTPUT_NAMES(self) -> List[str]:
+
+    @staticmethod
+    def TRITON_OUTPUT_NAMES() -> List[str]:
         """Names of output tensors."""
         return ["output"]
 

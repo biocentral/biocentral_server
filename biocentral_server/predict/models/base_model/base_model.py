@@ -6,10 +6,11 @@ from biotrainer.protocols import Protocol
 from typing import List, Dict, Union, Any, Literal, Iterable
 from biotrainer.utilities import get_device
 
-from .prediction import Prediction
 from .model_metadata import ModelMetadata
 
 from ...model_utils import get_batched_data
+
+from ....server_management import Prediction
 
 # Backend type
 BackendType = Literal["onnx", "triton"]
@@ -68,7 +69,7 @@ class BaseModel(ABC):
     def _init_backend(self):
         """Initialize the selected inference backend."""
         if self.backend == "onnx":
-            if not hasattr(self, '_init_onnx_backend'):
+            if not hasattr(self, "_init_onnx_backend"):
                 raise RuntimeError(
                     f"{self.__class__.__name__} must inherit from OnnxInferenceMixin "
                     "to use ONNX backend"
@@ -76,7 +77,7 @@ class BaseModel(ABC):
             self._init_onnx_backend(model_dir_name=self.model_dir_name)
 
         elif self.backend == "triton":
-            if not hasattr(self, '_init_triton_backend'):
+            if not hasattr(self, "_init_triton_backend"):
                 raise RuntimeError(
                     f"{self.__class__.__name__} must inherit from TritonInferenceMixin "
                     "to use Triton backend"
@@ -84,7 +85,9 @@ class BaseModel(ABC):
             self._init_triton_backend()
 
         else:
-            raise ValueError(f"Unknown backend: {self.backend}. Must be 'onnx' or 'triton'")
+            raise ValueError(
+                f"Unknown backend: {self.backend}. Must be 'onnx' or 'triton'"
+            )
 
     def _run_inference(self, batch: Dict[str, Any]) -> Any:
         """Run inference on a batch using the selected backend.
@@ -128,9 +131,17 @@ class BaseModel(ABC):
         # Get batched data with attention masks if required
         return get_batched_data(
             batch_size=self.batch_size,
+            protocol=self.get_metadata().protocol,
+            input_name=self._infer_input_name(),
             data=embeddings.values(),
             mask=self.requires_mask,
         )
+
+    def _infer_input_name(self):
+        if self.backend == "onnx":
+            model = self.model if self.model is not None else self.models[0]
+            return model.get_inputs()[0].name
+        return self.TRITON_INPUT_NAMES()[0]
 
     def _transpose_batch(self, batch: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -149,8 +160,9 @@ class BaseModel(ABC):
             return batch
 
         result = {}
+        input_name = self._infer_input_name()
         for k, v in batch.items():
-            if k == "input":
+            if k == input_name:
                 if isinstance(v, np.ndarray):
                     v = torch.from_numpy(v)
                 elif isinstance(v, Iterable):
@@ -268,7 +280,7 @@ class BaseModel(ABC):
                         model_name=model_name,
                         prediction_name=prediction_name,
                         protocol=protocol.name,
-                        prediction=formatted_value,
+                        value=formatted_value,
                     )
                 )
 

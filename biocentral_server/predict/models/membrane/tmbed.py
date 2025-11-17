@@ -24,21 +24,21 @@ class TMbed(BaseModel, LocalOnnxInferenceMixin, TritonInferenceMixin):
     """
 
     # Triton configuration
-    @property
-    def TRITON_MODEL_NAME(self) -> str:
+    @staticmethod
+    def TRITON_MODEL_NAME() -> str:
         """Name of model in Triton repository."""
         return "tmbed"
-    
-    @property
-    def TRITON_INPUT_NAMES(self) -> List[str]:
+
+    @staticmethod
+    def TRITON_INPUT_NAMES() -> List[str]:
         """Names of input tensors."""
         return ["ensemble_input", "mask"]
-    
-    @property
-    def TRITON_OUTPUT_NAMES(self) -> List[str]:
+
+    @staticmethod
+    def TRITON_OUTPUT_NAMES() -> List[str]:
         """Names of output tensors."""
         return [f"output_{i}" for i in range(5)]  # 5 CV folds
-    
+
     # Custom transformers for Triton
     def triton_input_transformer(self, batch: Dict) -> Dict:
         """Transform batch for Triton: rename 'input' to 'ensemble_input'."""
@@ -144,10 +144,11 @@ class TMbed(BaseModel, LocalOnnxInferenceMixin, TritonInferenceMixin):
     def predict(self, sequences: Dict[str, str], embeddings):
         self._ensure_backend_initialized()
         inputs = self._prepare_inputs(embeddings=embeddings)
+        input_name = self._infer_input_name()
         embedding_ids = list(embeddings.keys())
         results = []
         for batch in inputs:
-            B, L, _ = batch["input"].shape
+            B, L, _ = batch[input_name].shape
 
             if self.backend == "onnx":
                 # ONNX: Run ensemble manually

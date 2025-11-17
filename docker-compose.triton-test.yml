@@ -3,6 +3,11 @@ services:
     build:
       context: ./storage/model-repository
       dockerfile: Dockerfile.triton
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "1"
     deploy:
       resources:
         limits:
@@ -24,6 +29,7 @@ services:
       --load-model=light_attention_subcell
       --load-model=light_attention_membrane
       --load-model=vespag
+      --load-model=exotox
       --disable-auto-complete-config
       --log-verbose=1
     ports:

@@ -8,13 +8,14 @@ from biotrainer.protocols import Protocol
 from ..base_model import (
     BaseModel,
     ModelMetadata,
-    Prediction,
     ModelOutput,
     OutputClass,
     OutputType,
     LocalOnnxInferenceMixin,
     TritonInferenceMixin,
 )
+
+from ....server_management import Prediction
 
 
 class BindEmbed(BaseModel, LocalOnnxInferenceMixin, TritonInferenceMixin):
@@ -25,18 +26,18 @@ class BindEmbed(BaseModel, LocalOnnxInferenceMixin, TritonInferenceMixin):
     """
 
     # Triton configuration
-    @property
-    def TRITON_MODEL_NAME(self) -> str:
+    @staticmethod
+    def TRITON_MODEL_NAME() -> str:
         """Name of model in Triton repository."""
         return "bind_embed"
-    
-    @property
-    def TRITON_INPUT_NAMES(self) -> List[str]:
+
+    @staticmethod
+    def TRITON_INPUT_NAMES() -> List[str]:
         """Names of input tensors."""
         return ["ensemble_input"]
-    
-    @property
-    def TRITON_OUTPUT_NAMES(self) -> List[str]:
+
+    @staticmethod
+    def TRITON_OUTPUT_NAMES() -> List[str]:
         """Names of output tensors."""
         return [f"output_{i}" for i in range(5)]
 
@@ -46,9 +47,6 @@ class BindEmbed(BaseModel, LocalOnnxInferenceMixin, TritonInferenceMixin):
         # BindEmbed requires transposed input (B, L, E) -> (B, E, L)
         batch = self._transpose_batch(batch)
 
-        # Rename the key for Triton ensemble
-        if "input" in batch:
-            batch["ensemble_input"] = batch.pop("input")
         return batch
 
     def triton_output_transformer(self, outputs: List[np.ndarray]) -> np.ndarray:
@@ -144,11 +142,12 @@ class BindEmbed(BaseModel, LocalOnnxInferenceMixin, TritonInferenceMixin):
     def predict(self, sequences: Dict[str, str], embeddings):
         self._ensure_backend_initialized()
         inputs = self._prepare_inputs(embeddings=embeddings)
+        input_name = self._infer_input_name()
         embedding_ids = list(embeddings.keys())
         results = []
 
         for batch in inputs:
-            B, L, _ = batch["input"].shape
+            B, L, _ = batch[input_name].shape
 
             if self.backend == "onnx":
                 # ONNX: Run ensemble manually
@@ -220,7 +219,7 @@ class BindEmbed(BaseModel, LocalOnnxInferenceMixin, TritonInferenceMixin):
                         model_name=model_name,
                         prediction_name=binding_type,
                         protocol=protocol.name,
-                        prediction=prediction,
+                        value=prediction,
                     )
                 )
 

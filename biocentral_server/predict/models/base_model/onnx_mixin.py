@@ -25,8 +25,10 @@ class LocalOnnxInferenceMixin:
         Args:
             model_dir_name: Optional directory name, defaults to metadata name
         """
-        if not hasattr(self, 'uses_ensemble'):
-            raise AttributeError("OnnxInferenceMixin requires 'uses_ensemble' attribute")
+        if not hasattr(self, "uses_ensemble"):
+            raise AttributeError(
+                "OnnxInferenceMixin requires 'uses_ensemble' attribute"
+            )
 
         model_name = model_dir_name if model_dir_name else self.get_metadata().name
 

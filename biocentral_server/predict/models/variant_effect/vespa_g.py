@@ -13,13 +13,13 @@ from vespag import (
 from ..base_model import (
     BaseModel,
     ModelMetadata,
-    Prediction,
-    MutationPrediction,
     ModelOutput,
     OutputType,
     LocalOnnxInferenceMixin,
     TritonInferenceMixin,
 )
+
+from ....server_management import Prediction, MutationPrediction
 
 
 class VespaG(BaseModel, LocalOnnxInferenceMixin, TritonInferenceMixin):
@@ -30,18 +30,18 @@ class VespaG(BaseModel, LocalOnnxInferenceMixin, TritonInferenceMixin):
     """
 
     # Triton configuration
-    @property
-    def TRITON_MODEL_NAME(self) -> str:
+    @staticmethod
+    def TRITON_MODEL_NAME() -> str:
         """Name of model in Triton repository."""
         return "vespag"
-    
-    @property
-    def TRITON_INPUT_NAMES(self) -> List[str]:
+
+    @staticmethod
+    def TRITON_INPUT_NAMES() -> List[str]:
         """Names of input tensors."""
         return ["input"]
-    
-    @property
-    def TRITON_OUTPUT_NAMES(self) -> List[str]:
+
+    @staticmethod
+    def TRITON_OUTPUT_NAMES() -> List[str]:
         """Names of output tensors."""
         return ["output"]
 
@@ -146,7 +146,7 @@ class VespaG(BaseModel, LocalOnnxInferenceMixin, TritonInferenceMixin):
                     model_name=model_name,
                     prediction_name=self.prediction_name,
                     protocol=protocol.name,
-                    prediction=compute_mutation_score(
+                    value=compute_mutation_score(
                         y,
                         mutation,
                         normalizer=self.normalizer,
