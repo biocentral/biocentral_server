@@ -9,6 +9,8 @@ services:
     environment:
       - API_BACKEND_URL=biocentral-server:9540
       - ROOT_PATH=${ROOT_PATH:-/api/v1}
+      - NO_PROXY=localhost,127.0.0.1,biocentral-server
+      - no_proxy=localhost,127.0.0.1,biocentral-server
     depends_on:
       biocentral-server:
         condition: service_healthy
