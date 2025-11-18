@@ -1,30 +1,24 @@
 {
+    admin off
     auto_https off
 }
 
-:80/health {
-    reverse_proxy {$API_BACKEND_URL}/health
-}
 
 :80 {
-    # Access logging
-    # For local dev: stdout with console format
-    # For production: configure file logging
     log {
         output stdout
         format console
     }
 
+    handle /health {
+        reverse_proxy {$API_BACKEND_URL}/health
+    }
+
     # API routes - must be before static file serving
-    # All /api/v1/* routes - strip /api/v1 prefix entirely, forward to FastAPI root
-    handle /api/v1/* {
-        uri strip_prefix /api/v1
-        reverse_proxy {$API_BACKEND_URL} {
-            # Add proper headers for reverse proxy
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
+    # All {$ROOT_PATH}/* routes - strip {$ROOT_PATH} prefix entirely, forward to FastAPI root
+    handle {$ROOT_PATH}/* {
+        uri strip_prefix {$ROOT_PATH}
+        reverse_proxy {$API_BACKEND_URL} 
     }
 
     # Serve static landing page at root

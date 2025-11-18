@@ -8,6 +8,7 @@ services:
       - ./assets:/var/www/assets:ro
     environment:
       - API_BACKEND_URL=biocentral-server:9540
+      - ROOT_PATH=${ROOT_PATH:-/api/v1}
     depends_on:
       biocentral-server:
         condition: service_healthy
@@ -39,6 +40,7 @@ services:
       - TRITON_GRPC_URL=http://triton:8001
       - TRITON_HTTP_URL=http://triton:8000
       - USE_TRITON=true
+      - ROOT_PATH=${ROOT_PATH:-/api/v1}
     deploy:
       resources:
         reservations:
