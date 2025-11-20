@@ -21,6 +21,13 @@
         reverse_proxy {$API_BACKEND_URL} 
     }
 
+
+    handle /health {
+        reverse_proxy {$API_BACKEND_URL}/health
+    }
+
+
+
     # Serve static landing page at root
     handle {
         root * /var/www/assets
