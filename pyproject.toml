@@ -43,6 +43,8 @@ dev = [
     "ruff>=0.12.1",
     "pre-commit>=4.2.0",
     "pytest-asyncio>=1.2.0",
+    "pytest-benchmark>=4.0.0",
+    "hypothesis>=6.100.0",
 ]
 
 [build-system]
@@ -54,6 +56,17 @@ allow-direct-references = true
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "performance: marks tests as performance benchmarks",
+    "integration: marks tests as integration tests",
+    "triton: marks tests that require Triton server",
+]
+
+[tool.pytest.benchmark]
+min_rounds = 5
+disable_gc = true
+warmup = true
 
 
 [tool.uv]

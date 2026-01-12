@@ -1,0 +1,202 @@
+"""
+Test memory usage and detect leaks.
+
+Tests measure:
+- Memory leaks from repeated embeddings
+- Memory footprint of embeddings
+- Pooled vs per-residue memory comparison
+"""
+
+import pytest
+import gc
+import numpy as np
+
+from tests.fixtures.fixed_embedder import FixedEmbedder
+
+
+def get_memory_mb() -> float:
+    """Get current process memory in MB (macOS/Linux)."""
+    try:
+        import resource
+
+        # macOS returns bytes, Linux returns KB
+        usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        import sys
+
+        if sys.platform == "darwin":
+            return usage / (1024 * 1024)  # bytes to MB
+        else:
+            return usage / 1024  # KB to MB
+    except ImportError:
+        return 0.0
+
+
+@pytest.mark.performance
+class TestMemoryLeaks:
+    """Detect memory leaks in embedding generation."""
+
+    def test_no_leak_repeated_single_embedding(self):
+        """Memory should not grow with repeated single embeddings."""
+        embedder = FixedEmbedder()
+        sequence = "MKTAYIAK" * 50  # 400 residues
+
+        # Warm up
+        for _ in range(10):
+            _ = embedder.embed(sequence)
+        gc.collect()
+
+        baseline = get_memory_mb()
+
+        # Run many iterations
+        for _ in range(1000):
+            _ = embedder.embed(sequence)
+
+        gc.collect()
+        final = get_memory_mb()
+
+        growth = final - baseline
+        # Allow some tolerance for GC timing
+        assert growth < 100, f"Memory grew by {growth:.1f} MB (possible leak)"
+
+    def test_no_leak_repeated_batch_embedding(self):
+        """Memory should not grow with repeated batch embeddings."""
+        embedder = FixedEmbedder()
+        sequences = ["MKTAYIAK" * 10 for _ in range(100)]
+
+        # Warm up
+        for _ in range(5):
+            _ = embedder.embed_batch(sequences)
+        gc.collect()
+
+        baseline = get_memory_mb()
+
+        # Run iterations
+        for _ in range(100):
+            _ = embedder.embed_batch(sequences)
+
+        gc.collect()
+        final = get_memory_mb()
+
+        growth = final - baseline
+        assert growth < 200, f"Memory grew by {growth:.1f} MB (possible leak)"
+
+    def test_gc_releases_embeddings(self):
+        """Verify GC properly releases embedding memory."""
+        embedder = FixedEmbedder()
+
+        gc.collect()
+        baseline = get_memory_mb()
+
+        # Create large embeddings
+        embeddings = []
+        for _ in range(100):
+            emb = embedder.embed("M" * 500)
+            embeddings.append(emb)
+
+        peak = get_memory_mb()
+        print(f"\nPeak memory after 100 x 500-residue embeddings: {peak:.1f} MB")
+
+        # Release references
+        del embeddings
+        gc.collect()
+
+        after_gc = get_memory_mb()
+        print(f"Memory after GC: {after_gc:.1f} MB")
+        print(f"Released: {peak - after_gc:.1f} MB")
+
+
+@pytest.mark.performance
+class TestMemoryFootprint:
+    """Measure memory footprint of embeddings."""
+
+    def test_embedding_memory_size(self, perf_embedder):
+        """Verify embedding memory matches expected size."""
+        sequence = "M" * 100
+        embedding = perf_embedder.embed(sequence)
+
+        expected_bytes = 100 * 1024 * 4  # seq_len * dim * float32
+        actual_bytes = embedding.nbytes
+
+        assert actual_bytes == expected_bytes
+        print(f"\n100-residue embedding: {actual_bytes / 1024:.1f} KB")
+
+    def test_batch_memory_size(self, perf_embedder, large_batch):
+        """Measure total memory for large batch."""
+        embeddings = perf_embedder.embed_batch(large_batch)
+
+        total_bytes = sum(emb.nbytes for emb in embeddings)
+        total_mb = total_bytes / (1024 * 1024)
+
+        avg_length = np.mean([len(seq) for seq in large_batch])
+        print(f"\n1000 sequences (avg {avg_length:.0f} residues):")
+        print(f"  Total memory: {total_mb:.1f} MB")
+        print(f"  Per sequence: {total_bytes / 1000 / 1024:.1f} KB")
+
+        # 1000 seqs * ~100 residues * 1024 dim * 4 bytes ≈ 400 MB
+        assert total_mb < 500, f"Memory too high: {total_mb:.1f} MB"
+
+    def test_pooled_vs_per_residue_memory(self, perf_embedder, medium_batch):
+        """Compare memory usage: pooled vs per-residue."""
+        per_residue = perf_embedder.embed_batch(medium_batch, pooled=False)
+        pooled = perf_embedder.embed_batch(medium_batch, pooled=True)
+
+        per_residue_bytes = sum(e.nbytes for e in per_residue)
+        pooled_bytes = sum(e.nbytes for e in pooled)
+
+        per_residue_mb = per_residue_bytes / (1024 * 1024)
+        pooled_mb = pooled_bytes / (1024 * 1024)
+
+        print(f"\n100 sequences memory comparison:")
+        print(f"  Per-residue: {per_residue_mb:.2f} MB")
+        print(f"  Pooled:      {pooled_mb:.4f} MB")
+        print(f"  Reduction:   {(1 - pooled_bytes/per_residue_bytes) * 100:.1f}%")
+
+        # Pooled should use much less memory
+        assert pooled_bytes < per_residue_bytes / 10
+
+    def test_memory_per_dimension(self, perf_embedder):
+        """Measure memory scaling with embedding dimension."""
+        sequence = "M" * 100
+
+        dims = [512, 1024, 1280, 2560]
+        results = []
+
+        for dim in dims:
+            embedder = FixedEmbedder(embedding_dim=dim)
+            emb = embedder.embed(sequence)
+            results.append({"dim": dim, "bytes": emb.nbytes, "kb": emb.nbytes / 1024})
+
+        print("\n\nMemory by embedding dimension (100 residues):")
+        print("-" * 40)
+        print(f"{'Dimension':>12} {'Memory (KB)':>14}")
+        print("-" * 40)
+        for r in results:
+            print(f"{r['dim']:>12} {r['kb']:>14.1f}")
+
+
+@pytest.mark.performance
+class TestMemoryEstimation:
+    """Test memory estimation for planning."""
+
+    def test_estimate_batch_memory(self, perf_embedder):
+        """Provide memory estimates for different batch configurations."""
+        configs = [
+            {"n_seqs": 100, "avg_len": 100},
+            {"n_seqs": 1000, "avg_len": 100},
+            {"n_seqs": 100, "avg_len": 500},
+            {"n_seqs": 1000, "avg_len": 500},
+            {"n_seqs": 10000, "avg_len": 100},
+        ]
+
+        dim = perf_embedder.embedding_dim
+        bytes_per_float = 4
+
+        print("\n\nMemory Estimation (per-residue, 1024-dim):")
+        print("-" * 60)
+        print(f"{'Sequences':>12} {'Avg Length':>12} {'Estimated MB':>14}")
+        print("-" * 60)
+
+        for cfg in configs:
+            estimated_bytes = cfg["n_seqs"] * cfg["avg_len"] * dim * bytes_per_float
+            estimated_mb = estimated_bytes / (1024 * 1024)
+            print(f"{cfg['n_seqs']:>12} {cfg['avg_len']:>12} {estimated_mb:>14.1f}")
