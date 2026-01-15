@@ -5,8 +5,10 @@ This file provides reusable fixtures for testing, including:
 - FixedEmbedder instances for deterministic testing
 - Pre-defined test sequences
 - Pre-computed embeddings in various formats
+- CLI options for embedder backend selection
 """
 
+import os
 import pytest
 import numpy as np
 from typing import Dict, List, Tuple
@@ -17,6 +19,34 @@ from tests.fixtures.fixed_embedder import (
     get_fixed_embedder,
 )
 
+
+# ============================================================================
+# PYTEST HOOKS FOR CLI OPTIONS
+# ============================================================================
+
+def pytest_addoption(parser):
+    """Add custom CLI options for test configuration."""
+    parser.addoption(
+        "--use-real-embedder",
+        action="store_true",
+        default=False,
+        help="Use real ESM-2 8M embedder instead of FixedEmbedder for integration tests",
+    )
+
+
+def pytest_configure(config):
+    """Configure custom markers."""
+    config.addinivalue_line(
+        "markers", "real_embedder: mark test to only run with real embedder backend"
+    )
+    config.addinivalue_line(
+        "markers", "fixed_embedder: mark test to only run with fixed embedder backend"
+    )
+    config.addinivalue_line(
+        "markers", "modifies_registry: mark test that modifies FixedEmbedderRegistry"
+    )
+
+
 # ============================================================================
 # FIXED EMBEDDER FIXTURES
 # ============================================================================
@@ -25,6 +55,12 @@ from tests.fixtures.fixed_embedder import (
 def fixed_embedder_prot_t5() -> FixedEmbedder:
     """Session-scoped FixedEmbedder for ProtT5 (1024-dim)."""
     return FixedEmbedder(model_name="prot_t5", seed_base=42)
+
+
+@pytest.fixture(scope="session")
+def fixed_embedder_esm2_t6() -> FixedEmbedder:
+    """Session-scoped FixedEmbedder for ESM2-T6/8M (320-dim)."""
+    return FixedEmbedder(model_name="esm2_t6", seed_base=42)
 
 
 @pytest.fixture(scope="session")
