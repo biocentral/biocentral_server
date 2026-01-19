@@ -1,7 +1,9 @@
 # Ignore storage except model-repository
 /storage/*
 !/storage/model-repository/
-
+.coverage
+htmlcov/
+coverage.xml
 /logs/
 /dist/
 /build/

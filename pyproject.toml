@@ -39,6 +39,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest==8.3.1",
+    "pytest-cov>=4.1.0",
     "pip-audit>=2.7.3,<3.0.0",
     "ruff>=0.12.1",
     "pre-commit>=4.2.0",
@@ -73,3 +74,14 @@ warmup = true
 override-dependencies = [
     "perf-analyzer>=2.59.1; sys_platform == 'linux'",
 ]
+[tool.coverage.run]
+source = ["biocentral_server"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+show_missing = true
