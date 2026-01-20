@@ -54,33 +54,33 @@ def pytest_configure(config):
 @pytest.fixture(scope="session")
 def fixed_embedder_prot_t5() -> FixedEmbedder:
     """Session-scoped FixedEmbedder for ProtT5 (1024-dim)."""
-    return FixedEmbedder(model_name="prot_t5", seed_base=42)
+    return FixedEmbedder(model_name="prot_t5", seed_base=42, strict_dataset=False)
 
 
 @pytest.fixture(scope="session")
 def fixed_embedder_esm2_t6() -> FixedEmbedder:
     """Session-scoped FixedEmbedder for ESM2-T6/8M (320-dim)."""
-    return FixedEmbedder(model_name="esm2_t6", seed_base=42)
+    return FixedEmbedder(model_name="esm2_t6", seed_base=42, strict_dataset=False)
 
 
 @pytest.fixture(scope="session")
 def fixed_embedder_esm2_t33() -> FixedEmbedder:
     """Session-scoped FixedEmbedder for ESM2-T33 (1280-dim)."""
-    return FixedEmbedder(model_name="esm2_t33", seed_base=42)
+    return FixedEmbedder(model_name="esm2_t33", seed_base=42, strict_dataset=False)
 
 
 @pytest.fixture(scope="session")
 def fixed_embedder_esm2_t36() -> FixedEmbedder:
     """Session-scoped FixedEmbedder for ESM2-T36 (2560-dim)."""
-    return FixedEmbedder(model_name="esm2_t36", seed_base=42)
+    return FixedEmbedder(model_name="esm2_t36", seed_base=42, strict_dataset=False)
 
 
 @pytest.fixture
 def fixed_embedder_factory():
     """Factory fixture for creating FixedEmbedders with custom config."""
 
-    def _factory(model_name: str = "prot_t5", seed_base: int = 42, **kwargs):
-        return FixedEmbedder(model_name=model_name, seed_base=seed_base, **kwargs)
+    def _factory(model_name: str = "prot_t5", seed_base: int = 42, strict_dataset: bool = False, **kwargs):
+        return FixedEmbedder(model_name=model_name, seed_base=seed_base, strict_dataset=strict_dataset, **kwargs)
 
     return _factory
 

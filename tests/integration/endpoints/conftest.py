@@ -168,7 +168,7 @@ def embedder(embedder_backend: EmbedderBackend) -> Union[FixedEmbedder, RealEmbe
         return RealEmbedder()
     else:
         # Use esm2_t6 config in FixedEmbedder to match ESM-2 8M dimensions (320)
-        return FixedEmbedder(model_name="esm2_t6", seed_base=42)
+        return FixedEmbedder(model_name="esm2_t6", seed_base=42, strict_dataset=False)
 
 
 @pytest.fixture(scope="session")
