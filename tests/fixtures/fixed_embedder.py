@@ -411,3 +411,137 @@ def generate_test_embeddings_dict(
     """
     embedder = get_fixed_embedder(model_name)
     return embedder.embed_dict(sequences, pooled=pooled)
+
+
+def convert_sequences_to_test_format(
+    sequences: List[str],
+    model_name: str = "prot_t5",
+) -> Tuple[Dict[str, str], Dict[str, np.ndarray]]:
+    """
+    Convert sequences to the format expected by prediction models.
+
+    This is the primary utility for setting up test data that mimics
+    the format used in production (sequences dict + embeddings dict).
+
+    Args:
+        sequences: List of protein sequences
+        model_name: Model to emulate for embeddings
+
+    Returns:
+        Tuple of (sequences_dict, embeddings_dict) where:
+        - sequences_dict maps seq_id -> sequence string
+        - embeddings_dict maps seq_id -> per-residue embedding array
+    """
+    sequences_dict = {f"seq{i}": seq for i, seq in enumerate(sequences)}
+    embeddings_dict = generate_test_embeddings_dict(sequences_dict, model_name)
+    return sequences_dict, embeddings_dict
+
+# ============================================================================
+# VALIDATION UTILITIES
+# ============================================================================
+
+
+def get_expected_embedding_properties(model_name: str) -> Dict:
+    """Get expected properties for embeddings from a model."""
+    properties = {
+        "prot_t5": {
+            "dimension": 1024,
+            "dtype": np.float32,
+            "value_range": (-10.0, 10.0),  # Approximate range
+        },
+        "esm2_t33": {
+            "dimension": 1280,
+            "dtype": np.float32,
+            "value_range": (-10.0, 10.0),
+        },
+        "esm2_t36": {
+            "dimension": 2560,
+            "dtype": np.float32,
+            "value_range": (-10.0, 10.0),
+        },
+    }
+    return properties.get(model_name, properties["prot_t5"])
+
+
+def validate_embedding_shape(
+    embedding: np.ndarray,
+    expected_length: int,
+    model_name: str = "prot_t5",
+    pooled: bool = False,
+) -> bool:
+    """
+    Validate that an embedding has the expected shape.
+
+    Args:
+        embedding: The embedding array to validate
+        expected_length: Expected sequence length
+        model_name: Model name (determines embedding dimension)
+        pooled: Whether this is a pooled embedding
+
+    Returns:
+        True if shape is valid
+    """
+    props = get_expected_embedding_properties(model_name)
+    expected_dim = props["dimension"]
+
+    if pooled:
+        expected_shape = (expected_dim,)
+    else:
+        expected_shape = (expected_length, expected_dim)
+
+    return embedding.shape == expected_shape
+
+
+def validate_embedding_properties(
+    embedding: np.ndarray,
+    model_name: str = "prot_t5",
+) -> Dict[str, bool]:
+    """
+    Validate various properties of an embedding.
+
+    Args:
+        embedding: The embedding array to validate
+        model_name: Model name for expected properties
+
+    Returns:
+        Dictionary of validation results
+    """
+    props = get_expected_embedding_properties(model_name)
+
+    return {
+        "correct_dtype": embedding.dtype == props["dtype"],
+        "no_nan": not np.any(np.isnan(embedding)),
+        "no_inf": not np.any(np.isinf(embedding)),
+        "not_all_zeros": not np.allclose(embedding, 0),
+        "within_range": np.all(embedding >= props["value_range"][0])
+        and np.all(embedding <= props["value_range"][1]),
+    }
+
+
+def assert_embedding_valid(
+    embedding: np.ndarray,
+    sequence_length: int,
+    model_name: str = "prot_t5",
+    pooled: bool = False,
+) -> None:
+    """
+    Assert that an embedding is valid, raising AssertionError if not.
+
+    Args:
+        embedding: The embedding array to validate
+        sequence_length: Expected sequence length
+        model_name: Model name for validation
+        pooled: Whether this is a pooled embedding
+
+    Raises:
+        AssertionError: If embedding is invalid
+    """
+    # Check shape
+    assert validate_embedding_shape(
+        embedding, sequence_length, model_name, pooled
+    ), f"Invalid shape: {embedding.shape}"
+
+    # Check properties
+    props = validate_embedding_properties(embedding, model_name)
+    for prop_name, is_valid in props.items():
+        assert is_valid, f"Embedding failed {prop_name} check"
