@@ -64,6 +64,7 @@ class FixedEmbedder:
         embedding_dim: Dimension of the output embeddings
         seed_base: Base seed for reproducibility
         noise_scale: Scale factor for noise component
+        strict_dataset: If True, only accept sequences from canonical test dataset
     """
 
     # Amino acid vocabulary for validation
@@ -76,6 +77,7 @@ class FixedEmbedder:
         embedding_dim: Optional[int] = None,
         seed_base: int = 42,
         noise_scale: float = 0.1,
+        strict_dataset: bool = True,
     ):
         """
         Initialize FixedEmbedder.
@@ -85,6 +87,7 @@ class FixedEmbedder:
             embedding_dim: Override embedding dimension (if None, uses model default)
             seed_base: Base seed for reproducibility
             noise_scale: Scale factor for noise component
+            strict_dataset: If True, only accept sequences from canonical test dataset
         """
         self.model_name = model_name
         self.config = FixedEmbedderConfig(seed_base=seed_base, noise_scale=noise_scale)
@@ -99,9 +102,40 @@ class FixedEmbedder:
 
         self.seed_base = seed_base
         self.noise_scale = noise_scale
+        self.strict_dataset = strict_dataset
+
+        # Load allowed sequences from canonical dataset if strict mode
+        self._allowed_sequences: Optional[set] = None
+        if self.strict_dataset:
+            self._allowed_sequences = self._load_canonical_sequences()
 
         # Pre-compute amino acid base embeddings for consistency
         self._aa_embeddings = self._generate_aa_base_embeddings()
+
+    def _load_canonical_sequences(self) -> set:
+        """Load allowed sequences from canonical test dataset."""
+        from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
+        return set(CANONICAL_TEST_DATASET.get_all_sequences())
+
+    def _validate_sequence(self, sequence: str) -> None:
+        """
+        Validate that sequence is in the canonical dataset (if strict mode).
+
+        Args:
+            sequence: Protein sequence to validate
+
+        Raises:
+            ValueError: If strict_dataset=True and sequence not in canonical dataset
+        """
+        if self.strict_dataset and self._allowed_sequences is not None:
+            if sequence not in self._allowed_sequences:
+                raise ValueError(
+                    f"Sequence not in canonical test dataset (strict_dataset=True). "
+                    f"Sequence: '{sequence[:50]}{'...' if len(sequence) > 50 else ''}' "
+                    f"(length={len(sequence)}). "
+                    f"Use strict_dataset=False to allow arbitrary sequences, or add "
+                    f"this sequence to tests/fixtures/test_dataset.py"
+                )
 
     def _sequence_to_seed(self, sequence: str) -> int:
         """
@@ -162,9 +196,15 @@ class FixedEmbedder:
 
         Returns:
             numpy array of shape (seq_len, embedding_dim) with dtype float32
+
+        Raises:
+            ValueError: If strict_dataset=True and sequence not in canonical dataset
         """
         if not sequence:
             return np.zeros((0, self.embedding_dim), dtype=np.float32)
+
+        # Validate sequence against canonical dataset if strict mode
+        self._validate_sequence(sequence)
 
         seq_len = len(sequence)
 
@@ -284,6 +324,7 @@ class FixedEmbedderRegistry:
         cls,
         model_name: str = "prot_t5",
         seed_base: int = 42,
+        strict_dataset: bool = True,
     ) -> FixedEmbedder:
         """
         Get or create a FixedEmbedder instance.
@@ -291,15 +332,17 @@ class FixedEmbedderRegistry:
         Args:
             model_name: Model to emulate
             seed_base: Base seed for reproducibility
+            strict_dataset: If True, only accept sequences from canonical dataset
 
         Returns:
             FixedEmbedder instance
         """
-        key = f"{model_name}:{seed_base}"
+        key = f"{model_name}:{seed_base}:{strict_dataset}"
         if key not in cls._instances:
             cls._instances[key] = FixedEmbedder(
                 model_name=model_name,
                 seed_base=seed_base,
+                strict_dataset=strict_dataset,
             )
         return cls._instances[key]
 
@@ -312,7 +355,10 @@ class FixedEmbedderRegistry:
 # CONVENIENCE FUNCTIONS
 # ============================================================================
 
-def get_fixed_embedder(model_name: str = "prot_t5") -> FixedEmbedder:
+def get_fixed_embedder(
+    model_name: str = "prot_t5",
+    strict_dataset: bool = True,
+) -> FixedEmbedder:
     """
     Get a FixedEmbedder for the specified model.
 
@@ -321,11 +367,12 @@ def get_fixed_embedder(model_name: str = "prot_t5") -> FixedEmbedder:
 
     Args:
         model_name: Name of the model to emulate (prot_t5, esm2_t33, esm2_t36)
+        strict_dataset: If True, only accept sequences from canonical test dataset
 
     Returns:
         FixedEmbedder instance configured for the specified model
     """
-    return FixedEmbedderRegistry.get_embedder(model_name)
+    return FixedEmbedderRegistry.get_embedder(model_name, strict_dataset=strict_dataset)
 
 def generate_test_embeddings(
     sequences: List[str],

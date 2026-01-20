@@ -4,6 +4,9 @@
 .coverage
 htmlcov/
 coverage.xml
+
+# Test reports (auto-generated)
+tests/reports/*.csv
 /logs/
 /dist/
 /build/
