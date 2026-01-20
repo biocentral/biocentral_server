@@ -7,16 +7,7 @@ from .fixed_embedder import (
     get_fixed_embedder,
     generate_test_embeddings,
     generate_test_embeddings_dict,
-)
-
-from .fixed_embeddings import (
-    # Test sequences
-    SINGLE_SEQUENCE,
-    FIVE_SEQUENCES,
-    EDGE_CASE_SEQUENCES,
-    MEMBRANE_SEQUENCES,
-    LONG_SEQUENCES,
-    TestSequenceSet,
+    convert_sequences_to_test_format,
     # Validation utilities
     validate_embedding_shape,
     validate_embedding_properties,
@@ -44,13 +35,7 @@ __all__ = [
     "get_fixed_embedder",
     "generate_test_embeddings",
     "generate_test_embeddings_dict",
-    # Test sequences (legacy)
-    "SINGLE_SEQUENCE",
-    "FIVE_SEQUENCES",
-    "EDGE_CASE_SEQUENCES",
-    "MEMBRANE_SEQUENCES",
-    "LONG_SEQUENCES",
-    "TestSequenceSet",
+    "convert_sequences_to_test_format",
     # Validation utilities
     "validate_embedding_shape",
     "validate_embedding_properties",
