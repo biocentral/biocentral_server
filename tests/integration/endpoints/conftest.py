@@ -25,6 +25,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from tests.fixtures.fixed_embedder import FixedEmbedder, FixedEmbedderRegistry
+from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET, get_test_sequences
 
 
 # =============================================================================
@@ -168,7 +169,8 @@ def embedder(embedder_backend: EmbedderBackend) -> Union[FixedEmbedder, RealEmbe
         return RealEmbedder()
     else:
         # Use esm2_t6 config in FixedEmbedder to match ESM-2 8M dimensions (320)
-        return FixedEmbedder(model_name="esm2_t6", seed_base=42, strict_dataset=False)
+        # strict_dataset=True enforces all sequences come from canonical test dataset
+        return FixedEmbedder(model_name="esm2_t6", seed_base=42, strict_dataset=True)
 
 
 @pytest.fixture(scope="session")
@@ -191,28 +193,29 @@ def embedding_dim(embedder_backend: EmbedderBackend) -> int:
 
 @pytest.fixture(scope="session")
 def test_sequences() -> Dict[str, str]:
-    """Standard test sequences for integration tests."""
+    """Standard test sequences from canonical dataset."""
+    # Return first 3 standard sequences from canonical dataset
     return {
-        "protein_1": "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSLEVGN",
-        "protein_2": "MKKLVLSLSLVLAFSSATAAFAAIPQNIRAQYPAVVKEQRQVVRSQNGDLADNIKKISDNLKAKIYAMHYVDVFYNKSLEKIMKDIQVTNATKTVYISINDLKRRMGGWKYPNMQVLLGRKGKKGKKAKRQ",
-        "protein_3": "MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGAFSDGLAHLDNLKGTFATLSELHCDKLHVDPENFRLLGNVLVCVLAHHFGKEFTPPVQAAYQKVVAGVANALAHKYH",
+        "protein_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+        "protein_2": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+        "protein_3": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
     }
 
 
 @pytest.fixture(scope="session")
 def single_test_sequence() -> Dict[str, str]:
-    """Single sequence for quick tests."""
+    """Single sequence from canonical dataset."""
     return {
-        "test_seq": "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSLEVGN"
+        "test_seq": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
     }
 
 
 @pytest.fixture(scope="session")
 def short_test_sequences() -> Dict[str, str]:
-    """Short sequences for faster test execution."""
+    """Short sequences from canonical dataset."""
     return {
-        "short_1": "MVLSPADKTNVKAAWGKVGAHAGE",
-        "short_2": "MGHFTEEDKATITSLWGKVNVE",
+        "short_1": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
+        "short_2": CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
     }
 
 
