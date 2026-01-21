@@ -6,6 +6,7 @@ Tests the /prediction_service/* endpoints:
 - POST /predict - Submit prediction task
 
 Uses configurable embedder backend (FixedEmbedder or ESM-2 8M).
+All sequences come from the canonical test dataset.
 """
 
 import pytest
@@ -16,6 +17,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from biocentral_server.predict import predict_router
+from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 
 
 @pytest.fixture(scope="module")
@@ -34,10 +36,10 @@ def client(predict_app):
 
 @pytest.fixture
 def prediction_sequences() -> Dict[str, str]:
-    """Sequences suitable for prediction (minimum 7 residues)."""
+    """Sequences from canonical dataset suitable for prediction (minimum 7 residues)."""
     return {
-        "pred_1": "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSLEVGN",
-        "pred_2": "MKKLVLSLSLVLAFSSATAAFAAIPQNIRAQYPAVVKEQRQVVRSQNGDLADNIKKISDNLKAKIYAMHYVDVFYNKSLEKIMKDIQVTNATKTVYISINDLKRRMGGWKYPNMQVLLGRKGKKGKKAKRQ",
+        "pred_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+        "pred_2": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
     }
 
 

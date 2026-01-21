@@ -77,7 +77,7 @@ class FixedEmbedder:
         embedding_dim: Optional[int] = None,
         seed_base: int = 42,
         noise_scale: float = 0.1,
-        strict_dataset: bool = False,
+        strict_dataset: bool = True,
     ):
         """
         Initialize FixedEmbedder.
@@ -324,7 +324,7 @@ class FixedEmbedderRegistry:
         cls,
         model_name: str = "prot_t5",
         seed_base: int = 42,
-        strict_dataset: bool = False,
+        strict_dataset: bool = True,
     ) -> FixedEmbedder:
         """
         Get or create a FixedEmbedder instance.
@@ -357,7 +357,7 @@ class FixedEmbedderRegistry:
 
 def get_fixed_embedder(
     model_name: str = "prot_t5",
-    strict_dataset: bool = False,
+    strict_dataset: bool = True,
 ) -> FixedEmbedder:
     """
     Get a FixedEmbedder for the specified model.
