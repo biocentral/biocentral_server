@@ -18,6 +18,12 @@ from fastapi.testclient import TestClient
 
 from biocentral_server.predict import predict_router
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
+from tests.integration.endpoints.conftest import (
+    CANONICAL_STANDARD_IDS,
+    CANONICAL_REAL_WORLD_IDS,
+    CANONICAL_UNKNOWN_TOKEN_IDS,
+    get_sequence_by_id,
+)
 
 
 @pytest.fixture(scope="module")
@@ -40,6 +46,38 @@ def prediction_sequences() -> Dict[str, str]:
     return {
         "pred_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
         "pred_2": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+    }
+
+
+@pytest.fixture
+def real_world_prediction_sequences() -> Dict[str, str]:
+    """Real-world protein sequences for prediction testing."""
+    return {
+        "insulin_b": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+        "ubiquitin": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
+        "gfp_core": CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
+    }
+
+
+@pytest.fixture
+def boundary_length_sequences() -> Dict[str, str]:
+    """Sequences at or near the minimum length boundary for prediction."""
+    return {
+        "short_5": CANONICAL_TEST_DATASET.get_by_id("length_short_5").sequence,  # 5 aa - below min
+        "short_10": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,  # 10 aa - above min
+    }
+
+
+@pytest.fixture
+def unknown_token_prediction_sequences() -> Dict[str, str]:
+    """Sequences with unknown tokens that meet minimum length for prediction."""
+    # Only sequences >= 7 residues for prediction
+    return {
+        "unknown_start": CANONICAL_TEST_DATASET.get_by_id("unknown_start").sequence,
+        "unknown_end": CANONICAL_TEST_DATASET.get_by_id("unknown_end").sequence,
+        "unknown_middle": CANONICAL_TEST_DATASET.get_by_id("unknown_middle").sequence,
+        "unknown_scattered": CANONICAL_TEST_DATASET.get_by_id("unknown_scattered").sequence,
+        "unknown_high_ratio": CANONICAL_TEST_DATASET.get_by_id("unknown_high_ratio").sequence,
     }
 
 
@@ -236,13 +274,16 @@ class TestPredictEndpoint:
         self,
         mock_rate_limiter,
         client,
+        boundary_length_sequences,
     ):
         """Test that sequences shorter than minimum length are rejected."""
         mock_rate_limiter.return_value = lambda: None
 
+        # Use canonical short sequence (5 aa) instead of hardcoded value
+        short_seq = boundary_length_sequences["short_5"]
         request_data = {
             "model_names": ["BindEmbed"],
-            "sequence_input": {"short": "MKT"},  # Too short (< 7)
+            "sequence_input": {"short": short_seq},
         }
 
         response = client.post("/prediction_service/predict", json=request_data)
@@ -435,3 +476,267 @@ class TestEndToEndPredictionFlow:
             # All values should be finite
             assert np.isfinite(pooled).all()
             assert np.isfinite(per_residue).all()
+
+
+class TestRealWorldPredictions:
+    """
+    Tests for prediction with real-world protein sequences.
+    """
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("seq_id", CANONICAL_REAL_WORLD_IDS)
+    def test_real_world_sequences_meet_prediction_requirements(
+        self,
+        seq_id,
+    ):
+        """Test that real-world sequences meet prediction requirements."""
+        sequence = get_sequence_by_id(seq_id)
+        
+        # Minimum length requirement
+        assert len(sequence) >= 7, f"{seq_id} too short for prediction"
+        
+        # Maximum length requirement
+        assert len(sequence) <= 5000, f"{seq_id} too long for prediction"
+
+    @pytest.mark.integration
+    def test_embeddings_for_real_world_sequences(
+        self,
+        embedder,
+        embedding_dim,
+        real_world_prediction_sequences,
+    ):
+        """Test generating embeddings for real-world prediction sequences."""
+        embeddings = embedder.embed_dict(real_world_prediction_sequences, pooled=True)
+        
+        assert len(embeddings) == len(real_world_prediction_sequences)
+        for seq_id in real_world_prediction_sequences.keys():
+            assert seq_id in embeddings
+            assert embeddings[seq_id].shape == (embedding_dim,)
+            assert np.isfinite(embeddings[seq_id]).all()
+
+    @pytest.mark.integration
+    @patch("biocentral_server.predict.predict_endpoint.TaskManager")
+    @patch("biocentral_server.predict.predict_endpoint.UserManager")
+    @patch("biocentral_server.predict.predict_endpoint.RateLimiter")
+    def test_predict_real_world_sequences(
+        self,
+        mock_rate_limiter,
+        mock_user_manager,
+        mock_task_manager,
+        client,
+        real_world_prediction_sequences,
+    ):
+        """Test prediction request with real-world protein sequences."""
+        mock_rate_limiter.return_value = lambda: None
+        mock_task_manager.return_value.add_task.return_value = "real-world-predict-task"
+        mock_user_manager.get_user_id_from_request = AsyncMock(return_value="test-user")
+
+        # Get available models first
+        with patch("biocentral_server.predict.predict_endpoint.RateLimiter") as rl:
+            rl.return_value = lambda: None
+            meta_response = client.get("/prediction_service/model_metadata")
+            available_models = list(meta_response.json()["metadata"].keys())
+
+        if not available_models:
+            pytest.skip("No prediction models available")
+
+        request_data = {
+            "model_names": [available_models[0]],
+            "sequence_input": real_world_prediction_sequences,
+        }
+
+        response = client.post("/prediction_service/predict", json=request_data)
+
+        assert response.status_code == 200
+        assert "task_id" in response.json()
+
+
+class TestBoundaryLengthPredictions:
+    """
+    Tests for prediction at sequence length boundaries.
+    """
+
+    @pytest.mark.integration
+    @patch("biocentral_server.predict.predict_endpoint.TaskManager")
+    @patch("biocentral_server.predict.predict_endpoint.UserManager")
+    @patch("biocentral_server.predict.predict_endpoint.RateLimiter")
+    def test_predict_minimum_valid_length(
+        self,
+        mock_rate_limiter,
+        mock_user_manager,
+        mock_task_manager,
+        client,
+        boundary_length_sequences,
+    ):
+        """Test prediction with sequence at minimum valid length (10 aa > 7)."""
+        mock_rate_limiter.return_value = lambda: None
+        mock_task_manager.return_value.add_task.return_value = "boundary-task"
+        mock_user_manager.get_user_id_from_request = AsyncMock(return_value="test-user")
+
+        # Get available models first
+        with patch("biocentral_server.predict.predict_endpoint.RateLimiter") as rl:
+            rl.return_value = lambda: None
+            meta_response = client.get("/prediction_service/model_metadata")
+            available_models = list(meta_response.json()["metadata"].keys())
+
+        if not available_models:
+            pytest.skip("No prediction models available")
+
+        # Use 10 aa sequence which is above minimum (7)
+        valid_seq = boundary_length_sequences["short_10"]
+        assert len(valid_seq) >= 7
+
+        request_data = {
+            "model_names": [available_models[0]],
+            "sequence_input": {"boundary": valid_seq},
+        }
+
+        response = client.post("/prediction_service/predict", json=request_data)
+
+        assert response.status_code == 200
+
+    @pytest.mark.integration
+    @patch("biocentral_server.predict.predict_endpoint.RateLimiter")
+    def test_predict_below_minimum_length_rejected(
+        self,
+        mock_rate_limiter,
+        client,
+        boundary_length_sequences,
+    ):
+        """Test that sequence below minimum length (5 aa < 7) is rejected."""
+        mock_rate_limiter.return_value = lambda: None
+
+        short_seq = boundary_length_sequences["short_5"]
+        assert len(short_seq) < 7
+
+        request_data = {
+            "model_names": ["BindEmbed"],
+            "sequence_input": {"too_short": short_seq},
+        }
+
+        response = client.post("/prediction_service/predict", json=request_data)
+
+        assert response.status_code == 422
+
+
+class TestUnknownTokenPredictions:
+    """
+    Tests for prediction with sequences containing unknown (X) residues.
+    """
+
+    @pytest.mark.integration
+    def test_unknown_token_sequences_meet_length_requirements(
+        self,
+        unknown_token_prediction_sequences,
+    ):
+        """Verify that unknown token sequences meet prediction length requirements."""
+        for seq_id, seq in unknown_token_prediction_sequences.items():
+            assert len(seq) >= 7, f"{seq_id} too short for prediction"
+            assert "X" in seq, f"{seq_id} should contain X token"
+
+    @pytest.mark.integration
+    def test_embeddings_for_unknown_token_sequences(
+        self,
+        embedder,
+        embedding_dim,
+        unknown_token_prediction_sequences,
+    ):
+        """Test generating embeddings for prediction sequences with unknown tokens."""
+        embeddings = embedder.embed_dict(unknown_token_prediction_sequences, pooled=True)
+        
+        assert len(embeddings) == len(unknown_token_prediction_sequences)
+        for seq_id in unknown_token_prediction_sequences.keys():
+            assert seq_id in embeddings
+            assert embeddings[seq_id].shape == (embedding_dim,)
+            assert np.isfinite(embeddings[seq_id]).all()
+
+    @pytest.mark.integration
+    @patch("biocentral_server.predict.predict_endpoint.TaskManager")
+    @patch("biocentral_server.predict.predict_endpoint.UserManager")
+    @patch("biocentral_server.predict.predict_endpoint.RateLimiter")
+    def test_predict_sequences_with_unknown_tokens(
+        self,
+        mock_rate_limiter,
+        mock_user_manager,
+        mock_task_manager,
+        client,
+        unknown_token_prediction_sequences,
+    ):
+        """Test prediction request with sequences containing unknown tokens."""
+        mock_rate_limiter.return_value = lambda: None
+        mock_task_manager.return_value.add_task.return_value = "unknown-token-task"
+        mock_user_manager.get_user_id_from_request = AsyncMock(return_value="test-user")
+
+        # Get available models first
+        with patch("biocentral_server.predict.predict_endpoint.RateLimiter") as rl:
+            rl.return_value = lambda: None
+            meta_response = client.get("/prediction_service/model_metadata")
+            available_models = list(meta_response.json()["metadata"].keys())
+
+        if not available_models:
+            pytest.skip("No prediction models available")
+
+        # Use sequence with scattered X tokens
+        request_data = {
+            "model_names": [available_models[0]],
+            "sequence_input": {
+                "unknown_middle": unknown_token_prediction_sequences["unknown_middle"],
+            },
+        }
+
+        response = client.post("/prediction_service/predict", json=request_data)
+
+        assert response.status_code == 200
+        assert "task_id" in response.json()
+
+
+class TestPredictionInputDiversity:
+    """
+    Tests for prediction with diverse input sequences.
+    """
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("seq_id", CANONICAL_STANDARD_IDS)
+    def test_predict_standard_sequences(
+        self,
+        embedder,
+        embedding_dim,
+        seq_id,
+    ):
+        """Test embeddings for standard prediction sequences."""
+        sequence = get_sequence_by_id(seq_id)
+        
+        # Verify sequence is valid for prediction
+        assert len(sequence) >= 7
+        
+        # Generate embeddings
+        per_residue = embedder.embed(sequence)
+        pooled = embedder.embed_pooled(sequence)
+        
+        assert per_residue.shape == (len(sequence), embedding_dim)
+        assert pooled.shape == (embedding_dim,)
+        assert np.isfinite(per_residue).all()
+        assert np.isfinite(pooled).all()
+
+    @pytest.mark.integration
+    def test_prediction_embedding_batch_consistency(
+        self,
+        embedder,
+        prediction_sequences,
+    ):
+        """Test that batch and individual prediction embeddings are consistent."""
+        # Generate individually
+        individual = {}
+        for seq_id, seq in prediction_sequences.items():
+            individual[seq_id] = embedder.embed_pooled(seq)
+        
+        # Generate as batch
+        batch = embedder.embed_dict(prediction_sequences, pooled=True)
+        
+        # Should produce same results
+        for seq_id in prediction_sequences.keys():
+            np.testing.assert_array_almost_equal(
+                individual[seq_id],
+                batch[seq_id],
+                decimal=5,
+            )
