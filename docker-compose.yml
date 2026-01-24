@@ -3,6 +3,7 @@ services:
     image: ghcr.io/biocentral/biocentral_server/biocentral-server:latest
     ports:
       - "9540:9540"
+    platform: linux/amd64
     volumes:
       - huggingface_models_cache:/app/huggingface_models
       - autoeval_storage:/app/autoeval
@@ -48,6 +49,7 @@ services:
 
   biocentral-worker:
     image: ghcr.io/biocentral/biocentral_server/biocentral-server:latest
+    platform: linux/amd64
     command: rq worker-pool --url redis://redis-jobs:6379/0 high default low -n 3
     volumes:
       - huggingface_models_cache:/app/huggingface_models

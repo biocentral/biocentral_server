@@ -220,6 +220,135 @@ def short_test_sequences() -> Dict[str, str]:
 
 
 # =============================================================================
+# EDGE CASE SEQUENCES
+# =============================================================================
+
+
+@pytest.fixture(scope="session")
+def minimum_length_sequences() -> Dict[str, str]:
+    """Sequences at minimum length boundaries."""
+    return {
+        "min_1": CANONICAL_TEST_DATASET.get_by_id("length_min_1").sequence,
+        "min_2": CANONICAL_TEST_DATASET.get_by_id("length_min_2").sequence,
+        "short_5": CANONICAL_TEST_DATASET.get_by_id("length_short_5").sequence,
+    }
+
+
+@pytest.fixture(scope="session")
+def long_sequences() -> Dict[str, str]:
+    """Long sequences for performance and boundary testing."""
+    return {
+        "long_200": CANONICAL_TEST_DATASET.get_by_id("length_long_200").sequence,
+        "very_long_400": CANONICAL_TEST_DATASET.get_by_id("length_very_long_400").sequence,
+    }
+
+
+@pytest.fixture(scope="session")
+def unknown_token_sequences() -> Dict[str, str]:
+    """Sequences containing unknown (X) residues."""
+    return {
+        "unknown_single": CANONICAL_TEST_DATASET.get_by_id("unknown_single").sequence,
+        "unknown_multiple": CANONICAL_TEST_DATASET.get_by_id("unknown_multiple").sequence,
+        "unknown_start": CANONICAL_TEST_DATASET.get_by_id("unknown_start").sequence,
+        "unknown_end": CANONICAL_TEST_DATASET.get_by_id("unknown_end").sequence,
+        "unknown_middle": CANONICAL_TEST_DATASET.get_by_id("unknown_middle").sequence,
+        "unknown_scattered": CANONICAL_TEST_DATASET.get_by_id("unknown_scattered").sequence,
+        "unknown_high_ratio": CANONICAL_TEST_DATASET.get_by_id("unknown_high_ratio").sequence,
+    }
+
+
+@pytest.fixture(scope="session")
+def ambiguous_code_sequences() -> Dict[str, str]:
+    """Sequences containing ambiguous amino acid codes (B, Z, J, U, O)."""
+    return {
+        "ambiguous_B": CANONICAL_TEST_DATASET.get_by_id("ambiguous_B").sequence,
+        "ambiguous_Z": CANONICAL_TEST_DATASET.get_by_id("ambiguous_Z").sequence,
+        "ambiguous_J": CANONICAL_TEST_DATASET.get_by_id("ambiguous_J").sequence,
+        "selenocysteine": CANONICAL_TEST_DATASET.get_by_id("selenocysteine").sequence,
+        "pyrrolysine": CANONICAL_TEST_DATASET.get_by_id("pyrrolysine").sequence,
+    }
+
+
+@pytest.fixture(scope="session")
+def composition_edge_sequences() -> Dict[str, str]:
+    """Sequences with unusual amino acid compositions."""
+    return {
+        "all_standard_aa": CANONICAL_TEST_DATASET.get_by_id("all_standard_aa").sequence,
+        "homopolymer_A": CANONICAL_TEST_DATASET.get_by_id("homopolymer_A").sequence,
+        "homopolymer_long": CANONICAL_TEST_DATASET.get_by_id("homopolymer_long").sequence,
+        "hydrophobic_rich": CANONICAL_TEST_DATASET.get_by_id("hydrophobic_rich").sequence,
+        "charged_rich": CANONICAL_TEST_DATASET.get_by_id("charged_rich").sequence,
+        "proline_rich": CANONICAL_TEST_DATASET.get_by_id("proline_rich").sequence,
+        "cysteine_rich": CANONICAL_TEST_DATASET.get_by_id("cysteine_rich").sequence,
+    }
+
+
+@pytest.fixture(scope="session")
+def structural_motif_sequences() -> Dict[str, str]:
+    """Sequences with structural motifs."""
+    return {
+        "alpha_helix": CANONICAL_TEST_DATASET.get_by_id("motif_alpha_helix").sequence,
+        "beta_sheet": CANONICAL_TEST_DATASET.get_by_id("motif_beta_sheet").sequence,
+        "glycine_loop": CANONICAL_TEST_DATASET.get_by_id("motif_glycine_loop").sequence,
+    }
+
+
+@pytest.fixture(scope="session")
+def real_world_sequences() -> Dict[str, str]:
+    """Real-world representative protein sequences."""
+    return {
+        "insulin_b": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+        "ubiquitin": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
+        "gfp_core": CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
+    }
+
+
+@pytest.fixture(scope="session")
+def diverse_test_sequences() -> Dict[str, str]:
+    """
+    Diverse collection of sequences covering multiple categories.
+    
+    Useful for projection tests that need more data points.
+    """
+    return {
+        "standard_001": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+        "standard_002": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+        "standard_003": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
+        "insulin_b": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+        "ubiquitin": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
+        "gfp_core": CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
+        "all_standard_aa": CANONICAL_TEST_DATASET.get_by_id("all_standard_aa").sequence,
+        "alpha_helix": CANONICAL_TEST_DATASET.get_by_id("motif_alpha_helix").sequence,
+    }
+
+
+# =============================================================================
+# PARAMETERIZED TEST DATA
+# =============================================================================
+
+
+# Canonical sequence IDs for parameterized tests
+CANONICAL_STANDARD_IDS = ["standard_001", "standard_002", "standard_003"]
+CANONICAL_LENGTH_EDGE_IDS = [
+    "length_min_1", "length_min_2", "length_short_5",
+    "length_short_10", "length_medium_50", "length_long_200",
+]
+CANONICAL_UNKNOWN_TOKEN_IDS = [
+    "unknown_single", "unknown_multiple", "unknown_start",
+    "unknown_end", "unknown_middle", "unknown_scattered", "unknown_high_ratio",
+]
+CANONICAL_AMBIGUOUS_CODE_IDS = [
+    "ambiguous_B", "ambiguous_Z", "ambiguous_J", "selenocysteine", "pyrrolysine",
+]
+CANONICAL_REAL_WORLD_IDS = ["real_insulin_b", "real_ubiquitin", "real_gfp_core"]
+
+
+def get_sequence_by_id(seq_id: str) -> str:
+    """Helper to get a sequence by its canonical ID."""
+    return CANONICAL_TEST_DATASET.get_by_id(seq_id).sequence
+
+
+# =============================================================================
 # APPLICATION AND CLIENT FIXTURES
 # =============================================================================
 

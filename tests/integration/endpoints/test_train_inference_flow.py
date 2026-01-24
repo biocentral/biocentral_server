@@ -20,6 +20,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from biocentral_server.custom_models import custom_models_router
+from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
+from tests.integration.endpoints.conftest import (
+    CANONICAL_STANDARD_IDS,
+    CANONICAL_REAL_WORLD_IDS,
+    get_sequence_by_id,
+)
 
 
 @pytest.fixture(scope="module")
@@ -76,6 +82,134 @@ def basic_classification_config(embedder_name) -> Dict:
         "num_epochs": 1,
         "learning_rate": 0.001,
         "batch_size": 2,
+    }
+
+
+@pytest.fixture
+def standard_training_data() -> List[Dict]:
+    """Training data using all three standard sequences from canonical dataset."""
+    return [
+        {
+            "seq_id": "standard_001",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+            "label": "membrane",
+            "set": "train",
+        },
+        {
+            "seq_id": "standard_002",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+            "label": "soluble",
+            "set": "train",
+        },
+        {
+            "seq_id": "standard_003",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
+            "label": "membrane",
+            "set": "val",
+        },
+    ]
+
+
+@pytest.fixture
+def real_world_training_data() -> List[Dict]:
+    """Training data using real-world protein sequences from canonical dataset."""
+    return [
+        {
+            "seq_id": "insulin_b",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+            "label": "hormone",
+            "set": "train",
+        },
+        {
+            "seq_id": "ubiquitin",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
+            "label": "signaling",
+            "set": "train",
+        },
+        {
+            "seq_id": "gfp_core",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
+            "label": "fluorescent",
+            "set": "val",
+        },
+    ]
+
+
+@pytest.fixture
+def diverse_training_data() -> List[Dict]:
+    """Diverse training data combining standard and real-world sequences."""
+    return [
+        {
+            "seq_id": "standard_001",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+            "label": "class_A",
+            "set": "train",
+        },
+        {
+            "seq_id": "standard_002",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+            "label": "class_B",
+            "set": "train",
+        },
+        {
+            "seq_id": "insulin_b",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+            "label": "class_A",
+            "set": "train",
+        },
+        {
+            "seq_id": "ubiquitin",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
+            "label": "class_B",
+            "set": "val",
+        },
+        {
+            "seq_id": "gfp_core",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
+            "label": "class_A",
+            "set": "val",
+        },
+    ]
+
+
+@pytest.fixture
+def regression_training_data() -> List[Dict]:
+    """Training data for regression task using canonical sequences."""
+    return [
+        {
+            "seq_id": "standard_001",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+            "label": "0.75",
+            "set": "train",
+        },
+        {
+            "seq_id": "standard_002",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+            "label": "0.42",
+            "set": "train",
+        },
+        {
+            "seq_id": "insulin_b",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+            "label": "0.89",
+            "set": "train",
+        },
+        {
+            "seq_id": "ubiquitin",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
+            "label": "0.33",
+            "set": "val",
+        },
+    ]
+
+
+@pytest.fixture
+def inference_sequences() -> Dict[str, str]:
+    """Sequences for inference testing using canonical dataset."""
+    return {
+        "infer_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+        "infer_2": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+        "infer_3": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
     }
 
 
@@ -504,3 +638,366 @@ class TestTrainInferenceFlow:
             record = training_item.to_biotrainer_seq_record()
             assert record.seq_id == training_item.seq_id
             assert record.seq == training_item.sequence
+
+
+class TestTrainingWithStandardSequences:
+    """
+    Tests for training with standard canonical sequences.
+    """
+
+    @pytest.mark.integration
+    def test_standard_training_data_format(
+        self,
+        standard_training_data,
+    ):
+        """Test that standard training data has correct format."""
+        assert len(standard_training_data) == 3
+        
+        for item in standard_training_data:
+            assert "seq_id" in item
+            assert "sequence" in item
+            assert "label" in item
+            assert "set" in item
+            assert len(item["sequence"]) > 0
+
+    @pytest.mark.integration
+    def test_embeddings_for_standard_training_sequences(
+        self,
+        embedder,
+        embedding_dim,
+        standard_training_data,
+    ):
+        """Test generating embeddings for standard training sequences."""
+        sequences = {item["seq_id"]: item["sequence"] for item in standard_training_data}
+        
+        embeddings = embedder.embed_dict(sequences, pooled=True)
+        
+        assert len(embeddings) == len(sequences)
+        for seq_id in sequences.keys():
+            assert seq_id in embeddings
+            assert embeddings[seq_id].shape == (embedding_dim,)
+            assert np.isfinite(embeddings[seq_id]).all()
+
+    @pytest.mark.integration
+    @patch("biocentral_server.custom_models.custom_models_endpoint.TaskManager")
+    @patch("biocentral_server.custom_models.custom_models_endpoint.FileManager")
+    @patch("biocentral_server.custom_models.custom_models_endpoint.UserManager")
+    @patch("biocentral_server.custom_models.custom_models_endpoint.RateLimiter")
+    def test_start_training_with_standard_sequences(
+        self,
+        mock_rate_limiter,
+        mock_user_manager,
+        mock_file_manager,
+        mock_task_manager,
+        client,
+        basic_classification_config,
+        standard_training_data,
+    ):
+        """Test training with standard canonical sequences."""
+        mock_rate_limiter.return_value = lambda: None
+        mock_user_manager.get_user_id_from_request = AsyncMock(return_value="test-user")
+        mock_file_manager.return_value.get_biotrainer_model_path.return_value = "/tmp/model"
+        mock_task_manager.return_value.get_unique_task_id.return_value = "standard-train-task"
+        mock_task_manager.return_value.add_task.return_value = "standard-train-task"
+
+        request_data = {
+            "config_dict": basic_classification_config,
+            "training_data": standard_training_data,
+        }
+
+        response = client.post("/custom_models_service/start_training", json=request_data)
+
+        assert response.status_code == 200
+        assert "task_id" in response.json()
+
+
+class TestTrainingWithRealWorldSequences:
+    """
+    Tests for training with real-world protein sequences.
+    """
+
+    @pytest.mark.integration
+    def test_real_world_training_data_format(
+        self,
+        real_world_training_data,
+    ):
+        """Test that real-world training data has correct format."""
+        assert len(real_world_training_data) == 3
+        
+        # Should have diverse labels
+        labels = {item["label"] for item in real_world_training_data}
+        assert len(labels) == 3  # hormone, signaling, fluorescent
+        
+        for item in real_world_training_data:
+            assert len(item["sequence"]) >= 10
+
+    @pytest.mark.integration
+    def test_embeddings_for_real_world_training_sequences(
+        self,
+        embedder,
+        embedding_dim,
+        real_world_training_data,
+    ):
+        """Test generating embeddings for real-world training sequences."""
+        sequences = {item["seq_id"]: item["sequence"] for item in real_world_training_data}
+        
+        embeddings = embedder.embed_dict(sequences, pooled=True)
+        
+        assert len(embeddings) == len(sequences)
+        for seq_id in sequences.keys():
+            assert seq_id in embeddings
+            assert embeddings[seq_id].shape == (embedding_dim,)
+
+    @pytest.mark.integration
+    @patch("biocentral_server.custom_models.custom_models_endpoint.TaskManager")
+    @patch("biocentral_server.custom_models.custom_models_endpoint.FileManager")
+    @patch("biocentral_server.custom_models.custom_models_endpoint.UserManager")
+    @patch("biocentral_server.custom_models.custom_models_endpoint.RateLimiter")
+    def test_start_training_with_real_world_sequences(
+        self,
+        mock_rate_limiter,
+        mock_user_manager,
+        mock_file_manager,
+        mock_task_manager,
+        client,
+        basic_classification_config,
+        real_world_training_data,
+    ):
+        """Test training with real-world protein sequences."""
+        mock_rate_limiter.return_value = lambda: None
+        mock_user_manager.get_user_id_from_request = AsyncMock(return_value="test-user")
+        mock_file_manager.return_value.get_biotrainer_model_path.return_value = "/tmp/model"
+        mock_task_manager.return_value.get_unique_task_id.return_value = "real-world-train-task"
+        mock_task_manager.return_value.add_task.return_value = "real-world-train-task"
+
+        request_data = {
+            "config_dict": basic_classification_config,
+            "training_data": real_world_training_data,
+        }
+
+        response = client.post("/custom_models_service/start_training", json=request_data)
+
+        assert response.status_code == 200
+        assert "task_id" in response.json()
+
+
+class TestTrainingWithDiverseSequences:
+    """
+    Tests for training with diverse sequence collections.
+    """
+
+    @pytest.mark.integration
+    def test_diverse_training_data_coverage(
+        self,
+        diverse_training_data,
+    ):
+        """Test that diverse training data covers multiple categories."""
+        assert len(diverse_training_data) >= 5
+        
+        # Should have train and val sets
+        sets = {item["set"] for item in diverse_training_data}
+        assert "train" in sets
+        assert "val" in sets
+        
+        # Should have multiple classes
+        labels = {item["label"] for item in diverse_training_data}
+        assert len(labels) >= 2
+
+    @pytest.mark.integration
+    def test_embeddings_for_diverse_training_sequences(
+        self,
+        embedder,
+        embedding_dim,
+        diverse_training_data,
+    ):
+        """Test generating embeddings for diverse training sequences."""
+        sequences = {item["seq_id"]: item["sequence"] for item in diverse_training_data}
+        
+        embeddings = embedder.embed_dict(sequences, pooled=True)
+        
+        assert len(embeddings) == len(sequences)
+        for seq_id, emb in embeddings.items():
+            assert emb.shape == (embedding_dim,)
+            assert np.isfinite(emb).all()
+
+    @pytest.mark.integration
+    @patch("biocentral_server.custom_models.custom_models_endpoint.TaskManager")
+    @patch("biocentral_server.custom_models.custom_models_endpoint.FileManager")
+    @patch("biocentral_server.custom_models.custom_models_endpoint.UserManager")
+    @patch("biocentral_server.custom_models.custom_models_endpoint.RateLimiter")
+    def test_start_training_with_diverse_sequences(
+        self,
+        mock_rate_limiter,
+        mock_user_manager,
+        mock_file_manager,
+        mock_task_manager,
+        client,
+        basic_classification_config,
+        diverse_training_data,
+    ):
+        """Test training with diverse sequence collection."""
+        mock_rate_limiter.return_value = lambda: None
+        mock_user_manager.get_user_id_from_request = AsyncMock(return_value="test-user")
+        mock_file_manager.return_value.get_biotrainer_model_path.return_value = "/tmp/model"
+        mock_task_manager.return_value.get_unique_task_id.return_value = "diverse-train-task"
+        mock_task_manager.return_value.add_task.return_value = "diverse-train-task"
+
+        request_data = {
+            "config_dict": basic_classification_config,
+            "training_data": diverse_training_data,
+        }
+
+        response = client.post("/custom_models_service/start_training", json=request_data)
+
+        assert response.status_code == 200
+        assert "task_id" in response.json()
+
+
+class TestRegressionTraining:
+    """
+    Tests for regression training tasks.
+    """
+
+    @pytest.mark.integration
+    def test_regression_training_data_format(
+        self,
+        regression_training_data,
+    ):
+        """Test that regression training data has numeric labels."""
+        for item in regression_training_data:
+            # Labels should be numeric strings
+            label = float(item["label"])
+            assert 0.0 <= label <= 1.0
+
+    @pytest.mark.integration
+    def test_embeddings_for_regression_training(
+        self,
+        embedder,
+        embedding_dim,
+        regression_training_data,
+    ):
+        """Test generating embeddings for regression training sequences."""
+        sequences = {item["seq_id"]: item["sequence"] for item in regression_training_data}
+        
+        embeddings = embedder.embed_dict(sequences, pooled=True)
+        
+        assert len(embeddings) == len(sequences)
+        for emb in embeddings.values():
+            assert emb.shape == (embedding_dim,)
+            assert np.isfinite(emb).all()
+
+
+class TestInferenceWithCanonicalSequences:
+    """
+    Tests for inference using canonical sequences.
+    """
+
+    @pytest.mark.integration
+    def test_inference_sequences_format(
+        self,
+        inference_sequences,
+    ):
+        """Test that inference sequences have correct format."""
+        assert len(inference_sequences) >= 3
+        
+        for seq_id, seq in inference_sequences.items():
+            assert isinstance(seq_id, str)
+            assert isinstance(seq, str)
+            assert len(seq) > 0
+
+    @pytest.mark.integration
+    def test_embeddings_for_inference_sequences(
+        self,
+        embedder,
+        embedding_dim,
+        inference_sequences,
+    ):
+        """Test generating embeddings for inference sequences."""
+        embeddings = embedder.embed_dict(inference_sequences, pooled=True)
+        
+        assert len(embeddings) == len(inference_sequences)
+        for seq_id in inference_sequences.keys():
+            assert seq_id in embeddings
+            assert embeddings[seq_id].shape == (embedding_dim,)
+
+    @pytest.mark.integration
+    @patch("biocentral_server.custom_models.custom_models_endpoint.TaskManager")
+    @patch("biocentral_server.custom_models.custom_models_endpoint.FileManager")
+    @patch("biocentral_server.custom_models.custom_models_endpoint.UserManager")
+    @patch("biocentral_server.custom_models.custom_models_endpoint.RateLimiter")
+    def test_start_inference_with_canonical_sequences(
+        self,
+        mock_rate_limiter,
+        mock_user_manager,
+        mock_file_manager,
+        mock_task_manager,
+        client,
+        inference_sequences,
+    ):
+        """Test inference with canonical sequences."""
+        mock_rate_limiter.return_value = lambda: None
+        mock_user_manager.get_user_id_from_request = AsyncMock(return_value="test-user")
+        mock_file_manager.return_value.get_biotrainer_model_path.return_value = "/tmp/model/train-123"
+        mock_task_manager.return_value.add_task.return_value = "canonical-inference-task"
+
+        request_data = {
+            "model_hash": "train-task-123",
+            "sequence_data": inference_sequences,
+        }
+
+        response = client.post("/custom_models_service/start_inference", json=request_data)
+
+        assert response.status_code == 200
+        assert "task_id" in response.json()
+
+
+class TestTrainingDataValidation:
+    """
+    Tests for training data validation.
+    """
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("seq_id", CANONICAL_STANDARD_IDS)
+    def test_standard_sequences_valid_for_training(
+        self,
+        seq_id,
+    ):
+        """Test that standard sequences meet training requirements."""
+        sequence = get_sequence_by_id(seq_id)
+        
+        # Should have reasonable length
+        assert len(sequence) >= 5
+        assert len(sequence) <= 5000
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("seq_id", CANONICAL_REAL_WORLD_IDS)
+    def test_real_world_sequences_valid_for_training(
+        self,
+        seq_id,
+    ):
+        """Test that real-world sequences meet training requirements."""
+        sequence = get_sequence_by_id(seq_id)
+        
+        # Should have reasonable length
+        assert len(sequence) >= 5
+        assert len(sequence) <= 5000
+        
+        # Should only contain valid amino acids
+        valid_aas = set("ACDEFGHIKLMNPQRSTVWYX")
+        assert all(aa in valid_aas for aa in sequence.upper())
+
+    @pytest.mark.integration
+    def test_training_set_distribution(
+        self,
+        diverse_training_data,
+    ):
+        """Test that training data has proper train/val distribution."""
+        train_count = sum(1 for item in diverse_training_data if item["set"] == "train")
+        val_count = sum(1 for item in diverse_training_data if item["set"] == "val")
+        
+        # Should have both train and val samples
+        assert train_count >= 1
+        assert val_count >= 1
+        
+        # Train should typically have more samples
+        assert train_count >= val_count
