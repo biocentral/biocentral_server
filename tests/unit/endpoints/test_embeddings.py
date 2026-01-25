@@ -2,6 +2,7 @@
 Unit tests for embeddings endpoint.
 
 Tests endpoints:
+- GET /embeddings_service/common_embedders
 - POST /embeddings_service/embed
 - POST /embeddings_service/get_missing_embeddings
 - POST /embeddings_service/add_embeddings
@@ -17,6 +18,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from biocentral_server.embeddings import embeddings_router
+from biocentral_server.embeddings.endpoint_models import CommonEmbedder
 
 
 @pytest.fixture
@@ -31,6 +33,60 @@ def embeddings_app():
 def embeddings_client(embeddings_app):
     """Create test client with mocked dependencies."""
     return TestClient(embeddings_app)
+
+
+class TestCommonEmbeddersEndpoint:
+    """Tests for GET /embeddings_service/common_embedders"""
+
+    def test_common_embedders_returns_list(self, embeddings_client):
+        """Test that common_embedders endpoint returns a list of embedders."""
+        response = embeddings_client.get("/embeddings_service/common_embedders")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) > 0
+
+    def test_common_embedders_contains_expected_models(self, embeddings_client):
+        """Test that common_embedders returns expected embedder names."""
+        response = embeddings_client.get("/embeddings_service/common_embedders")
+
+        assert response.status_code == 200
+        embedders = response.json()
+
+        # Should contain known embedder models
+        expected_embedders = [e.value for e in CommonEmbedder]
+        assert embedders == expected_embedders
+
+    def test_common_embedders_includes_prot_t5(self, embeddings_client):
+        """Test that ProtT5 embedder is available."""
+        response = embeddings_client.get("/embeddings_service/common_embedders")
+
+        assert response.status_code == 200
+        embedders = response.json()
+        assert "Rostlab/prot_t5_xl_uniref50" in embedders
+
+    def test_common_embedders_includes_esm2(self, embeddings_client):
+        """Test that ESM2 embedders are available."""
+        response = embeddings_client.get("/embeddings_service/common_embedders")
+
+        assert response.status_code == 200
+        embedders = response.json()
+
+        # Check for ESM2 models
+        esm2_models = [e for e in embedders if "esm2" in e.lower()]
+        assert len(esm2_models) >= 1
+
+    def test_common_embedders_includes_baseline_models(self, embeddings_client):
+        """Test that baseline embedders are available."""
+        response = embeddings_client.get("/embeddings_service/common_embedders")
+
+        assert response.status_code == 200
+        embedders = response.json()
+
+        # Should include baseline models
+        assert "one_hot_encoding" in embedders
+        assert "blosum62" in embedders
 
 
 class TestEmbedEndpoint:
