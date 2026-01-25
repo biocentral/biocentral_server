@@ -553,3 +553,306 @@ def skip_if_real_embedder(embedder_backend):
     """Skip test if using real embedder backend (for mock-specific tests)."""
     if embedder_backend == EmbedderBackend.REAL:
         pytest.skip("Test requires fixed embedder backend")
+
+
+# =============================================================================
+# CONSOLIDATED MOCK FIXTURES
+# =============================================================================
+
+
+class MockContext:
+    """
+    Context manager and fixture holder for consolidated endpoint mocks.
+    
+    Provides pre-configured mocks for TaskManager, UserManager, RateLimiter,
+    MetricsCollector, FileManager, and EmbeddingDatabaseFactory.
+    
+    Usage:
+        def test_something(mock_endpoint_dependencies):
+            with mock_endpoint_dependencies.patch_embeddings():
+                # All dependencies are mocked
+                response = client.post(...)
+    """
+    
+    def __init__(self, task_id_prefix: str = "test"):
+        self._task_counter = 0
+        self._task_id_prefix = task_id_prefix
+        self._tasks: Dict[str, Dict] = {}
+        
+        # Configure default mock behaviors
+        self.task_manager = MagicMock()
+        self.task_manager.add_task.side_effect = self._generate_task_id
+        self.task_manager.get_task_status.side_effect = self._get_task_status
+        
+        self.user_manager = MagicMock()
+        self.user_manager.get_user_id_from_request = AsyncMock(return_value="test-user")
+        
+        self.rate_limiter = MagicMock(return_value=lambda: None)
+        
+        self.metrics_collector = MagicMock()
+        
+        self.file_manager = MagicMock()
+        self.file_manager.get_biotrainer_model_path.return_value = "/tmp/test-model"
+        self.file_manager.get_biotrainer_result_files.return_value = {}
+        
+        self.embedding_db = MagicMock()
+        self.embedding_db.filter_existing_embeddings.return_value = ({}, {})
+        
+        self.embedding_db_factory = MagicMock()
+        self.embedding_db_factory.return_value.get_embeddings_db.return_value = self.embedding_db
+    
+    def _generate_task_id(self, *args, **kwargs) -> str:
+        self._task_counter += 1
+        task_id = f"{self._task_id_prefix}-task-{self._task_counter}"
+        self._tasks[task_id] = {"status": "pending", "result": None}
+        return task_id
+    
+    def _get_task_status(self, task_id: str) -> Dict:
+        return self._tasks.get(task_id, {"status": "not_found"})
+    
+    def set_task_result(self, task_id: str, status: str, result: Any = None):
+        """Set the result of a task for testing task status endpoints."""
+        self._tasks[task_id] = {"status": status, "result": result}
+    
+    def patch_embeddings(self):
+        """Return context manager that patches embeddings endpoint dependencies."""
+        return patch.multiple(
+            "biocentral_server.embeddings.embeddings_endpoint",
+            TaskManager=MagicMock(return_value=self.task_manager),
+            UserManager=self.user_manager,
+            RateLimiter=self.rate_limiter,
+            MetricsCollector=self.metrics_collector,
+            EmbeddingDatabaseFactory=self.embedding_db_factory,
+        )
+    
+    def patch_projection(self):
+        """Return context manager that patches projection endpoint dependencies."""
+        return patch.multiple(
+            "biocentral_server.embeddings.projection_endpoint",
+            TaskManager=MagicMock(return_value=self.task_manager),
+            UserManager=self.user_manager,
+            RateLimiter=self.rate_limiter,
+        )
+    
+    def patch_predict(self):
+        """Return context manager that patches predict endpoint dependencies."""
+        return patch.multiple(
+            "biocentral_server.predict.predict_endpoint",
+            TaskManager=MagicMock(return_value=self.task_manager),
+            UserManager=self.user_manager,
+            RateLimiter=self.rate_limiter,
+        )
+    
+    def patch_custom_models(self):
+        """Return context manager that patches custom_models endpoint dependencies."""
+        return patch.multiple(
+            "biocentral_server.custom_models.custom_models_endpoint",
+            TaskManager=MagicMock(return_value=self.task_manager),
+            UserManager=self.user_manager,
+            RateLimiter=self.rate_limiter,
+            FileManager=MagicMock(return_value=self.file_manager),
+        )
+
+
+@pytest.fixture
+def mock_endpoint_dependencies():
+    """
+    Consolidated mock fixture for endpoint dependencies.
+    
+    Replaces repeated @patch decorators with a single fixture that provides
+    pre-configured mocks for all common dependencies.
+    
+    Usage:
+        def test_embed_endpoint(client, mock_endpoint_dependencies, test_sequences):
+            with mock_endpoint_dependencies.patch_embeddings():
+                response = client.post("/embeddings_service/embed", json=request_data)
+                assert response.status_code == 200
+                
+            # Access task tracking
+            mock_endpoint_dependencies.set_task_result("test-task-1", "completed", result)
+    """
+    return MockContext()
+
+
+@pytest.fixture
+def mock_context_for_embeddings():
+    """Pre-configured mock context for embeddings endpoints."""
+    return MockContext(task_id_prefix="embed")
+
+
+@pytest.fixture
+def mock_context_for_projection():
+    """Pre-configured mock context for projection endpoints."""
+    return MockContext(task_id_prefix="project")
+
+
+@pytest.fixture
+def mock_context_for_predict():
+    """Pre-configured mock context for prediction endpoints."""
+    return MockContext(task_id_prefix="predict")
+
+
+@pytest.fixture
+def mock_context_for_custom_models():
+    """Pre-configured mock context for custom models endpoints."""
+    return MockContext(task_id_prefix="custom")
+
+
+# =============================================================================
+# RESPONSE VALIDATION HELPERS
+# =============================================================================
+
+
+def validate_task_response(response_json: Dict, expected_task_id_prefix: str = None) -> str:
+    """
+    Validate a task creation response and return the task_id.
+    
+    Args:
+        response_json: The JSON response from the endpoint
+        expected_task_id_prefix: Optional prefix to verify in task_id
+        
+    Returns:
+        The task_id from the response
+        
+    Raises:
+        AssertionError if validation fails
+    """
+    assert "task_id" in response_json, "Response missing 'task_id' field"
+    task_id = response_json["task_id"]
+    assert isinstance(task_id, str), f"task_id should be string, got {type(task_id)}"
+    assert len(task_id) > 0, "task_id should not be empty"
+    
+    if expected_task_id_prefix:
+        assert task_id.startswith(expected_task_id_prefix), \
+            f"task_id '{task_id}' should start with '{expected_task_id_prefix}'"
+    
+    return task_id
+
+
+def validate_error_response(response_json: Dict, expected_status: int = None) -> Dict:
+    """
+    Validate an error response structure.
+    
+    Args:
+        response_json: The JSON response from the endpoint
+        expected_status: Optional expected status code in response
+        
+    Returns:
+        The error details dict
+        
+    Raises:
+        AssertionError if validation fails
+    """
+    # FastAPI validation errors have 'detail' field
+    assert "detail" in response_json, "Error response missing 'detail' field"
+    detail = response_json["detail"]
+    
+    # Can be string or list of validation errors
+    if isinstance(detail, list):
+        for error in detail:
+            assert "loc" in error, "Validation error missing 'loc'"
+            assert "msg" in error, "Validation error missing 'msg'"
+            assert "type" in error, "Validation error missing 'type'"
+    
+    return response_json
+
+
+def validate_embedding_response(
+    response_json: Dict,
+    expected_seq_ids: List[str] = None,
+    embedding_dim: int = None,
+) -> Dict:
+    """
+    Validate an embedding response structure.
+    
+    Args:
+        response_json: The JSON response from the endpoint
+        expected_seq_ids: Optional list of expected sequence IDs
+        embedding_dim: Optional expected embedding dimension
+        
+    Returns:
+        The validated response
+        
+    Raises:
+        AssertionError if validation fails
+    """
+    # Task creation response
+    if "task_id" in response_json:
+        validate_task_response(response_json)
+        return response_json
+    
+    # Missing embeddings response
+    if "missing" in response_json:
+        assert isinstance(response_json["missing"], list)
+        return response_json
+    
+    return response_json
+
+
+# =============================================================================
+# LARGE BATCH TEST DATA
+# =============================================================================
+
+
+@pytest.fixture(scope="session")
+def large_batch_sequences() -> Dict[str, str]:
+    """
+    Large batch of sequences for performance and batch handling tests.
+    
+    Creates 100 sequences using canonical sequences as templates.
+    """
+    base_sequences = [
+        CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+        CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+        CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
+        CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+        CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
+    ]
+    
+    sequences = {}
+    for i in range(100):
+        base_seq = base_sequences[i % len(base_sequences)]
+        # Add slight variation to make each unique
+        seq_id = f"batch_seq_{i:03d}"
+        sequences[seq_id] = base_seq
+    
+    return sequences
+
+
+@pytest.fixture(scope="session")
+def concurrent_test_sequences() -> List[Dict[str, str]]:
+    """
+    Multiple sequence batches for concurrent request testing.
+    
+    Returns 5 separate batches suitable for parallel request simulation.
+    """
+    batches = []
+    base_ids = ["standard_001", "standard_002", "standard_003"]
+    
+    for batch_idx in range(5):
+        batch = {}
+        for i, seq_id in enumerate(base_ids):
+            batch[f"concurrent_{batch_idx}_{i}"] = CANONICAL_TEST_DATASET.get_by_id(seq_id).sequence
+        batches.append(batch)
+    
+    return batches
+
+
+# =============================================================================
+# ALL CANONICAL IDS FOR COMPREHENSIVE TESTING
+# =============================================================================
+
+
+ALL_CANONICAL_IDS = (
+    CANONICAL_STANDARD_IDS
+    + CANONICAL_LENGTH_EDGE_IDS
+    + CANONICAL_UNKNOWN_TOKEN_IDS
+    + CANONICAL_AMBIGUOUS_CODE_IDS
+    + CANONICAL_REAL_WORLD_IDS
+)
+
+
+@pytest.fixture(scope="session")
+def all_canonical_sequences() -> Dict[str, str]:
+    """All sequences from canonical dataset for comprehensive testing."""
+    return {seq_id: get_sequence_by_id(seq_id) for seq_id in ALL_CANONICAL_IDS}
