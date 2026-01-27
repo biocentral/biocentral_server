@@ -9,6 +9,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "${POSTGRES_PORT}:5432"
+    networks:
+      - seaweedfs-network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 5s
@@ -20,6 +22,8 @@ services:
     command: redis-server --save "" --appendonly no
     ports:
       - "${REDIS_JOBS_PORT}:6379"
+    networks:
+      - seaweedfs-network
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
 
@@ -28,11 +32,14 @@ services:
       retries: 5
 
   redis-commander:
+    profiles: [dev]
     image: rediscommander/redis-commander:latest
     environment:
       - REDIS_HOSTS=local:redis-jobs:6379
     ports:
       - "8081:8081"
+    networks:
+      - seaweedfs-network
     depends_on:
       - redis-jobs
     restart: unless-stopped
@@ -73,6 +80,7 @@ services:
 
   # Triton stack
   triton-model-init:
+    profiles: [triton]
     build:
       context: ./storage/model-repository
       dockerfile: Dockerfile.init
@@ -83,6 +91,7 @@ services:
       - MODEL_DOWNLOADS=${MODEL_DOWNLOADS:-}
 
   triton:
+    profiles: [triton]
     build:
       context: ./storage/model-repository
       dockerfile: Dockerfile.triton
@@ -133,6 +142,7 @@ services:
 
   # Monitoring stack
   prometheus:
+    profiles: [monitoring]
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
@@ -153,31 +163,93 @@ services:
       timeout: 5s
       retries: 3
 
+  # Biocentral application stack
+  biocentral-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${SERVER_PORT:-9540}:9540"
+    volumes:
+      - huggingface_models_cache:/app/huggingface_models
+      - autoeval_storage:/app/autoeval
+      - ./assets:/app/assets
+    environment:
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-50000000}
+      - POSTGRES_HOST=embeddings-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_JOBS_HOST=redis-jobs
+      - REDIS_JOBS_PORT=6379
+      - SEAWEEDFS_FILER_URL=http://seaweedfs-filer:8888
+      - HF_HOME=/app/huggingface_models
+      - AUTOEVAL_DATA_DIR=/app/autoeval
+      - ASSETS_DIR=/app/assets
+      - TRITON_GRPC_URL=http://triton:8001
+      - TRITON_HTTP_URL=http://triton:8000
+      - USE_TRITON=${USE_TRITON:-false}
+      - SERVER_DEBUG=${SERVER_DEBUG:-true}
+    depends_on:
+      redis-jobs:
+        condition: service_healthy
+      embeddings-db:
+        condition: service_healthy
+      seaweedfs-filer:
+        condition: service_healthy
+    networks:
+      - seaweedfs-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9540/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  biocentral-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: rq worker-pool --url redis://redis-jobs:6379/0 high default low -n 3
+    volumes:
+      - huggingface_models_cache:/app/huggingface_models
+      - autoeval_storage:/app/autoeval
+      - ./assets:/app/assets
+    environment:
+      - POSTGRES_HOST=embeddings-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_JOBS_HOST=redis-jobs
+      - REDIS_JOBS_PORT=6379
+      - SEAWEEDFS_FILER_URL=http://seaweedfs-filer:8888
+      - HF_HOME=/app/huggingface_models
+      - AUTOEVAL_DATA_DIR=/app/autoeval
+      - ASSETS_DIR=/app/assets
+      - TRITON_GRPC_URL=http://triton:8001
+      - TRITON_HTTP_URL=http://triton:8000
+      - USE_TRITON=${USE_TRITON:-false}
+    depends_on:
+      biocentral-server:
+        condition: service_started
+      redis-jobs:
+        condition: service_healthy
+      embeddings-db:
+        condition: service_healthy
+      seaweedfs-filer:
+        condition: service_healthy
+    networks:
+      - seaweedfs-network
+
 volumes:
   postgres_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${EMBEDDINGS_DATA_DIR}
   seaweedfs_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${FILES_DATA_DIR}
   triton_models:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${MODEL_REPOSITORY_PATH:-./storage/model-repository}
   prometheus_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${PROMETHEUS_DATA_DIR:-./storage/monitoring}
+  huggingface_models_cache:
+  autoeval_storage:
 
 networks:
   seaweedfs-network:
