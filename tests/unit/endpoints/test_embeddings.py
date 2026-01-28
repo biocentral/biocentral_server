@@ -176,8 +176,12 @@ class TestGetMissingEmbeddingsEndpoint:
         mock_rate_limiter.return_value = lambda: None
 
         mock_db = MagicMock()
-        mock_db.get_missing_embeddings.return_value = ["seq2"]
-        mock_db_factory.get_database.return_value = mock_db
+        # filter_existing_embeddings returns (existing, non_existing) dicts
+        mock_db.filter_existing_embeddings.return_value = (
+            {"seq1": "MVLSPAD"},  # existing
+            {"seq2": "MGHFTEE"},  # non-existing
+        )
+        mock_db_factory.return_value.get_embeddings_db.return_value = mock_db
 
         request_data = {
             "sequences": json.dumps({"seq1": "MVLSPAD", "seq2": "MGHFTEE"}),
@@ -252,18 +256,27 @@ class TestAddEmbeddingsEndpoint:
         """Test adding embeddings with valid HDF5 data."""
         mock_rate_limiter.return_value = lambda: None
         mock_db = MagicMock()
-        mock_db_factory.get_database.return_value = mock_db
+        mock_db_factory.return_value.get_embeddings_db.return_value = mock_db
 
         import numpy as np
 
-        embeddings_data = {
-            "seq1": np.random.rand(1024).astype(np.float32),
-            "seq2": np.random.rand(1024).astype(np.float32),
-        }
-        h5_bytes = self._create_h5_bytes(embeddings_data)
+        # Create H5 file with required attributes
+        buffer = io.BytesIO()
+        with h5py.File(buffer, "w") as f:
+            # Create datasets with original_id attribute as expected by endpoint
+            ds1 = f.create_dataset("0", data=np.random.rand(1024).astype(np.float32))
+            ds1.attrs["original_id"] = "seq1"
+            ds2 = f.create_dataset("1", data=np.random.rand(1024).astype(np.float32))
+            ds2.attrs["original_id"] = "seq2"
+        buffer.seek(0)
+        h5_bytes = base64.b64encode(buffer.read()).decode("utf-8")
+
+        # Provide sequences JSON as required by the endpoint
+        sequences = json.dumps({"seq1": "MVLSPAD", "seq2": "MGHFTEE"})
 
         request_data = {
             "h5_bytes": h5_bytes,
+            "sequences": sequences,
             "embedder_name": "prot_t5_xl_uniref50",
             "reduced": True,
         }
