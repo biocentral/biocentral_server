@@ -165,6 +165,7 @@ services:
 
   # Biocentral application stack
   biocentral-server:
+    image: ${CI_IMAGE:-}
     build:
       context: .
       dockerfile: Dockerfile
@@ -208,6 +209,7 @@ services:
       start_period: 30s
 
   biocentral-worker:
+    image: ${CI_IMAGE:-}
     build:
       context: .
       dockerfile: Dockerfile
