@@ -38,13 +38,13 @@ RUN useradd --create-home --shell /bin/bash --uid 10001 biocentral-server-user
 RUN mkdir -p /app/logs /var/log/biocentral-server /app/huggingface_models && \
     chown -R biocentral-server-user:biocentral-server-user /app /var/log/
 
-# Copy only requirements first to leverage Docker caching
-COPY pyproject.toml ./
+# Copy only dependency files first to leverage Docker caching
+COPY pyproject.toml uv.lock ./
 RUN touch README.md
 
 # Install dependencies BEFORE copying source code (better cache hit rate)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project
+    uv sync --no-install-project --frozen
 
 # Copy application files (this layer changes frequently)
 COPY --chown=biocentral-server-user:biocentral-server-user ./biocentral_server ./biocentral_server
