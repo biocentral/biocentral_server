@@ -1,200 +1,184 @@
 """
 Shared fixtures for endpoint integration tests.
 
-This module provides two embedding approaches for testing:
-1. FixedEmbedder: Deterministic mock that generates high-dimensional noise-based
-   embeddings. Fast, no GPU required, suitable for CI.
-2. RealEmbedder: Uses ESM-2 8M for actual inference. Requires model download,
-   slower but tests real embedding pipeline.
+The server must be running (via docker-compose.dev.yml) before running tests.
 
 Usage:
-    pytest tests/integration/endpoints/           # Uses FixedEmbedder (default)
-    pytest tests/integration/endpoints/ --use-real-embedder  # Uses ESM-2 8M
-    USE_REAL_EMBEDDER=1 pytest tests/integration/endpoints/  # Via env var
+    # Start the server first
+    docker compose -f docker-compose.dev.yml --env-file .env.ci up -d
+    
+    # Run integration tests
+    CI_SERVER_URL=http://localhost:9540 pytest tests/integration/endpoints/ -v
 """
 
 import os
+import time
 import pytest
-import numpy as np
-from enum import Enum
-from typing import Dict, List, Optional, Protocol, Union
-from dataclasses import dataclass
-from unittest.mock import MagicMock, AsyncMock, patch
+import httpx
+from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
-from tests.fixtures.fixed_embedder import FixedEmbedder, FixedEmbedderRegistry
-from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET, get_test_sequences
+from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 
 
 # =============================================================================
-# EMBEDDER BACKEND ABSTRACTION
+# SERVER CONNECTION
 # =============================================================================
 
-class EmbedderBackend(str, Enum):
-    """Available embedder backends for integration tests."""
-    FIXED = "fixed"  # FixedEmbedder - deterministic mock
-    REAL = "real"    # Real ESM-2 8M model
+def get_server_url() -> str:
+    """Get the server URL from environment variable."""
+    url = os.environ.get("CI_SERVER_URL")
+    if not url:
+        pytest.skip("CI_SERVER_URL environment variable not set. Start the server and set CI_SERVER_URL=http://localhost:9540")
+    return url
 
-
-class EmbedderProtocol(Protocol):
-    """Protocol defining the embedder interface for tests."""
-    
-    @property
-    def model_name(self) -> str:
-        """Return the model name."""
-        ...
-    
-    @property
-    def embedding_dim(self) -> int:
-        """Return embedding dimension."""
-        ...
-    
-    def embed(self, sequence: str) -> np.ndarray:
-        """Embed a single sequence, returning per-residue embeddings."""
-        ...
-    
-    def embed_pooled(self, sequence: str) -> np.ndarray:
-        """Embed a single sequence, returning pooled embedding."""
-        ...
-    
-    def embed_batch(self, sequences: List[str], pooled: bool = False) -> List[np.ndarray]:
-        """Embed a batch of sequences."""
-        ...
-    
-    def embed_dict(self, sequences: Dict[str, str], pooled: bool = False) -> Dict[str, np.ndarray]:
-        """Embed sequences from a dictionary."""
-        ...
-
-
-@dataclass
-class RealEmbedder:
-    """
-    Wrapper around biotrainer's ESM-2 8M embedder for real inference.
-    
-    Uses facebook/esm2_t6_8M_UR50D - the smallest ESM-2 model (8M parameters,
-    320-dimensional embeddings) for fast CI testing with real inference.
-    """
-    
-    model_name: str = "facebook/esm2_t6_8M_UR50D"
-    embedding_dim: int = 320
-    _embedding_service: Optional[object] = None
-    
-    def __post_init__(self):
-        """Initialize the real embedding service."""
-        try:
-            from biotrainer.embedders import get_embedding_service
-            self._embedding_service = get_embedding_service(
-                embedder_name=self.model_name,
-                use_half_precision=False,
-                custom_tokenizer_config=None,
-                device="cpu",
-            )
-        except ImportError as e:
-            raise ImportError(
-                f"Failed to import biotrainer for real embedder: {e}. "
-                "Make sure biotrainer is installed."
-            )
-    
-    def embed(self, sequence: str) -> np.ndarray:
-        """Embed a single sequence, returning per-residue embeddings."""
-        embeddings = list(self._embedding_service.generate_embeddings(
-            input_data=[sequence], reduce=False
-        ))
-        if embeddings:
-            _, emb = embeddings[0]
-            return emb
-        return np.zeros((len(sequence), self.embedding_dim), dtype=np.float32)
-    
-    def embed_pooled(self, sequence: str) -> np.ndarray:
-        """Embed a single sequence, returning pooled embedding."""
-        embeddings = list(self._embedding_service.generate_embeddings(
-            input_data=[sequence], reduce=True
-        ))
-        if embeddings:
-            _, emb = embeddings[0]
-            return emb
-        return np.zeros(self.embedding_dim, dtype=np.float32)
-    
-    def embed_batch(self, sequences: List[str], pooled: bool = False) -> List[np.ndarray]:
-        """Embed a batch of sequences."""
-        embeddings = list(self._embedding_service.generate_embeddings(
-            input_data=sequences, reduce=pooled
-        ))
-        return [emb for _, emb in embeddings]
-    
-    def embed_dict(self, sequences: Dict[str, str], pooled: bool = False) -> Dict[str, np.ndarray]:
-        """Embed sequences from a dictionary."""
-        seq_list = list(sequences.values())
-        seq_ids = list(sequences.keys())
-        embeddings = self.embed_batch(seq_list, pooled=pooled)
-        return dict(zip(seq_ids, embeddings))
-    
-    def get_embedding_dimension(self) -> int:
-        """Return embedding dimension."""
-        return self.embedding_dim
-
-
-# =============================================================================
-# FIXTURES
-# =============================================================================
 
 @pytest.fixture(scope="session")
-def embedder_backend(request) -> EmbedderBackend:
+def server_url() -> str:
+    """Get the server URL, skip tests if not available."""
+    return get_server_url()
+
+
+@pytest.fixture(scope="session")
+def client(server_url) -> httpx.Client:
     """
-    Determine which embedder backend to use.
+    Create an httpx client for the integration test server.
     
-    Priority:
-    1. --use-real-embedder CLI flag
-    2. USE_REAL_EMBEDDER environment variable
-    3. Default to FIXED
+    This client connects to the real running server instance.
     """
-    use_real = (
-        request.config.getoption("--use-real-embedder", default=False) or
-        os.environ.get("USE_REAL_EMBEDDER", "").lower() in ("1", "true", "yes")
+    http_client = httpx.Client(
+        base_url=server_url,
+        timeout=httpx.Timeout(120.0, connect=10.0),
     )
-    return EmbedderBackend.REAL if use_real else EmbedderBackend.FIXED
+    
+    # Verify server is accessible
+    try:
+        response = http_client.get("/health")
+        if response.status_code != 200:
+            pytest.fail(f"Server at {server_url} returned status {response.status_code}")
+    except httpx.RequestError as e:
+        pytest.fail(f"Cannot connect to server at {server_url}: {e}")
+    
+    yield http_client
+    http_client.close()
 
+
+# =============================================================================
+# TASK POLLING
+# =============================================================================
 
 @pytest.fixture(scope="session")
-def embedder(embedder_backend: EmbedderBackend) -> Union[FixedEmbedder, RealEmbedder]:
+def poll_task(client):
     """
-    Get the appropriate embedder based on backend selection.
+    Factory fixture to poll a task until completion.
+    
+    Usage:
+        def test_async_operation(client, poll_task):
+            response = client.post("/endpoint", json=data)
+            task_id = response.json()["task_id"]
+            result = poll_task(task_id)
+            assert result["status"] == "finished"
+    """
+    def _poll(task_id: str, timeout: int = 120, poll_interval: float = 1.0) -> Dict[str, Any]:
+        """
+        Poll task status until completion or timeout.
+        
+        Args:
+            task_id: The task ID to poll
+            timeout: Maximum seconds to wait
+            poll_interval: Seconds between polls
+            
+        Returns:
+            The final task status response
+            
+        Raises:
+            TimeoutError if task doesn't complete within timeout
+        """
+        start = time.time()
+        while time.time() - start < timeout:
+            response = client.get(f"/biocentral_service/task_status/{task_id}")
+            if response.status_code != 200:
+                raise RuntimeError(f"Failed to get task status: {response.status_code}")
+            
+            status = response.json()
+            task_status = status.get("status", "").lower()
+            
+            # Check for terminal states
+            if task_status in ("finished", "completed", "done"):
+                return status
+            elif task_status in ("failed", "error"):
+                return status
+            
+            time.sleep(poll_interval)
+        
+        raise TimeoutError(f"Task {task_id} did not complete within {timeout}s")
+    
+    return _poll
+
+
+# =============================================================================
+# EMBEDDER CONFIGURATION
+# =============================================================================
+
+# Embedder options:
+#   - "esm2_t6_8m": Real ESM2-T6-8M model via ONNX (for CI pipeline)
+#   - "fixed": FixedEmbedder for fast local testing (deterministic, no downloads)
+#
+# Set via CI_EMBEDDER environment variable. Default is esm2_t6_8m for CI.
+
+EMBEDDER_ESM2_T6_8M = "facebook/esm2_t6_8M_UR50D"
+EMBEDDER_FIXED = "fixed"  # Special marker for FixedEmbedder
+
+# Map of CI_EMBEDDER values to actual embedder names
+EMBEDDER_MAP = {
+    "esm2_t6_8m": EMBEDDER_ESM2_T6_8M,
+    "fixed": EMBEDDER_FIXED,
+}
+
+
+def get_embedder_name() -> str:
+    """
+    Get the embedder name from CI_EMBEDDER environment variable.
+    
+    Options:
+        - "esm2_t6_8m" (default): Uses facebook/esm2_t6_8M_UR50D via ONNX
+        - "fixed": Uses FixedEmbedder for fast deterministic testing
     
     Returns:
-        FixedEmbedder or RealEmbedder instance configured for ESM-2 8M dimensions
+        The embedder name string to use in API requests
     """
-    if embedder_backend == EmbedderBackend.REAL:
-        return RealEmbedder()
-    else:
-        # Use esm2_t6 config in FixedEmbedder to match ESM-2 8M dimensions (320)
-        # strict_dataset=True enforces all sequences come from canonical test dataset
-        return FixedEmbedder(model_name="esm2_t6", seed_base=42, strict_dataset=True)
+    ci_embedder = os.environ.get("CI_EMBEDDER", "esm2_t6_8m").lower()
+    
+    if ci_embedder not in EMBEDDER_MAP:
+        valid_options = ", ".join(EMBEDDER_MAP.keys())
+        pytest.fail(f"Invalid CI_EMBEDDER='{ci_embedder}'. Valid options: {valid_options}")
+    
+    return EMBEDDER_MAP[ci_embedder]
+
+
+def is_fixed_embedder() -> bool:
+    """Check if we're using the FixedEmbedder mode."""
+    return os.environ.get("CI_EMBEDDER", "esm2_t6_8m").lower() == "fixed"
 
 
 @pytest.fixture(scope="session")
-def embedder_name(embedder_backend: EmbedderBackend) -> str:
-    """Get the embedder name string for API requests."""
-    if embedder_backend == EmbedderBackend.REAL:
-        return "facebook/esm2_t6_8M_UR50D"
-    return "esm2_t6"
-
-
-@pytest.fixture(scope="session")
-def embedding_dim(embedder_backend: EmbedderBackend) -> int:
-    """Get the embedding dimension for current backend."""
-    return 320  # Both ESM-2 8M and esm2_t6 FixedEmbedder use 320 dimensions
+def embedder_name() -> str:
+    """
+    Get the embedder name to use for tests.
+    
+    Configured via CI_EMBEDDER environment variable:
+        - "esm2_t6_8m" (default): Real ESM2-T6-8M model via ONNX
+        - "fixed": FixedEmbedder for fast local testing
+    """
+    return get_embedder_name()
 
 
 # =============================================================================
-# TEST SEQUENCES
+# TEST SEQUENCES FROM CANONICAL DATASET
 # =============================================================================
 
 @pytest.fixture(scope="session")
 def test_sequences() -> Dict[str, str]:
     """Standard test sequences from canonical dataset."""
-    # Return first 3 standard sequences from canonical dataset
     return {
         "protein_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
         "protein_2": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
@@ -217,11 +201,6 @@ def short_test_sequences() -> Dict[str, str]:
         "short_1": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
         "short_2": CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
     }
-
-
-# =============================================================================
-# EDGE CASE SEQUENCES
-# =============================================================================
 
 
 @pytest.fixture(scope="session")
@@ -326,8 +305,6 @@ def diverse_test_sequences() -> Dict[str, str]:
 # PARAMETERIZED TEST DATA
 # =============================================================================
 
-
-# Canonical sequence IDs for parameterized tests
 CANONICAL_STANDARD_IDS = ["standard_001", "standard_002", "standard_003"]
 CANONICAL_LENGTH_EDGE_IDS = [
     "length_min_1", "length_min_2", "length_short_5",
@@ -342,366 +319,53 @@ CANONICAL_AMBIGUOUS_CODE_IDS = [
 ]
 CANONICAL_REAL_WORLD_IDS = ["real_insulin_b", "real_ubiquitin", "real_gfp_core"]
 
+ALL_CANONICAL_IDS = (
+    CANONICAL_STANDARD_IDS
+    + CANONICAL_LENGTH_EDGE_IDS
+    + CANONICAL_UNKNOWN_TOKEN_IDS
+    + CANONICAL_AMBIGUOUS_CODE_IDS
+    + CANONICAL_REAL_WORLD_IDS
+)
+
 
 def get_sequence_by_id(seq_id: str) -> str:
     """Helper to get a sequence by its canonical ID."""
     return CANONICAL_TEST_DATASET.get_by_id(seq_id).sequence
 
 
-# =============================================================================
-# APPLICATION AND CLIENT FIXTURES
-# =============================================================================
+@pytest.fixture(scope="session")
+def all_canonical_sequences() -> Dict[str, str]:
+    """All sequences from canonical dataset for comprehensive testing."""
+    return {seq_id: get_sequence_by_id(seq_id) for seq_id in ALL_CANONICAL_IDS}
 
-@pytest.fixture(scope="module")
-def integration_app():
+
+@pytest.fixture(scope="session")
+def large_batch_sequences() -> Dict[str, str]:
     """
-    Create a FastAPI application with all endpoint routers for integration testing.
+    Large batch of sequences for performance and batch handling tests.
     
-    This mimics the production app setup with all relevant routers included.
+    Creates 100 sequences using canonical sequences as templates.
     """
-    from biocentral_server.embeddings import embeddings_router, projection_router
-    from biocentral_server.custom_models import custom_models_router
-    from biocentral_server.predict import predict_router
+    base_sequences = [
+        CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+        CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+        CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
+        CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+        CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
+    ]
     
-    app = FastAPI(title="Biocentral Test Server")
-    app.include_router(embeddings_router)
-    app.include_router(projection_router)
-    app.include_router(custom_models_router)
-    app.include_router(predict_router)
+    sequences = {}
+    for i in range(100):
+        base_seq = base_sequences[i % len(base_sequences)]
+        seq_id = f"batch_seq_{i:03d}"
+        sequences[seq_id] = base_seq
     
-    return app
-
-
-@pytest.fixture(scope="module")
-def integration_client(integration_app) -> TestClient:
-    """Create a TestClient for the integration app."""
-    return TestClient(integration_app)
-
-
-# =============================================================================
-# MOCK HELPERS
-# =============================================================================
-
-@pytest.fixture
-def mock_rate_limiter():
-    """Disable rate limiting for tests."""
-    async def no_rate_limit():
-        pass
-    return no_rate_limit
-
-
-@pytest.fixture
-def mock_user_manager():
-    """Mock UserManager for tests."""
-    manager = MagicMock()
-    manager.get_user_id_from_request = AsyncMock(return_value="test-integration-user")
-    return manager
-
-
-@pytest.fixture
-def mock_task_manager_with_sync_execution():
-    """
-    Mock TaskManager that executes tasks synchronously for testing.
-    
-    This allows integration tests to verify task execution without
-    async polling complications.
-    """
-    class SyncTaskManager:
-        def __init__(self):
-            self._tasks = {}
-            self._task_counter = 0
-        
-        def add_task(self, task, user_id=None, task_id=None):
-            if task_id is None:
-                self._task_counter += 1
-                task_id = f"sync-task-{self._task_counter}"
-            
-            # Execute task immediately (synchronously)
-            try:
-                result = task.run()  # Assuming tasks have a run() method
-                self._tasks[task_id] = {"status": "completed", "result": result}
-            except Exception as e:
-                self._tasks[task_id] = {"status": "failed", "error": str(e)}
-            
-            return task_id
-        
-        def get_unique_task_id(self, task) -> str:
-            self._task_counter += 1
-            return f"sync-task-{self._task_counter}"
-        
-        def get_task_status(self, task_id: str) -> Dict:
-            return self._tasks.get(task_id, {"status": "not_found"})
-    
-    return SyncTaskManager()
-
-
-@pytest.fixture
-def mock_embeddings_database():
-    """
-    Mock EmbeddingsDatabase for integration tests.
-    
-    Stores embeddings in memory, allowing tests to verify the
-    embed -> store -> retrieve flow.
-    """
-    class InMemoryEmbeddingsDatabase:
-        def __init__(self):
-            self._embeddings: Dict[str, Dict[str, np.ndarray]] = {}
-        
-        def filter_existing_embeddings(
-            self, sequences: Dict[str, str], embedder_name: str, reduced: bool
-        ):
-            key = f"{embedder_name}:{reduced}"
-            existing = {}
-            non_existing = {}
-            
-            stored = self._embeddings.get(key, {})
-            for seq_id, seq in sequences.items():
-                if seq_id in stored:
-                    existing[seq_id] = seq
-                else:
-                    non_existing[seq_id] = seq
-            
-            return existing, non_existing
-        
-        def add_embeddings(
-            self, embeddings: Dict[str, np.ndarray], embedder_name: str, reduced: bool
-        ):
-            key = f"{embedder_name}:{reduced}"
-            if key not in self._embeddings:
-                self._embeddings[key] = {}
-            self._embeddings[key].update(embeddings)
-        
-        def get_embeddings(
-            self, seq_ids: List[str], embedder_name: str, reduced: bool
-        ) -> Dict[str, np.ndarray]:
-            key = f"{embedder_name}:{reduced}"
-            stored = self._embeddings.get(key, {})
-            return {sid: stored[sid] for sid in seq_ids if sid in stored}
-        
-        def clear(self):
-            self._embeddings.clear()
-    
-    return InMemoryEmbeddingsDatabase()
-
-
-@pytest.fixture
-def mock_file_manager(tmp_path):
-    """Mock FileManager using temp directory for test isolation."""
-    class TempFileManager:
-        def __init__(self, base_path):
-            self._base_path = base_path
-            self._models_dir = base_path / "models"
-            self._models_dir.mkdir(exist_ok=True)
-        
-        def get_biotrainer_model_path(self, model_hash: str):
-            model_path = self._models_dir / model_hash
-            model_path.mkdir(exist_ok=True)
-            return str(model_path)
-        
-        def get_biotrainer_result_files(self, model_hash: str) -> Dict[str, str]:
-            model_path = self._models_dir / model_hash
-            if not model_path.exists():
-                return {}
-            
-            result_files = {}
-            for key, filename in [
-                ("out_config", "config.yml"),
-                ("logging_out", "training.log"),
-                ("out_file", "model.pt"),
-            ]:
-                file_path = model_path / filename
-                if file_path.exists():
-                    result_files[key] = file_path.read_text()
-            
-            return result_files
-    
-    return TempFileManager(tmp_path)
-
-
-# =============================================================================
-# EMBEDDING GENERATION HELPERS
-# =============================================================================
-
-@pytest.fixture
-def generate_embeddings(embedder):
-    """
-    Factory fixture to generate embeddings using the configured backend.
-    
-    Usage:
-        def test_something(generate_embeddings, test_sequences):
-            embeddings = generate_embeddings(test_sequences, pooled=True)
-    """
-    def _generate(sequences: Dict[str, str], pooled: bool = False) -> Dict[str, np.ndarray]:
-        return embedder.embed_dict(sequences, pooled=pooled)
-    
-    return _generate
-
-
-# =============================================================================
-# SKIP CONDITIONS
-# =============================================================================
-
-@pytest.fixture
-def skip_if_fixed_embedder(embedder_backend):
-    """Skip test if using FixedEmbedder backend."""
-    if embedder_backend == EmbedderBackend.FIXED:
-        pytest.skip("Test requires real embedder backend")
-
-
-@pytest.fixture
-def skip_if_real_embedder(embedder_backend):
-    """Skip test if using real embedder backend (for mock-specific tests)."""
-    if embedder_backend == EmbedderBackend.REAL:
-        pytest.skip("Test requires fixed embedder backend")
-
-
-# =============================================================================
-# CONSOLIDATED MOCK FIXTURES
-# =============================================================================
-
-
-class MockContext:
-    """
-    Context manager and fixture holder for consolidated endpoint mocks.
-    
-    Provides pre-configured mocks for TaskManager, UserManager, RateLimiter,
-    MetricsCollector, FileManager, and EmbeddingDatabaseFactory.
-    
-    Usage:
-        def test_something(mock_endpoint_dependencies):
-            with mock_endpoint_dependencies.patch_embeddings():
-                # All dependencies are mocked
-                response = client.post(...)
-    """
-    
-    def __init__(self, task_id_prefix: str = "test"):
-        self._task_counter = 0
-        self._task_id_prefix = task_id_prefix
-        self._tasks: Dict[str, Dict] = {}
-        
-        # Configure default mock behaviors
-        self.task_manager = MagicMock()
-        self.task_manager.add_task.side_effect = self._generate_task_id
-        self.task_manager.get_task_status.side_effect = self._get_task_status
-        
-        self.user_manager = MagicMock()
-        self.user_manager.get_user_id_from_request = AsyncMock(return_value="test-user")
-        
-        self.rate_limiter = MagicMock(return_value=lambda: None)
-        
-        self.metrics_collector = MagicMock()
-        
-        self.file_manager = MagicMock()
-        self.file_manager.get_biotrainer_model_path.return_value = "/tmp/test-model"
-        self.file_manager.get_biotrainer_result_files.return_value = {}
-        
-        self.embedding_db = MagicMock()
-        self.embedding_db.filter_existing_embeddings.return_value = ({}, {})
-        
-        self.embedding_db_factory = MagicMock()
-        self.embedding_db_factory.return_value.get_embeddings_db.return_value = self.embedding_db
-    
-    def _generate_task_id(self, *args, **kwargs) -> str:
-        self._task_counter += 1
-        task_id = f"{self._task_id_prefix}-task-{self._task_counter}"
-        self._tasks[task_id] = {"status": "pending", "result": None}
-        return task_id
-    
-    def _get_task_status(self, task_id: str) -> Dict:
-        return self._tasks.get(task_id, {"status": "not_found"})
-    
-    def set_task_result(self, task_id: str, status: str, result: Any = None):
-        """Set the result of a task for testing task status endpoints."""
-        self._tasks[task_id] = {"status": status, "result": result}
-    
-    def patch_embeddings(self):
-        """Return context manager that patches embeddings endpoint dependencies."""
-        return patch.multiple(
-            "biocentral_server.embeddings.embeddings_endpoint",
-            TaskManager=MagicMock(return_value=self.task_manager),
-            UserManager=self.user_manager,
-            RateLimiter=self.rate_limiter,
-            MetricsCollector=self.metrics_collector,
-            EmbeddingDatabaseFactory=self.embedding_db_factory,
-        )
-    
-    def patch_projection(self):
-        """Return context manager that patches projection endpoint dependencies."""
-        return patch.multiple(
-            "biocentral_server.embeddings.projection_endpoint",
-            TaskManager=MagicMock(return_value=self.task_manager),
-            UserManager=self.user_manager,
-            RateLimiter=self.rate_limiter,
-        )
-    
-    def patch_predict(self):
-        """Return context manager that patches predict endpoint dependencies."""
-        return patch.multiple(
-            "biocentral_server.predict.predict_endpoint",
-            TaskManager=MagicMock(return_value=self.task_manager),
-            UserManager=self.user_manager,
-            RateLimiter=self.rate_limiter,
-        )
-    
-    def patch_custom_models(self):
-        """Return context manager that patches custom_models endpoint dependencies."""
-        return patch.multiple(
-            "biocentral_server.custom_models.custom_models_endpoint",
-            TaskManager=MagicMock(return_value=self.task_manager),
-            UserManager=self.user_manager,
-            RateLimiter=self.rate_limiter,
-            FileManager=MagicMock(return_value=self.file_manager),
-        )
-
-
-@pytest.fixture
-def mock_endpoint_dependencies():
-    """
-    Consolidated mock fixture for endpoint dependencies.
-    
-    Replaces repeated @patch decorators with a single fixture that provides
-    pre-configured mocks for all common dependencies.
-    
-    Usage:
-        def test_embed_endpoint(client, mock_endpoint_dependencies, test_sequences):
-            with mock_endpoint_dependencies.patch_embeddings():
-                response = client.post("/embeddings_service/embed", json=request_data)
-                assert response.status_code == 200
-                
-            # Access task tracking
-            mock_endpoint_dependencies.set_task_result("test-task-1", "completed", result)
-    """
-    return MockContext()
-
-
-@pytest.fixture
-def mock_context_for_embeddings():
-    """Pre-configured mock context for embeddings endpoints."""
-    return MockContext(task_id_prefix="embed")
-
-
-@pytest.fixture
-def mock_context_for_projection():
-    """Pre-configured mock context for projection endpoints."""
-    return MockContext(task_id_prefix="project")
-
-
-@pytest.fixture
-def mock_context_for_predict():
-    """Pre-configured mock context for prediction endpoints."""
-    return MockContext(task_id_prefix="predict")
-
-
-@pytest.fixture
-def mock_context_for_custom_models():
-    """Pre-configured mock context for custom models endpoints."""
-    return MockContext(task_id_prefix="custom")
+    return sequences
 
 
 # =============================================================================
 # RESPONSE VALIDATION HELPERS
 # =============================================================================
-
 
 def validate_task_response(response_json: Dict, expected_task_id_prefix: str = None) -> str:
     """
@@ -743,11 +407,9 @@ def validate_error_response(response_json: Dict, expected_status: int = None) ->
     Raises:
         AssertionError if validation fails
     """
-    # FastAPI validation errors have 'detail' field
     assert "detail" in response_json, "Error response missing 'detail' field"
     detail = response_json["detail"]
     
-    # Can be string or list of validation errors
     if isinstance(detail, list):
         for error in detail:
             assert "loc" in error, "Validation error missing 'loc'"
@@ -757,102 +419,17 @@ def validate_error_response(response_json: Dict, expected_status: int = None) ->
     return response_json
 
 
-def validate_embedding_response(
-    response_json: Dict,
-    expected_seq_ids: List[str] = None,
-    embedding_dim: int = None,
-) -> Dict:
-    """
-    Validate an embedding response structure.
-    
-    Args:
-        response_json: The JSON response from the endpoint
-        expected_seq_ids: Optional list of expected sequence IDs
-        embedding_dim: Optional expected embedding dimension
-        
-    Returns:
-        The validated response
-        
-    Raises:
-        AssertionError if validation fails
-    """
-    # Task creation response
-    if "task_id" in response_json:
-        validate_task_response(response_json)
-        return response_json
-    
-    # Missing embeddings response
-    if "missing" in response_json:
-        assert isinstance(response_json["missing"], list)
-        return response_json
-    
-    return response_json
-
-
 # =============================================================================
-# LARGE BATCH TEST DATA
+# TEST RUN IDENTIFICATION
 # =============================================================================
-
 
 @pytest.fixture(scope="session")
-def large_batch_sequences() -> Dict[str, str]:
+def test_run_id() -> str:
     """
-    Large batch of sequences for performance and batch handling tests.
+    Unique identifier for this test run.
     
-    Creates 100 sequences using canonical sequences as templates.
+    Useful for creating unique resources that won't conflict
+    between parallel test runs.
     """
-    base_sequences = [
-        CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
-        CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
-        CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
-        CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
-        CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
-    ]
-    
-    sequences = {}
-    for i in range(100):
-        base_seq = base_sequences[i % len(base_sequences)]
-        # Add slight variation to make each unique
-        seq_id = f"batch_seq_{i:03d}"
-        sequences[seq_id] = base_seq
-    
-    return sequences
-
-
-@pytest.fixture(scope="session")
-def concurrent_test_sequences() -> List[Dict[str, str]]:
-    """
-    Multiple sequence batches for concurrent request testing.
-    
-    Returns 5 separate batches suitable for parallel request simulation.
-    """
-    batches = []
-    base_ids = ["standard_001", "standard_002", "standard_003"]
-    
-    for batch_idx in range(5):
-        batch = {}
-        for i, seq_id in enumerate(base_ids):
-            batch[f"concurrent_{batch_idx}_{i}"] = CANONICAL_TEST_DATASET.get_by_id(seq_id).sequence
-        batches.append(batch)
-    
-    return batches
-
-
-# =============================================================================
-# ALL CANONICAL IDS FOR COMPREHENSIVE TESTING
-# =============================================================================
-
-
-ALL_CANONICAL_IDS = (
-    CANONICAL_STANDARD_IDS
-    + CANONICAL_LENGTH_EDGE_IDS
-    + CANONICAL_UNKNOWN_TOKEN_IDS
-    + CANONICAL_AMBIGUOUS_CODE_IDS
-    + CANONICAL_REAL_WORLD_IDS
-)
-
-
-@pytest.fixture(scope="session")
-def all_canonical_sequences() -> Dict[str, str]:
-    """All sequences from canonical dataset for comprehensive testing."""
-    return {seq_id: get_sequence_by_id(seq_id) for seq_id in ALL_CANONICAL_IDS}
+    import uuid
+    return str(uuid.uuid4())[:8]

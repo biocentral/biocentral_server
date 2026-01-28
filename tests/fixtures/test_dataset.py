@@ -286,14 +286,49 @@ CANONICAL_TEST_DATASET = TestDataset(
 # ============================================================================
 
 
-def get_test_sequences() -> List[str]:
+def get_test_sequences(categories: Optional[List[str]] = None) -> List[str]:
     """
-    Get all test sequences.
+    Get test sequences, optionally filtered by category.
+
+    Args:
+        categories: Optional list of category prefixes to filter by.
+                   Supported: "standard", "length", "unknown", "ambiguous",
+                   "homopolymer", "motif", "real", "edge_case".
+                   If None, returns all sequences.
 
     Returns:
         List of sequence strings
     """
-    return CANONICAL_TEST_DATASET.get_all_sequences()
+    if categories is None:
+        return CANONICAL_TEST_DATASET.get_all_sequences()
+
+    # Map category names to sequence ID prefixes
+    category_prefixes = {
+        "standard": ["standard_"],
+        "length": ["length_"],
+        "unknown": ["unknown_"],
+        "ambiguous": ["ambiguous_", "selenocysteine", "pyrrolysine"],
+        "homopolymer": ["homopolymer_"],
+        "motif": ["motif_"],
+        "real": ["real_"],
+        "edge_case": ["length_", "unknown_", "ambiguous_", "homopolymer_", "motif_",
+                      "selenocysteine", "pyrrolysine", "hydrophobic_", "charged_",
+                      "proline_", "cysteine_", "all_standard_aa"],
+    }
+
+    # Collect all prefixes for requested categories
+    prefixes = []
+    for cat in categories:
+        if cat in category_prefixes:
+            prefixes.extend(category_prefixes[cat])
+
+    # Filter sequences by ID prefix
+    result = []
+    for seq in CANONICAL_TEST_DATASET.sequences:
+        if any(seq.id.startswith(prefix) for prefix in prefixes):
+            result.append(seq.sequence)
+
+    return result if result else CANONICAL_TEST_DATASET.get_all_sequences()
 
 
 def get_test_sequences_dict() -> Dict[str, str]:
