@@ -113,14 +113,37 @@ jobs:
             image=moby/buildkit:latest
             network=host
 
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile', 'pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build Docker image with cache
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            --load \
+            -t biocentral-server:ci \
+            .
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
       - name: Start services with Docker Compose
         run: |
-          docker compose -f docker-compose.dev.yml --env-file .env.ci up -d --build --wait
+          docker compose -f docker-compose.dev.yml --env-file .env.ci up -d --wait
         env:
           DOCKER_BUILDKIT: 1
           COMPOSE_DOCKER_CLI_BUILD: 1
           BUILDKIT_STEP_LOG_MAX_SIZE: 10000000
-        timeout-minutes: 15
+          CI_IMAGE: biocentral-server:ci
+        timeout-minutes: 10
 
       - name: Wait for server to be healthy
         run: |

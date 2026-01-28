@@ -31,10 +31,6 @@ WORKDIR /app
 # Install uv
 RUN pip3 install --break-system-packages uv
 
-# Copy only requirements first to leverage Docker caching
-COPY pyproject.toml ./
-RUN touch README.md
-
 # Add non-root user
 RUN useradd --create-home --shell /bin/bash --uid 10001 biocentral-server-user
 
@@ -42,11 +38,20 @@ RUN useradd --create-home --shell /bin/bash --uid 10001 biocentral-server-user
 RUN mkdir -p /app/logs /var/log/biocentral-server && \
     chown -R biocentral-server-user:biocentral-server-user /app /var/log/
 
-# Copy application files
+# Copy only requirements first to leverage Docker caching
+COPY pyproject.toml ./
+RUN touch README.md
+
+# Install dependencies BEFORE copying source code (better cache hit rate)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-install-project
+
+# Copy application files (this layer changes frequently)
 COPY --chown=biocentral-server-user:biocentral-server-user ./biocentral_server ./biocentral_server
 
-# Install dependencies
-RUN uv sync
+# Final sync to install the project itself
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync
 
 # Switch to non-root user
 USER biocentral-server-user
