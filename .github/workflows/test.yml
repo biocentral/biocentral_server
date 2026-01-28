@@ -60,15 +60,25 @@ jobs:
         run: |
           echo "Before cleanup:"
           df -h /
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            /opt/hostedtoolcache/CodeQL /usr/share/swift /usr/local/graalvm \
-            /usr/local/.ghcup /opt/hostedtoolcache/go /opt/hostedtoolcache/node \
-            /opt/hostedtoolcache/Ruby /opt/hostedtoolcache/Java* \
-            /opt/hostedtoolcache/PyPy /usr/local/share/powershell /usr/share/az_* \
-            /usr/local/share/vcpkg /usr/local/share/chromium /opt/microsoft \
-            /usr/share/miniconda /usr/share/gradle-* /usr/share/apache-maven-* \
-            /usr/share/sbt /opt/az /opt/google/chrome /home/runner/.cargo \
-            /home/runner/.rustup /usr/share/rust
+          # Remove all non-essential pre-installed tools
+          sudo rm -rf \
+            /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /opt/hostedtoolcache/go \
+            /opt/hostedtoolcache/node /opt/hostedtoolcache/Ruby \
+            /opt/hostedtoolcache/Java* /opt/hostedtoolcache/PyPy \
+            /usr/share/swift /usr/local/graalvm /usr/local/.ghcup \
+            /usr/local/share/powershell /usr/local/share/vcpkg \
+            /usr/local/share/chromium /usr/local/share/boost \
+            /opt/microsoft /opt/az /opt/google /opt/pipx \
+            /usr/share/az_* /usr/share/miniconda /usr/share/gradle-* \
+            /usr/share/apache-maven-* /usr/share/sbt /usr/share/rust \
+            /usr/share/kotlinc /usr/share/java /usr/share/ri \
+            /home/runner/.cargo /home/runner/.rustup /home/runner/.dotnet \
+            /home/runner/.local/share/powershell \
+            /usr/local/aws-* /usr/local/julia* /usr/local/sqlpackage \
+            /usr/lib/firefox /usr/lib/google-cloud-sdk \
+            /usr/lib/jvm /usr/lib/mono /usr/lib/heroku \
+            /var/lib/apt/lists/* /var/cache/apt/archives/*
           sudo apt-get clean
           docker system prune -af --volumes
           echo "After cleanup:"
