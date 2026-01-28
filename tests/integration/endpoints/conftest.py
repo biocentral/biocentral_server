@@ -46,13 +46,13 @@ def client(server_url) -> httpx.Client:
     This client connects to the real running server instance.
     """
     http_client = httpx.Client(
-        base_url=server_url,
+        base_url=f"{server_url}/api/v1",
         timeout=httpx.Timeout(120.0, connect=10.0),
     )
     
-    # Verify server is accessible
+    # Verify server is accessible (health endpoint is at root, not under /api/v1)
     try:
-        response = http_client.get("/health")
+        response = httpx.get(f"{server_url}/health", timeout=10.0)
         if response.status_code != 200:
             pytest.fail(f"Server at {server_url} returned status {response.status_code}")
     except httpx.RequestError as e:
