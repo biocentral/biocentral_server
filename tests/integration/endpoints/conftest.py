@@ -57,7 +57,7 @@ def poll_task(client):
             response = client.post("/endpoint", json=data)
             task_id = response.json()["task_id"]
             result = poll_task(task_id)
-            assert result["status"] == "finished"
+            assert result["status"].lower() == "finished"
     """
     def _poll(task_id: str, timeout: int = 120, poll_interval: float = 1.0) -> Dict[str, Any]:
         """
@@ -69,7 +69,7 @@ def poll_task(client):
             poll_interval: Seconds between polls
             
         Returns:
-            The final task status response
+            The final task DTO with status and results
             
         Raises:
             TimeoutError if task doesn't complete within timeout
@@ -80,14 +80,22 @@ def poll_task(client):
             if response.status_code != 200:
                 raise RuntimeError(f"Failed to get task status: {response.status_code}")
             
-            status = response.json()
-            task_status = status.get("status", "").lower()
+            response_json = response.json()
+            dtos = response_json.get("dtos", [])
+            
+            if not dtos:
+                time.sleep(poll_interval)
+                continue
+            
+            # Get the latest DTO's status
+            latest_dto = dtos[-1]
+            task_status = latest_dto.get("status", "").upper()
             
             # Check for terminal states
-            if task_status in ("finished", "completed", "done"):
-                return status
-            elif task_status in ("failed", "error"):
-                return status
+            if task_status in ("FINISHED", "COMPLETED", "DONE"):
+                return latest_dto
+            elif task_status in ("FAILED", "ERROR"):
+                return latest_dto
             
             time.sleep(poll_interval)
         
