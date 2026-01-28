@@ -48,7 +48,7 @@ ENV UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}
 
 # Install dependencies BEFORE copying source code (better cache hit rate)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project --frozen
+    uv sync --no-install-project
 
 # Copy application files (this layer changes frequently)
 COPY --chown=biocentral-server-user:biocentral-server-user ./biocentral_server ./biocentral_server
