@@ -378,8 +378,8 @@ class TestEndToEndProjectionFlow:
         # Wait for completion
         result = poll_task(task_id, timeout=180)
 
-        # Verify completion
-        assert result["status"].lower() in ("finished", "completed", "done", "failed")
+        # Verify completion (task reached terminal state)
+        assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -408,7 +408,8 @@ class TestEndToEndProjectionFlow:
         task_id = response.json()["task_id"]
         result = poll_task(task_id, timeout=300)
 
-        assert result["status"].lower() in ("finished", "completed", "done", "failed")
+        # Task should reach a terminal state
+        assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
 
     @pytest.mark.integration
     def test_projection_with_different_embedders(

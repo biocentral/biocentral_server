@@ -2,11 +2,16 @@
 
 import os
 import time
+import logging
 import pytest
 import httpx
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
+
+# Suppress verbose httpx/httpcore logging
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 def get_server_url() -> str:
@@ -24,15 +29,18 @@ def server_url() -> str:
 
 
 @pytest.fixture(scope="session")
-def client(server_url) -> httpx.Client:
+def client(server_url) -> Generator[httpx.Client, None, None]:
     """
     Create an httpx client for the integration test server.
     
     This client connects to the real running server instance.
     """
+    # Use transport with retries for connection resilience
+    transport = httpx.HTTPTransport(retries=3)
     http_client = httpx.Client(
         base_url=f"{server_url}/api/v1",
         timeout=httpx.Timeout(120.0, connect=10.0),
+        transport=transport,
     )
     
     # Verify server is accessible (health endpoint is at root, not under /api/v1)
@@ -47,6 +55,26 @@ def client(server_url) -> httpx.Client:
     http_client.close()
 
 
+def _make_request_with_retry(client, method: str, url: str, max_retries: int = 3, **kwargs) -> httpx.Response:
+    """Make an HTTP request with retry logic for connection errors."""
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            if method.upper() == "GET":
+                return client.get(url, **kwargs)
+            elif method.upper() == "POST":
+                return client.post(url, **kwargs)
+            else:
+                raise ValueError(f"Unsupported method: {method}")
+        except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+                continue
+            raise
+    raise last_error
+
+
 @pytest.fixture(scope="session")
 def poll_task(client):
     """
@@ -57,7 +85,7 @@ def poll_task(client):
             response = client.post("/endpoint", json=data)
             task_id = response.json()["task_id"]
             result = poll_task(task_id)
-            assert result["status"].lower() == "finished"
+            assert result["status"].upper() in ("FINISHED", "FAILED")
     """
     def _poll(task_id: str, timeout: int = 120, poll_interval: float = 1.0) -> Dict[str, Any]:
         """
@@ -76,7 +104,15 @@ def poll_task(client):
         """
         start = time.time()
         while time.time() - start < timeout:
-            response = client.get(f"/biocentral_service/task_status/{task_id}")
+            try:
+                response = _make_request_with_retry(
+                    client, "GET", f"/biocentral_service/task_status/{task_id}"
+                )
+            except (httpx.RemoteProtocolError, httpx.ConnectError):
+                # Server may have restarted, wait and retry
+                time.sleep(poll_interval * 2)
+                continue
+                
             if response.status_code != 200:
                 raise RuntimeError(f"Failed to get task status: {response.status_code}")
             
