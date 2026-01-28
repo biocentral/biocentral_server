@@ -119,6 +119,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set lowercase repository owner
+        id: repo
+        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: Build Docker image with cache
         uses: docker/build-push-action@v6
         with:
@@ -127,8 +131,8 @@ jobs:
           tags: biocentral-server:ci
           build-args: |
             UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/biocentral-server-cache:latest
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/biocentral-server-cache:latest,mode=max
+          cache-from: type=registry,ref=ghcr.io/${{ steps.repo.outputs.owner }}/biocentral-server-cache:latest
+          cache-to: type=registry,ref=ghcr.io/${{ steps.repo.outputs.owner }}/biocentral-server-cache:latest,mode=max
 
       - name: Start services with Docker Compose
         run: |
