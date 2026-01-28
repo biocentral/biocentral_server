@@ -1,0 +1,28 @@
+﻿2026-01-28T10:23:00.0227946Z ##[group]Run astral-sh/setup-uv@v4
+2026-01-28T10:23:00.0228229Z with:
+2026-01-28T10:23:00.0228401Z   enable-cache: true
+2026-01-28T10:23:00.0228585Z   version: latest
+2026-01-28T10:23:00.0228920Z   github-token: ***
+2026-01-28T10:23:00.0229120Z   cache-dependency-glob: **/uv.lock
+2026-01-28T10:23:00.0229356Z   prune-cache: true
+2026-01-28T10:23:00.0229549Z   ignore-nothing-to-cache: false
+2026-01-28T10:23:00.0229764Z env:
+2026-01-28T10:23:00.0229994Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T10:23:00.0230388Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib/pkgconfig
+2026-01-28T10:23:00.0230996Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T10:23:00.0231375Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T10:23:00.0231759Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T10:23:00.0232107Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib
+2026-01-28T10:23:00.0232421Z ##[endgroup]
+2026-01-28T10:23:00.5167208Z Downloading uv from "https://github.com/astral-sh/uv/releases/download/0.9.27/uv-x86_64-unknown-linux-gnu.tar.gz" ...
+2026-01-28T10:23:00.8729080Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/60dfcec1-6468-4a84-afe0-02cedc85a942 -f /home/runner/work/_temp/c7346e09-c514-4edb-a5b6-df94c64f28bb
+2026-01-28T10:23:01.3109617Z Added /opt/hostedtoolcache/uv/0.9.27/x86_64 to the path
+2026-01-28T10:23:01.3111076Z Added /home/runner/.local/bin to the path
+2026-01-28T10:23:01.3119915Z Set UV_CACHE_DIR to /home/runner/work/_temp/setup-uv-cache
+2026-01-28T10:23:01.3120503Z Successfully installed uv version 0.9.27
+2026-01-28T10:23:01.3121131Z Searching files using cache dependency glob: **/uv.lock
+2026-01-28T10:23:01.3669332Z /home/runner/work/biocentral_server/biocentral_server/uv.lock
+2026-01-28T10:23:01.3696919Z Found 1 files to hash.
+2026-01-28T10:23:01.3697966Z Trying to restore uv cache from GitHub Actions cache with key: setup-uv-1-x86_64-unknown-linux-gnu-0.9.27-a50a6c3f889da2d284f196dd88744a5d5d43c14b41cf24ab5b2888acd3881859
+2026-01-28T10:23:01.4098783Z ##[warning]Failed to restore: Cache service responded with 400
+2026-01-28T10:23:01.4108698Z No GitHub Actions cache found for key: setup-uv-1-x86_64-unknown-linux-gnu-0.9.27-a50a6c3f889da2d284f196dd88744a5d5d43c14b41cf24ab5b2888acd3881859

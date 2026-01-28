@@ -1,0 +1,47 @@
+﻿2026-01-28T10:25:05.6865834Z ##[group]Run echo "Before cleanup:"
+2026-01-28T10:25:05.6867037Z [36;1mecho "Before cleanup:"[0m
+2026-01-28T10:25:05.6868006Z [36;1mdf -h /[0m
+2026-01-28T10:25:05.6868825Z [36;1msudo rm -rf /usr/share/dotnet[0m
+2026-01-28T10:25:05.6869886Z [36;1msudo rm -rf /usr/local/lib/android[0m
+2026-01-28T10:25:05.6870938Z [36;1msudo rm -rf /opt/ghc[0m
+2026-01-28T10:25:05.6871963Z [36;1msudo rm -rf /opt/hostedtoolcache/CodeQL[0m
+2026-01-28T10:25:05.6873084Z [36;1msudo rm -rf /usr/share/swift[0m
+2026-01-28T10:25:05.6874109Z [36;1msudo rm -rf /usr/local/graalvm[0m
+2026-01-28T10:25:05.6875152Z [36;1msudo rm -rf /usr/local/.ghcup[0m
+2026-01-28T10:25:05.6876369Z [36;1msudo rm -rf /opt/hostedtoolcache/go[0m
+2026-01-28T10:25:05.6877539Z [36;1msudo rm -rf /opt/hostedtoolcache/node[0m
+2026-01-28T10:25:05.6878707Z [36;1msudo rm -rf /opt/hostedtoolcache/Ruby[0m
+2026-01-28T10:25:05.6879888Z [36;1msudo rm -rf /opt/hostedtoolcache/Java*[0m
+2026-01-28T10:25:05.6881066Z [36;1msudo rm -rf /opt/hostedtoolcache/PyPy[0m
+2026-01-28T10:25:05.6882294Z [36;1msudo rm -rf /usr/local/share/powershell[0m
+2026-01-28T10:25:05.6883677Z [36;1msudo rm -rf /usr/share/az_*[0m
+2026-01-28T10:25:05.6884656Z [36;1msudo apt-get clean[0m
+2026-01-28T10:25:05.6885724Z [36;1mdocker system prune -af --volumes[0m
+2026-01-28T10:25:05.6886781Z [36;1mecho "After cleanup:"[0m
+2026-01-28T10:25:05.6887653Z [36;1mdf -h /[0m
+2026-01-28T10:25:05.6924123Z shell: /usr/bin/bash -e {0}
+2026-01-28T10:25:05.6925506Z ##[endgroup]
+2026-01-28T10:25:05.7062083Z Before cleanup:
+2026-01-28T10:25:05.7187337Z Filesystem      Size  Used Avail Use% Mounted on
+2026-01-28T10:25:05.7188693Z /dev/root       145G   53G   92G  37% /
+2026-01-28T10:25:45.5026945Z Deleted Images:
+2026-01-28T10:25:45.5028739Z untagged: ghcr.io/dependabot/dependabot-updater-core:latest
+2026-01-28T10:25:45.5030094Z untagged: ghcr.io/dependabot/dependabot-updater-core@sha256:596da3f22bcbdff2c96fd7126001278022c834c1621c5efa2ad1a7794590636c
+2026-01-28T10:25:45.5033043Z deleted: sha256:354d02aa29acf525570c732b6e006ecf138de6d63ca525d552eb4b24880ddc6c
+2026-01-28T10:25:45.5034273Z deleted: sha256:8b7af0e426bc2cbeeacfd96b8354d3b80016991520977197e62090e47abaede8
+2026-01-28T10:25:45.5035513Z deleted: sha256:cadf11ef1de7fdd5eab563757942353684047f09b212dc99d6ed48e8acf34d62
+2026-01-28T10:25:45.5036602Z deleted: sha256:569b0caf9d5285db44ccd2629a3470139eea755be423a33a54d8a24cb3926bfa
+2026-01-28T10:25:45.5037959Z deleted: sha256:f9dc5feb048d8f9fd43137e3998f59e9acfbd76c47a4e14984d109654119e282
+2026-01-28T10:25:45.5038679Z deleted: sha256:85c823e204e7abc7ae097f73ea0711b1d29d4b9abf597fb4267eed745dffd070
+2026-01-28T10:25:45.5039312Z deleted: sha256:b62539826145badc7f3cda54f650fdd8b00681643791d4eadb0d66821e8d7d06
+2026-01-28T10:25:45.5039909Z deleted: sha256:fdcb3391f39c2eb86d5ec311b9dde0a5ee261d5d6bd760c7d665307a6c973510
+2026-01-28T10:25:45.5040517Z deleted: sha256:5c553ced1821305fabc69f60984280ec0afed2adb6df9364593228a03a0494e7
+2026-01-28T10:25:45.5041112Z deleted: sha256:7f7fdb788d0025bdc15b5b47c67fdd0cf018fd67cdfd3cd2b37056056c457b51
+2026-01-28T10:25:45.5041720Z deleted: sha256:293daaf3fe719409fc2c2faf2a3c858d02027824a0bd13f9861fc1b2f8784794
+2026-01-28T10:25:45.5042347Z deleted: sha256:d9d032e308afeb8c0de88baa24a9ef4b5d4f88c561d2ce6a10c55ff78e4d6f38
+2026-01-28T10:25:45.5042980Z deleted: sha256:123a078714d5ea9382d4d9f550753aefce8b34ec5ae11ae8273038d3bcbb943f
+2026-01-28T10:25:45.5043316Z 
+2026-01-28T10:25:45.5137107Z Total reclaimed space: 783.2MB
+2026-01-28T10:25:45.5154244Z After cleanup:
+2026-01-28T10:25:45.5170355Z Filesystem      Size  Used Avail Use% Mounted on
+2026-01-28T10:25:45.5170994Z /dev/root       145G   25G  120G  18% /
