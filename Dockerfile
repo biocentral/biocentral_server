@@ -34,8 +34,8 @@ RUN pip3 install --break-system-packages uv
 # Add non-root user
 RUN useradd --create-home --shell /bin/bash --uid 10001 biocentral-server-user
 
-# Create directories
-RUN mkdir -p /app/logs /var/log/biocentral-server && \
+# Create directories including HuggingFace cache directory
+RUN mkdir -p /app/logs /var/log/biocentral-server /app/huggingface_models && \
     chown -R biocentral-server-user:biocentral-server-user /app /var/log/
 
 # Copy only requirements first to leverage Docker caching

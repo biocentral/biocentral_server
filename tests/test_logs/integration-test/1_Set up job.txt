@@ -1,46 +1,48 @@
-﻿2026-01-28T09:18:47.6027235Z Current runner version: '2.331.0'
-2026-01-28T09:18:47.6063621Z ##[group]Runner Image Provisioner
-2026-01-28T09:18:47.6065035Z Hosted Compute Agent
-2026-01-28T09:18:47.6065993Z Version: 20260115.477
-2026-01-28T09:18:47.6067023Z Commit: 4b342d620503cbe250a3154040964899ea7c9b00
-2026-01-28T09:18:47.6068181Z Build Date: 2026-01-15T22:32:41Z
-2026-01-28T09:18:47.6069258Z Worker ID: {190957d2-92b7-4a49-865e-49f056168d7a}
-2026-01-28T09:18:47.6070385Z Azure Region: eastus2
-2026-01-28T09:18:47.6071328Z ##[endgroup]
-2026-01-28T09:18:47.6073881Z ##[group]Operating System
-2026-01-28T09:18:47.6074774Z Ubuntu
-2026-01-28T09:18:47.6075735Z 24.04.3
-2026-01-28T09:18:47.6076405Z LTS
-2026-01-28T09:18:47.6077111Z ##[endgroup]
-2026-01-28T09:18:47.6077915Z ##[group]Runner Image
-2026-01-28T09:18:47.6078842Z Image: ubuntu-24.04
-2026-01-28T09:18:47.6079701Z Version: 20260119.4.1
-2026-01-28T09:18:47.6081565Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260119.4/images/ubuntu/Ubuntu2404-Readme.md
-2026-01-28T09:18:47.6084601Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260119.4
-2026-01-28T09:18:47.6086183Z ##[endgroup]
-2026-01-28T09:18:47.6091462Z ##[group]GITHUB_TOKEN Permissions
-2026-01-28T09:18:47.6094460Z Actions: write
-2026-01-28T09:18:47.6095328Z ArtifactMetadata: write
-2026-01-28T09:18:47.6096376Z Attestations: write
-2026-01-28T09:18:47.6097225Z Checks: write
-2026-01-28T09:18:47.6098046Z Contents: write
-2026-01-28T09:18:47.6098990Z Deployments: write
-2026-01-28T09:18:47.6099856Z Discussions: write
-2026-01-28T09:18:47.6100674Z Issues: write
-2026-01-28T09:18:47.6101546Z Metadata: read
-2026-01-28T09:18:47.6102340Z Models: read
-2026-01-28T09:18:47.6103293Z Packages: write
-2026-01-28T09:18:47.6104154Z Pages: write
-2026-01-28T09:18:47.6105038Z PullRequests: write
-2026-01-28T09:18:47.6105897Z RepositoryProjects: write
-2026-01-28T09:18:47.6106963Z SecurityEvents: write
-2026-01-28T09:18:47.6107834Z Statuses: write
-2026-01-28T09:18:47.6108645Z ##[endgroup]
-2026-01-28T09:18:47.6111679Z Secret source: Actions
-2026-01-28T09:18:47.6112988Z Prepare workflow directory
-2026-01-28T09:18:47.6581807Z Prepare all required actions
-2026-01-28T09:18:47.6639195Z Getting action download info
-2026-01-28T09:18:47.9591876Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
-2026-01-28T09:18:48.0614815Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
-2026-01-28T09:18:48.1480883Z Download action repository 'coactions/setup-xvfb@v1' (SHA:b6b4fcfb9f5a895edadc3bc76318fae0ac17c8b3)
-2026-01-28T09:18:48.4420753Z Complete job name: integration-test
+﻿2026-01-28T10:25:04.0591649Z Current runner version: '2.331.0'
+2026-01-28T10:25:04.0618551Z ##[group]Runner Image Provisioner
+2026-01-28T10:25:04.0619801Z Hosted Compute Agent
+2026-01-28T10:25:04.0620637Z Version: 20260115.477
+2026-01-28T10:25:04.0621488Z Commit: 4b342d620503cbe250a3154040964899ea7c9b00
+2026-01-28T10:25:04.0622785Z Build Date: 2026-01-15T22:32:41Z
+2026-01-28T10:25:04.0623727Z Worker ID: {45c37bf8-938d-42ee-aa14-324713c49868}
+2026-01-28T10:25:04.0624769Z Azure Region: eastus2
+2026-01-28T10:25:04.0625885Z ##[endgroup]
+2026-01-28T10:25:04.0628208Z ##[group]Operating System
+2026-01-28T10:25:04.0629170Z Ubuntu
+2026-01-28T10:25:04.0630057Z 24.04.3
+2026-01-28T10:25:04.0630898Z LTS
+2026-01-28T10:25:04.0631661Z ##[endgroup]
+2026-01-28T10:25:04.0632567Z ##[group]Runner Image
+2026-01-28T10:25:04.0633509Z Image: ubuntu-24.04
+2026-01-28T10:25:04.0634389Z Version: 20260119.4.1
+2026-01-28T10:25:04.0636245Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260119.4/images/ubuntu/Ubuntu2404-Readme.md
+2026-01-28T10:25:04.0639089Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260119.4
+2026-01-28T10:25:04.0640578Z ##[endgroup]
+2026-01-28T10:25:04.0644908Z ##[group]GITHUB_TOKEN Permissions
+2026-01-28T10:25:04.0648440Z Actions: write
+2026-01-28T10:25:04.0649479Z ArtifactMetadata: write
+2026-01-28T10:25:04.0650320Z Attestations: write
+2026-01-28T10:25:04.0651794Z Checks: write
+2026-01-28T10:25:04.0652646Z Contents: write
+2026-01-28T10:25:04.0653493Z Deployments: write
+2026-01-28T10:25:04.0654601Z Discussions: write
+2026-01-28T10:25:04.0655671Z Issues: write
+2026-01-28T10:25:04.0656576Z Metadata: read
+2026-01-28T10:25:04.0657317Z Models: read
+2026-01-28T10:25:04.0658284Z Packages: write
+2026-01-28T10:25:04.0659092Z Pages: write
+2026-01-28T10:25:04.0660020Z PullRequests: write
+2026-01-28T10:25:04.0660991Z RepositoryProjects: write
+2026-01-28T10:25:04.0661822Z SecurityEvents: write
+2026-01-28T10:25:04.0662662Z Statuses: write
+2026-01-28T10:25:04.0663600Z ##[endgroup]
+2026-01-28T10:25:04.0667552Z Secret source: Actions
+2026-01-28T10:25:04.0668588Z Prepare workflow directory
+2026-01-28T10:25:04.1130546Z Prepare all required actions
+2026-01-28T10:25:04.1186607Z Getting action download info
+2026-01-28T10:25:04.5456888Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+2026-01-28T10:25:04.6632787Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2026-01-28T10:25:04.7432002Z Download action repository 'astral-sh/setup-uv@v4' (SHA:38f3f104447c67c051c4a08e39b64a148898af3a)
+2026-01-28T10:25:05.0018886Z Download action repository 'docker/setup-buildx-action@v3' (SHA:8d2750c68a42422c14e847fe6c8ac0403b4cbd6f)
+2026-01-28T10:25:05.2944564Z Download action repository 'coactions/setup-xvfb@v1' (SHA:b6b4fcfb9f5a895edadc3bc76318fae0ac17c8b3)
+2026-01-28T10:25:05.6149516Z Complete job name: integration-test

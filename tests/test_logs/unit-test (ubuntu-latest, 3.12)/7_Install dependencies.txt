@@ -1,0 +1,386 @@
+﻿2026-01-28T10:23:01.4195148Z ##[group]Run uv sync
+2026-01-28T10:23:01.4195382Z [36;1muv sync[0m
+2026-01-28T10:23:01.4227786Z shell: /usr/bin/bash -e {0}
+2026-01-28T10:23:01.4228020Z env:
+2026-01-28T10:23:01.4228257Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T10:23:01.4228662Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib/pkgconfig
+2026-01-28T10:23:01.4229068Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T10:23:01.4229440Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T10:23:01.4229802Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T10:23:01.4230169Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib
+2026-01-28T10:23:01.4230516Z   UV_CACHE_DIR: /home/runner/work/_temp/setup-uv-cache
+2026-01-28T10:23:01.4230996Z ##[endgroup]
+2026-01-28T10:23:01.5585082Z Using CPython 3.12.12 interpreter at: /opt/hostedtoolcache/Python/3.12.12/x64/bin/python3
+2026-01-28T10:23:01.5585683Z Creating virtual environment at: .venv
+2026-01-28T10:23:01.5681048Z Resolved 224 packages in 0.92ms
+2026-01-28T10:23:01.5842921Z    Updating https://github.com/biocentral/biotrainer.git (feature/bioengineer-base)
+2026-01-28T10:23:01.5846291Z    Updating https://github.com/biocentral/TMbed.git (onnx-deployment)
+2026-01-28T10:23:01.5869667Z    Updating https://github.com/SebieF/hvi_toolkit.git (maintenance/update-biotrainer)
+2026-01-28T10:23:01.5871451Z    Updating https://github.com/tsenoner/protspace.git (v3.1.1)
+2026-01-28T10:23:01.5873700Z    Updating https://github.com/biocentral/VespaG.git (onnx-deployment)
+2026-01-28T10:23:01.5874994Z    Building biocentral-server @ file:///home/runner/work/biocentral_server/biocentral_server
+2026-01-28T10:23:01.6018560Z Downloading nvidia-cuda-nvrtc-cu12 (84.0MiB)
+2026-01-28T10:23:01.6030705Z Downloading nvidia-curand-cu12 (60.7MiB)
+2026-01-28T10:23:01.6031986Z Downloading pyarrow (45.4MiB)
+2026-01-28T10:23:01.6032707Z Downloading nvidia-nvjitlink-cu12 (37.4MiB)
+2026-01-28T10:23:01.6039035Z Downloading scipy (33.4MiB)
+2026-01-28T10:23:01.6039674Z Downloading scikit-learn (8.5MiB)
+2026-01-28T10:23:01.6040239Z Downloading sympy (6.0MiB)
+2026-01-28T10:23:01.6042080Z Downloading virtualenv (5.7MiB)
+2026-01-28T10:23:01.6043987Z Downloading grpcio (5.6MiB)
+2026-01-28T10:23:01.6044451Z Downloading zstandard (5.3MiB)
+2026-01-28T10:23:01.6046002Z Downloading tensorboard (5.3MiB)
+2026-01-28T10:23:01.6047997Z Downloading psycopg-binary (4.9MiB)
+2026-01-28T10:23:01.6049996Z Downloading hf-xet (3.2MiB)
+2026-01-28T10:23:01.6052399Z Downloading tokenizers (3.1MiB)
+2026-01-28T10:23:01.6054991Z Downloading pydantic-core (2.0MiB)
+2026-01-28T10:23:01.6187855Z Downloading ruff (13.2MiB)
+2026-01-28T10:23:01.6188697Z Downloading fonttools (4.7MiB)
+2026-01-28T10:23:01.6189808Z Downloading ncbi-refseq-accession-db (2.2MiB)
+2026-01-28T10:23:01.6193136Z Downloading ncbi-taxon-db (85.4MiB)
+2026-01-28T10:23:01.6193896Z Downloading pandas (11.8MiB)
+2026-01-28T10:23:01.6195003Z Downloading onnxruntime-gpu (286.6MiB)
+2026-01-28T10:23:01.6196917Z Downloading ncbi-refseq-accession-offsets (110.8MiB)
+2026-01-28T10:23:01.6201043Z Downloading nvidia-cusolver-cu12 (255.1MiB)
+2026-01-28T10:23:01.6201570Z Downloading onnx (17.4MiB)
+2026-01-28T10:23:01.6212737Z Downloading nvidia-nvshmem-cu12 (132.7MiB)
+2026-01-28T10:23:01.6213721Z Downloading matplotlib (7.9MiB)
+2026-01-28T10:23:01.6218614Z Downloading nvidia-cusparse-cu12 (274.9MiB)
+2026-01-28T10:23:01.6223292Z Downloading nvidia-cudnn-cu12 (674.0MiB)
+2026-01-28T10:23:01.6228011Z Downloading nvidia-nccl-cu12 (307.4MiB)
+2026-01-28T10:23:01.6231109Z Downloading nvidia-cusparselt-cu12 (273.9MiB)
+2026-01-28T10:23:01.6240054Z Downloading nvidia-cublas-cu12 (566.8MiB)
+2026-01-28T10:23:01.6244943Z Downloading torch (873.3MiB)
+2026-01-28T10:23:01.6247471Z Downloading cuda-bindings (11.6MiB)
+2026-01-28T10:23:01.6250347Z Downloading aaanalysis (7.8MiB)
+2026-01-28T10:23:01.6254553Z Downloading tensorboard-data-server (6.3MiB)
+2026-01-28T10:23:01.6257479Z Downloading nvidia-cuda-cupti-cu12 (9.8MiB)
+2026-01-28T10:23:01.6261424Z Downloading libcst (2.2MiB)
+2026-01-28T10:23:01.6265167Z Downloading pillow (6.3MiB)
+2026-01-28T10:23:01.6268890Z Downloading logomaker (12.6MiB)
+2026-01-28T10:23:01.6272999Z Downloading ml-dtypes (4.8MiB)
+2026-01-28T10:23:01.6277005Z Downloading blosc2 (4.2MiB)
+2026-01-28T10:23:01.6280913Z Downloading ncbi-refseq-accession-lengths (35.1MiB)
+2026-01-28T10:23:01.6284461Z Downloading nvidia-cufft-cu12 (184.2MiB)
+2026-01-28T10:23:01.6288402Z Downloading h5py (4.9MiB)
+2026-01-28T10:23:01.6292699Z Downloading numba (3.6MiB)
+2026-01-28T10:23:01.6297721Z Downloading biopython (3.1MiB)
+2026-01-28T10:23:01.6302075Z Downloading llvmlite (53.7MiB)
+2026-01-28T10:23:01.6306014Z Downloading numpy (15.3MiB)
+2026-01-28T10:23:01.6310236Z Downloading transformers (11.4MiB)
+2026-01-28T10:23:01.6314526Z Downloading triton (179.5MiB)
+2026-01-28T10:23:02.9200187Z     Updated https://github.com/biocentral/biotrainer.git (8b0c840bf2200718e967a37ceecab90d6e558289)
+2026-01-28T10:23:02.9307643Z    Building biotrainer @ git+https://github.com/biocentral/biotrainer.git@8b0c840bf2200718e967a37ceecab90d6e558289
+2026-01-28T10:23:03.3809276Z     Updated https://github.com/biocentral/VespaG.git (e1bc34efe55eb53660672f8f2adde8738ae3a38e)
+2026-01-28T10:23:03.3912676Z    Building vespag @ git+https://github.com/biocentral/VespaG.git@e1bc34efe55eb53660672f8f2adde8738ae3a38e
+2026-01-28T10:23:03.4195514Z  Downloaded pydantic-core
+2026-01-28T10:23:03.4482725Z Downloading networkx (2.0MiB)
+2026-01-28T10:23:03.4804739Z     Updated https://github.com/biocentral/TMbed.git (7008e95d7f468246ce385b37efd2f4db6c5c068d)
+2026-01-28T10:23:03.4827163Z    Building tmbed @ git+https://github.com/biocentral/TMbed.git@7008e95d7f468246ce385b37efd2f4db6c5c068d
+2026-01-28T10:23:03.5938148Z  Downloaded ncbi-refseq-accession-db
+2026-01-28T10:23:03.6115018Z Downloading pip (1.7MiB)
+2026-01-28T10:23:03.9858981Z  Downloaded libcst
+2026-01-28T10:23:03.9979227Z Downloading python-rapidjson (1.7MiB)
+2026-01-28T10:23:04.2014128Z  Downloaded tokenizers
+2026-01-28T10:23:04.2169021Z Downloading aiohttp (1.7MiB)
+2026-01-28T10:23:04.3009713Z  Downloaded hf-xet
+2026-01-28T10:23:04.3181932Z Downloading jedi (1.5MiB)
+2026-01-28T10:23:04.6975468Z  Downloaded biopython
+2026-01-28T10:23:04.7187918Z Downloading kiwisolver (1.4MiB)
+2026-01-28T10:23:04.9713050Z  Downloaded numba
+2026-01-28T10:23:04.9929936Z Downloading sentencepiece (1.3MiB)
+2026-01-28T10:23:04.9954093Z  Downloaded networkx
+2026-01-28T10:23:04.9972792Z  Downloaded pip
+2026-01-28T10:23:05.0088349Z Downloading marisa-trie (1.2MiB)
+2026-01-28T10:23:05.0263072Z Downloading pygments (1.2MiB)
+2026-01-28T10:23:05.0986106Z  Downloaded blosc2
+2026-01-28T10:23:05.1143685Z Downloading nvidia-cufile-cu12 (1.1MiB)
+2026-01-28T10:23:05.3447329Z  Downloaded python-rapidjson
+2026-01-28T10:23:05.3717857Z Downloading setuptools (1.0MiB)
+2026-01-28T10:23:05.3997995Z  Downloaded fonttools
+2026-01-28T10:23:05.4965929Z  Downloaded ml-dtypes
+2026-01-28T10:23:05.5344141Z  Downloaded psycopg-binary
+2026-01-28T10:23:05.6267196Z  Downloaded aiohttp
+2026-01-28T10:23:05.7227755Z  Downloaded h5py
+2026-01-28T10:23:05.8890637Z  Downloaded zstandard
+2026-01-28T10:23:05.9083746Z       Built tmbed @ git+https://github.com/biocentral/TMbed.git@7008e95d7f468246ce385b37efd2f4db6c5c068d
+2026-01-28T10:23:05.9119522Z  Downloaded kiwisolver
+2026-01-28T10:23:05.9627341Z  Downloaded tensorboard
+2026-01-28T10:23:06.0829060Z  Downloaded marisa-trie
+2026-01-28T10:23:06.1012279Z  Downloaded pygments
+2026-01-28T10:23:06.1016944Z  Downloaded nvidia-cufile-cu12
+2026-01-28T10:23:06.1209788Z  Downloaded sentencepiece
+2026-01-28T10:23:06.1503449Z  Downloaded grpcio
+2026-01-28T10:23:06.3387072Z  Downloaded virtualenv
+2026-01-28T10:23:06.5863745Z  Downloaded setuptools
+2026-01-28T10:23:06.7336412Z  Downloaded tensorboard-data-server
+2026-01-28T10:23:06.7580909Z  Downloaded pillow
+2026-01-28T10:23:06.9168390Z  Downloaded sympy
+2026-01-28T10:23:08.0987001Z  Downloaded matplotlib
+2026-01-28T10:23:08.2748564Z  Downloaded aaanalysis
+2026-01-28T10:23:08.8452124Z  Downloaded scikit-learn
+2026-01-28T10:23:09.1492348Z    Building annoy==1.17.3
+2026-01-28T10:23:09.1494258Z    Building pymmseqs==1.0.5
+2026-01-28T10:23:09.4090306Z       Built biotrainer @ git+https://github.com/biocentral/biotrainer.git@8b0c840bf2200718e967a37ceecab90d6e558289
+2026-01-28T10:23:09.6185709Z       Built vespag @ git+https://github.com/biocentral/VespaG.git@e1bc34efe55eb53660672f8f2adde8738ae3a38e
+2026-01-28T10:23:09.7542107Z  Downloaded nvidia-cuda-cupti-cu12
+2026-01-28T10:23:09.9092148Z       Built biocentral-server @ file:///home/runner/work/biocentral_server/biocentral_server
+2026-01-28T10:23:10.7072666Z  Downloaded jedi
+2026-01-28T10:23:10.8152995Z  Downloaded transformers
+2026-01-28T10:23:11.0814799Z  Downloaded cuda-bindings
+2026-01-28T10:23:11.3779736Z  Downloaded logomaker
+2026-01-28T10:23:11.7770290Z  Downloaded ruff
+2026-01-28T10:23:12.6509953Z  Downloaded numpy
+2026-01-28T10:23:12.7669755Z  Downloaded pandas
+2026-01-28T10:23:13.0364506Z     Updated https://github.com/tsenoner/protspace.git (055f8228eaae75711861dbe244c20bd334ed9dcb)
+2026-01-28T10:23:13.0442607Z    Building protspace @ git+https://github.com/tsenoner/protspace.git@055f8228eaae75711861dbe244c20bd334ed9dcb
+2026-01-28T10:23:13.3277474Z       Built pymmseqs==1.0.5
+2026-01-28T10:23:13.6946294Z       Built protspace @ git+https://github.com/tsenoner/protspace.git@055f8228eaae75711861dbe244c20bd334ed9dcb
+2026-01-28T10:23:17.0992260Z  Downloaded scipy
+2026-01-28T10:23:17.1154746Z  Downloaded ncbi-refseq-accession-lengths
+2026-01-28T10:23:17.5281072Z  Downloaded nvidia-nvjitlink-cu12
+2026-01-28T10:23:19.1797070Z  Downloaded pyarrow
+2026-01-28T10:23:20.0412056Z  Downloaded llvmlite
+2026-01-28T10:23:20.8321861Z       Built annoy==1.17.3
+2026-01-28T10:23:21.0686114Z  Downloaded nvidia-curand-cu12
+2026-01-28T10:23:21.2871910Z     Updated https://github.com/SebieF/hvi_toolkit.git (330be569cbdaec5be30bb7368940cab02570be61)
+2026-01-28T10:23:21.2895965Z    Building hvi-toolkit @ git+https://github.com/SebieF/hvi_toolkit.git@330be569cbdaec5be30bb7368940cab02570be61
+2026-01-28T10:23:21.8147075Z       Built hvi-toolkit @ git+https://github.com/SebieF/hvi_toolkit.git@330be569cbdaec5be30bb7368940cab02570be61
+2026-01-28T10:23:23.6591601Z  Downloaded nvidia-cuda-nvrtc-cu12
+2026-01-28T10:23:23.7203275Z  Downloaded ncbi-taxon-db
+2026-01-28T10:23:26.0245940Z  Downloaded ncbi-refseq-accession-offsets
+2026-01-28T10:23:27.9449332Z  Downloaded nvidia-nvshmem-cu12
+2026-01-28T10:23:32.0027021Z  Downloaded triton
+2026-01-28T10:23:32.0031467Z  Downloaded nvidia-cufft-cu12
+2026-01-28T10:23:33.1126720Z  Downloaded onnx
+2026-01-28T10:23:35.7897573Z  Downloaded nvidia-cusolver-cu12
+2026-01-28T10:23:36.6822270Z  Downloaded nvidia-cusparse-cu12
+2026-01-28T10:23:36.8985646Z  Downloaded nvidia-cusparselt-cu12
+2026-01-28T10:23:37.5386542Z  Downloaded nvidia-nccl-cu12
+2026-01-28T10:23:38.6570036Z  Downloaded onnxruntime-gpu
+2026-01-28T10:23:40.5185993Z  Downloaded nvidia-cublas-cu12
+2026-01-28T10:23:41.2549975Z  Downloaded nvidia-cudnn-cu12
+2026-01-28T10:23:48.0682335Z  Downloaded torch
+2026-01-28T10:23:48.0684816Z Prepared 221 packages in 46.49s
+2026-01-28T10:23:48.7022401Z Installed 221 packages in 633ms
+2026-01-28T10:23:48.7026236Z  + aaanalysis==1.0.2
+2026-01-28T10:23:48.7026601Z  + absl-py==2.3.1
+2026-01-28T10:23:48.7026941Z  + accelerate==1.12.0
+2026-01-28T10:23:48.7027292Z  + aiohappyeyeballs==2.6.1
+2026-01-28T10:23:48.7027665Z  + aiohttp==3.13.3
+2026-01-28T10:23:48.7027974Z  + aiosignal==1.4.0
+2026-01-28T10:23:48.7028295Z  + annotated-doc==0.0.4
+2026-01-28T10:23:48.7028676Z  + annotated-types==0.7.0
+2026-01-28T10:23:48.7029042Z  + annoy==1.17.3
+2026-01-28T10:23:48.7029379Z  + anyio==4.12.1
+2026-01-28T10:23:48.7029685Z  + appdirs==1.4.4
+2026-01-28T10:23:48.7030001Z  + asttokens==3.0.1
+2026-01-28T10:23:48.7030318Z  + attrs==25.4.0
+2026-01-28T10:23:48.7031079Z  + biocentral-server==1.1.0 (from file:///home/runner/work/biocentral_server/biocentral_server)
+2026-01-28T10:23:48.7031852Z  + biopython==1.86
+2026-01-28T10:23:48.7032642Z  + biotrainer==1.3.0 (from git+https://github.com/biocentral/biotrainer.git@8b0c840bf2200718e967a37ceecab90d6e558289)
+2026-01-28T10:23:48.7033835Z  + blosc2==2.7.1
+2026-01-28T10:23:48.7034147Z  + blosum==2.2.0
+2026-01-28T10:23:48.7034461Z  + boolean-py==5.0
+2026-01-28T10:23:48.7034782Z  + cachecontrol==0.14.4
+2026-01-28T10:23:48.7035124Z  + certifi==2026.1.4
+2026-01-28T10:23:48.7035433Z  + cfgv==3.5.0
+2026-01-28T10:23:48.7035742Z  + charset-normalizer==3.4.4
+2026-01-28T10:23:48.7036136Z  + circuitbreaker==2.1.3
+2026-01-28T10:23:48.7036484Z  + click==8.3.1
+2026-01-28T10:23:48.7036795Z  + coloredlogs==15.0.1
+2026-01-28T10:23:48.7037121Z  + contourpy==1.3.3
+2026-01-28T10:23:48.7037442Z  + coverage==7.13.1
+2026-01-28T10:23:48.7037742Z  + croniter==6.0.0
+2026-01-28T10:23:48.7038063Z  + cuda-bindings==12.9.4
+2026-01-28T10:23:48.7038426Z  + cuda-pathfinder==1.3.3
+2026-01-28T10:23:48.7038775Z  + cycler==0.12.1
+2026-01-28T10:23:48.7039113Z  + cyclonedx-python-lib==11.6.0
+2026-01-28T10:23:48.7039494Z  + cyclopts==4.5.0
+2026-01-28T10:23:48.7039801Z  + datasets==4.5.0
+2026-01-28T10:23:48.7040111Z  + decorator==5.2.1
+2026-01-28T10:23:48.7040427Z  + defusedxml==0.7.1
+2026-01-28T10:23:48.7040850Z  + dill==0.4.0
+2026-01-28T10:23:48.7041149Z  + distlib==0.4.0
+2026-01-28T10:23:48.7041472Z  + docstring-parser==0.17.0
+2026-01-28T10:23:48.7041835Z  + docutils==0.22.4
+2026-01-28T10:23:48.7042154Z  + et-xmlfile==2.0.0
+2026-01-28T10:23:48.7042460Z  + executing==2.2.1
+2026-01-28T10:23:48.7042773Z  + fastapi==0.128.0
+2026-01-28T10:23:48.7043088Z  + fastapi-limiter==0.1.6
+2026-01-28T10:23:48.7043430Z  + filelock==3.20.3
+2026-01-28T10:23:48.7043735Z  + flatbuffers==25.12.19
+2026-01-28T10:23:48.7044342Z  + fonttools==4.61.1
+2026-01-28T10:23:48.7044656Z  + frozenlist==1.8.0
+2026-01-28T10:23:48.7044975Z  + fsspec==2025.10.0
+2026-01-28T10:23:48.7045277Z  + gpytorch==1.15.1
+2026-01-28T10:23:48.7045582Z  + grpcio==1.67.1
+2026-01-28T10:23:48.7045873Z  + h11==0.16.0
+2026-01-28T10:23:48.7046155Z  + h5py==3.15.1
+2026-01-28T10:23:48.7046444Z  + hf-xet==1.2.0
+2026-01-28T10:23:48.7046746Z  + httpcore==1.0.9
+2026-01-28T10:23:48.7047058Z  + httpx==0.28.1
+2026-01-28T10:23:48.7047364Z  + huggingface-hub==0.36.0
+2026-01-28T10:23:48.7047730Z  + humanfriendly==10.0
+2026-01-28T10:23:48.7048527Z  + hvi-toolkit==0.2.1 (from git+https://github.com/SebieF/hvi_toolkit.git@330be569cbdaec5be30bb7368940cab02570be61)
+2026-01-28T10:23:48.7049409Z  + hypothesis==6.150.2
+2026-01-28T10:23:48.7049751Z  + identify==2.6.16
+2026-01-28T10:23:48.7050047Z  + idna==3.11
+2026-01-28T10:23:48.7050336Z  + iniconfig==2.3.0
+2026-01-28T10:23:48.7054496Z  + ipython==8.38.0
+2026-01-28T10:23:48.7054944Z  + jaxtyping==0.3.5
+2026-01-28T10:23:48.7055295Z  + jedi==0.19.2
+2026-01-28T10:23:48.7055594Z  + jinja2==3.1.6
+2026-01-28T10:23:48.7055902Z  + joblib==1.5.3
+2026-01-28T10:23:48.7056205Z  + kiwisolver==1.4.9
+2026-01-28T10:23:48.7056532Z  + libcst==1.8.6
+2026-01-28T10:23:48.7056861Z  + license-expression==30.4.4
+2026-01-28T10:23:48.7057268Z  + lightning-utilities==0.15.2
+2026-01-28T10:23:48.7057653Z  + linear-operator==0.6
+2026-01-28T10:23:48.7058002Z  + linkify-it-py==2.0.3
+2026-01-28T10:23:48.7058349Z  + llvmlite==0.46.0
+2026-01-28T10:23:48.7058660Z  + logomaker==0.8.7
+2026-01-28T10:23:48.7058975Z  + marisa-trie==1.3.1
+2026-01-28T10:23:48.7059294Z  + markdown==3.10.1
+2026-01-28T10:23:48.7059705Z  + markdown-it-py==4.0.0
+2026-01-28T10:23:48.7060035Z  + markupsafe==3.0.3
+2026-01-28T10:23:48.7060369Z  + matplotlib==3.9.0
+2026-01-28T10:23:48.7060891Z  + matplotlib-inline==0.2.1
+2026-01-28T10:23:48.7061282Z  + mdit-py-plugins==0.5.0
+2026-01-28T10:23:48.7061633Z  + mdurl==0.1.2
+2026-01-28T10:23:48.7061929Z  + ml-dtypes==0.5.4
+2026-01-28T10:23:48.7062278Z  + more-itertools==10.8.0
+2026-01-28T10:23:48.7062622Z  + mpmath==1.3.0
+2026-01-28T10:23:48.7062929Z  + msgpack==1.1.2
+2026-01-28T10:23:48.7063244Z  + multidict==6.7.0
+2026-01-28T10:23:48.7063573Z  + multiprocess==0.70.18
+2026-01-28T10:23:48.7063918Z  + mutmut==3.4.0
+2026-01-28T10:23:48.7064257Z  + ncbi-refseq-accession-db==2024.9.7
+2026-01-28T10:23:48.7064773Z  + ncbi-refseq-accession-lengths==2024.9.7
+2026-01-28T10:23:48.7065538Z  + ncbi-refseq-accession-offsets==2024.9.7
+2026-01-28T10:23:48.7066013Z  + ncbi-taxon-db==2024.9.7
+2026-01-28T10:23:48.7066374Z  + ndindex==1.10.1
+2026-01-28T10:23:48.7066690Z  + networkx==3.6.1
+2026-01-28T10:23:48.7066990Z  + nodeenv==1.10.0
+2026-01-28T10:23:48.7067286Z  + numba==0.63.1
+2026-01-28T10:23:48.7067596Z  + numexpr==2.14.1
+2026-01-28T10:23:48.7067906Z  + numpy==2.1.3
+2026-01-28T10:23:48.7068259Z  + nvidia-cublas-cu12==12.8.4.1
+2026-01-28T10:23:48.7068690Z  + nvidia-cuda-cupti-cu12==12.8.90
+2026-01-28T10:23:48.7069119Z  + nvidia-cuda-nvrtc-cu12==12.8.93
+2026-01-28T10:23:48.7069569Z  + nvidia-cuda-runtime-cu12==12.8.90
+2026-01-28T10:23:48.7070012Z  + nvidia-cudnn-cu12==9.10.2.21
+2026-01-28T10:23:48.7070401Z  + nvidia-cufft-cu12==11.3.3.83
+2026-01-28T10:23:48.7070936Z  + nvidia-cufile-cu12==1.13.1.3
+2026-01-28T10:23:48.7071345Z  + nvidia-curand-cu12==10.3.9.90
+2026-01-28T10:23:48.7071764Z  + nvidia-cusolver-cu12==11.7.3.90
+2026-01-28T10:23:48.7072183Z  + nvidia-cusparse-cu12==12.5.8.93
+2026-01-28T10:23:48.7072616Z  + nvidia-cusparselt-cu12==0.7.1
+2026-01-28T10:23:48.7073052Z  + nvidia-nccl-cu12==2.27.5
+2026-01-28T10:23:48.7073446Z  + nvidia-nvjitlink-cu12==12.8.93
+2026-01-28T10:23:48.7073881Z  + nvidia-nvshmem-cu12==3.4.5
+2026-01-28T10:23:48.7074277Z  + nvidia-nvtx-cu12==12.8.90
+2026-01-28T10:23:48.7074651Z  + onnx==1.19.1
+2026-01-28T10:23:48.7074943Z  + onnx-ir==0.1.15
+2026-01-28T10:23:48.7075271Z  + onnxruntime-gpu==1.23.2
+2026-01-28T10:23:48.7075636Z  + onnxscript==0.5.7
+2026-01-28T10:23:48.7075972Z  + openpyxl==3.1.5
+2026-01-28T10:23:48.7076313Z  + packageurl-python==0.17.6
+2026-01-28T10:23:48.7076904Z  + packaging==24.2
+2026-01-28T10:23:48.7077217Z  + pacmap==0.8.0
+2026-01-28T10:23:48.7077542Z  + pandas==2.3.3
+2026-01-28T10:23:48.7077894Z  + parso==0.8.5
+2026-01-28T10:23:48.7078233Z  + patsy==1.0.2
+2026-01-28T10:23:48.7078535Z  + peft==0.18.1
+2026-01-28T10:23:48.7078837Z  + pexpect==4.9.0
+2026-01-28T10:23:48.7079146Z  + pillow==11.3.0
+2026-01-28T10:23:48.7079445Z  + pip==25.3
+2026-01-28T10:23:48.7079741Z  + pip-api==0.0.34
+2026-01-28T10:23:48.7080041Z  + pip-audit==2.10.0
+2026-01-28T10:23:48.7080400Z  + pip-requirements-parser==32.0.1
+2026-01-28T10:23:48.7080954Z  + platformdirs==4.5.1
+2026-01-28T10:23:48.7081291Z  + pluggy==1.6.0
+2026-01-28T10:23:48.7081612Z  + pre-commit==4.5.1
+2026-01-28T10:23:48.7081963Z  + prometheus-client==0.24.1
+2026-01-28T10:23:48.7082418Z  + prometheus-fastapi-instrumentator==7.1.0
+2026-01-28T10:23:48.7082902Z  + prompt-toolkit==3.0.52
+2026-01-28T10:23:48.7083276Z  + propcache==0.4.1
+2026-01-28T10:23:48.7083591Z  + protobuf==5.29.5
+2026-01-28T10:23:48.7084400Z  + protspace==3.1.1 (from git+https://github.com/tsenoner/protspace.git@055f8228eaae75711861dbe244c20bd334ed9dcb)
+2026-01-28T10:23:48.7085296Z  + psutil==7.2.1
+2026-01-28T10:23:48.7085610Z  + psycopg==3.3.2
+2026-01-28T10:23:48.7085944Z  + psycopg-binary==3.3.2
+2026-01-28T10:23:48.7086308Z  + ptyprocess==0.7.0
+2026-01-28T10:23:48.7086649Z  + pure-eval==0.2.3
+2026-01-28T10:23:48.7086962Z  + py-cpuinfo==9.0.0
+2026-01-28T10:23:48.7087311Z  + py-serializable==2.1.0
+2026-01-28T10:23:48.7087680Z  + pyarrow==23.0.0
+2026-01-28T10:23:48.7087989Z  + pydantic==2.12.5
+2026-01-28T10:23:48.7088322Z  + pydantic-core==2.41.5
+2026-01-28T10:23:48.7088685Z  + pygments==2.19.2
+2026-01-28T10:23:48.7089004Z  + pymmseqs==1.0.5
+2026-01-28T10:23:48.7089344Z  + pynndescent==0.6.0
+2026-01-28T10:23:48.7089681Z  + pyparsing==3.3.2
+2026-01-28T10:23:48.7089977Z  + pytest==8.3.1
+2026-01-28T10:23:48.7090307Z  + pytest-asyncio==1.3.0
+2026-01-28T10:23:48.7090672Z  + pytest-benchmark==5.2.3
+2026-01-28T10:23:48.7091177Z  + pytest-cov==7.0.0
+2026-01-28T10:23:48.7091523Z  + python-dateutil==2.9.0.post0
+2026-01-28T10:23:48.7091954Z  + python-dotenv==1.2.1
+2026-01-28T10:23:48.7092324Z  + python-rapidjson==1.23
+2026-01-28T10:23:48.7092692Z  + pytz==2024.2
+2026-01-28T10:23:48.7092998Z  + pyyaml==6.0.3
+2026-01-28T10:23:48.7093299Z  + redis==7.1.0
+2026-01-28T10:23:48.7093604Z  + regex==2026.1.15
+2026-01-28T10:23:48.7093910Z  + requests==2.32.5
+2026-01-28T10:23:48.7094457Z  + rich==14.2.0
+2026-01-28T10:23:48.7094756Z  + rich-rst==1.3.2
+2026-01-28T10:23:48.7095067Z  + rq==2.6.1
+2026-01-28T10:23:48.7095370Z  + ruamel-yaml==0.17.40
+2026-01-28T10:23:48.7095751Z  + ruamel-yaml-clib==0.2.15
+2026-01-28T10:23:48.7096106Z  + ruff==0.14.13
+2026-01-28T10:23:48.7096425Z  + safetensors==0.7.0
+2026-01-28T10:23:48.7096766Z  + scikit-learn==1.8.0
+2026-01-28T10:23:48.7097111Z  + scipy==1.17.0
+2026-01-28T10:23:48.7097416Z  + seaborn==0.13.2
+2026-01-28T10:23:48.7097739Z  + sentencepiece==0.2.1
+2026-01-28T10:23:48.7098093Z  + setproctitle==1.3.7
+2026-01-28T10:23:48.7098435Z  + setuptools==80.10.1
+2026-01-28T10:23:48.7098745Z  + six==1.17.0
+2026-01-28T10:23:48.7099060Z  + sortedcontainers==2.4.0
+2026-01-28T10:23:48.7099426Z  + stack-data==0.6.3
+2026-01-28T10:23:48.7099755Z  + starlette==0.50.0
+2026-01-28T10:23:48.7100079Z  + sympy==1.14.0
+2026-01-28T10:23:48.7100385Z  + taxoniq==1.0.3
+2026-01-28T10:23:48.7100697Z  + taxopy==0.14.0
+2026-01-28T10:23:48.7101145Z  + tensorboard==2.20.0
+2026-01-28T10:23:48.7119933Z  + tensorboard-data-server==0.7.2
+2026-01-28T10:23:48.7120239Z  + textual==7.3.0
+2026-01-28T10:23:48.7120437Z  + threadpoolctl==3.6.0
+2026-01-28T10:23:48.7121108Z  + tmbed==1.0.1 (from git+https://github.com/biocentral/TMbed.git@7008e95d7f468246ce385b37efd2f4db6c5c068d)
+2026-01-28T10:23:48.7121877Z  + tokenizers==0.22.2
+2026-01-28T10:23:48.7122208Z  + tomli==2.4.0
+2026-01-28T10:23:48.7122503Z  + tomli-w==1.2.0
+2026-01-28T10:23:48.7122805Z  + torch==2.10.0
+2026-01-28T10:23:48.7123120Z  + torchmetrics==1.8.2
+2026-01-28T10:23:48.7123425Z  + tqdm==4.67.1
+2026-01-28T10:23:48.7123839Z  + traitlets==5.14.3
+2026-01-28T10:23:48.7124028Z  + transformers==4.57.6
+2026-01-28T10:23:48.7124207Z  + triton==3.6.0
+2026-01-28T10:23:48.7124382Z  + tritonclient==2.64.0
+2026-01-28T10:23:48.7124579Z  + typing-extensions==4.15.0
+2026-01-28T10:23:48.7124798Z  + typing-inspection==0.4.2
+2026-01-28T10:23:48.7124990Z  + tzdata==2025.3
+2026-01-28T10:23:48.7125164Z  + uc-micro-py==1.0.3
+2026-01-28T10:23:48.7125356Z  + umap-learn==0.5.11
+2026-01-28T10:23:48.7125534Z  + unipressed==1.4.0
+2026-01-28T10:23:48.7125702Z  + urllib3==2.6.3
+2026-01-28T10:23:48.7125866Z  + uvicorn==0.40.0
+2026-01-28T10:23:48.7126280Z  + vespag==0.1.0 (from git+https://github.com/biocentral/VespaG.git@e1bc34efe55eb53660672f8f2adde8738ae3a38e)
+2026-01-28T10:23:48.7126741Z  + virtualenv==20.36.1
+2026-01-28T10:23:48.7126931Z  + wadler-lindig==0.1.7
+2026-01-28T10:23:48.7127109Z  + wcwidth==0.3.0
+2026-01-28T10:23:48.7127276Z  + werkzeug==3.1.5
+2026-01-28T10:23:48.7127436Z  + xxhash==3.6.0
+2026-01-28T10:23:48.7127598Z  + yarl==1.22.0
+2026-01-28T10:23:48.7127761Z  + zstandard==0.25.0

@@ -1,0 +1,50 @@
+﻿2026-01-28T11:17:28.9832351Z ##[group]Run docker compose -f docker-compose.dev.yml down -v
+2026-01-28T11:17:28.9832679Z [36;1mdocker compose -f docker-compose.dev.yml down -v[0m
+2026-01-28T11:17:28.9877244Z shell: /usr/bin/bash -e {0}
+2026-01-28T11:17:28.9877357Z env:
+2026-01-28T11:17:28.9877631Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T11:17:28.9877957Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib/pkgconfig
+2026-01-28T11:17:28.9878195Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T11:17:28.9878441Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T11:17:28.9878672Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T11:17:28.9879075Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib
+2026-01-28T11:17:28.9879298Z   UV_CACHE_DIR: /home/runner/work/_temp/setup-uv-cache
+2026-01-28T11:17:28.9879406Z ##[endgroup]
+2026-01-28T11:17:29.1878081Z  Container biocentral_server-biocentral-worker-1  Stopping
+2026-01-28T11:17:39.4011371Z  Container biocentral_server-biocentral-worker-1  Stopped
+2026-01-28T11:17:39.4012205Z  Container biocentral_server-biocentral-worker-1  Removing
+2026-01-28T11:17:39.4136546Z  Container biocentral_server-biocentral-worker-1  Removed
+2026-01-28T11:17:39.4137413Z  Container biocentral_server-biocentral-server-1  Stopping
+2026-01-28T11:17:49.6403235Z  Container biocentral_server-biocentral-server-1  Stopped
+2026-01-28T11:17:49.6403993Z  Container biocentral_server-biocentral-server-1  Removing
+2026-01-28T11:17:49.6585570Z  Container biocentral_server-biocentral-server-1  Removed
+2026-01-28T11:17:49.6587877Z  Container biocentral_server-seaweedfs-filer-1  Stopping
+2026-01-28T11:17:49.6588515Z  Container biocentral_server-embeddings-db-1  Stopping
+2026-01-28T11:17:49.6589148Z  Container biocentral_server-redis-jobs-1  Stopping
+2026-01-28T11:17:49.8053589Z  Container biocentral_server-seaweedfs-filer-1  Stopped
+2026-01-28T11:17:49.8054554Z  Container biocentral_server-seaweedfs-filer-1  Removing
+2026-01-28T11:17:49.8166680Z  Container biocentral_server-seaweedfs-filer-1  Removed
+2026-01-28T11:17:49.8168507Z  Container biocentral_server-seaweedfs-volume-1  Stopping
+2026-01-28T11:17:49.8169170Z  Container biocentral_server-embeddings-db-1  Stopped
+2026-01-28T11:17:49.8169792Z  Container biocentral_server-embeddings-db-1  Removing
+2026-01-28T11:17:49.8228590Z  Container biocentral_server-embeddings-db-1  Removed
+2026-01-28T11:17:49.8530179Z  Container biocentral_server-redis-jobs-1  Stopped
+2026-01-28T11:17:49.8531471Z  Container biocentral_server-redis-jobs-1  Removing
+2026-01-28T11:17:49.8583382Z  Container biocentral_server-redis-jobs-1  Removed
+2026-01-28T11:17:59.9155012Z  Container biocentral_server-seaweedfs-volume-1  Stopped
+2026-01-28T11:17:59.9158213Z  Container biocentral_server-seaweedfs-volume-1  Removing
+2026-01-28T11:17:59.9199506Z  Container biocentral_server-seaweedfs-volume-1  Removed
+2026-01-28T11:17:59.9200684Z  Container biocentral_server-seaweedfs-master-1  Stopping
+2026-01-28T11:17:59.9890777Z  Container biocentral_server-seaweedfs-master-1  Stopped
+2026-01-28T11:17:59.9892662Z  Container biocentral_server-seaweedfs-master-1  Removing
+2026-01-28T11:17:59.9949070Z  Container biocentral_server-seaweedfs-master-1  Removed
+2026-01-28T11:17:59.9959479Z  Volume biocentral_server_autoeval_storage  Removing
+2026-01-28T11:17:59.9962436Z  Volume biocentral_server_huggingface_models_cache  Removing
+2026-01-28T11:18:00.0015587Z  Volume biocentral_server_postgres_data  Removing
+2026-01-28T11:18:00.0019884Z  Network biocentral_server_seaweedfs-network  Removing
+2026-01-28T11:18:00.0022439Z  Volume biocentral_server_seaweedfs_data  Removing
+2026-01-28T11:18:00.0032963Z  Volume biocentral_server_autoeval_storage  Removed
+2026-01-28T11:18:00.0033677Z  Volume biocentral_server_huggingface_models_cache  Removed
+2026-01-28T11:18:00.0447771Z  Volume biocentral_server_postgres_data  Removed
+2026-01-28T11:18:00.0454169Z  Volume biocentral_server_seaweedfs_data  Removed
+2026-01-28T11:18:00.1360253Z  Network biocentral_server_seaweedfs-network  Removed
