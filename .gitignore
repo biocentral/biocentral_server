@@ -15,6 +15,6 @@ tests/reports/*.csv
 /releases/
 __pycache__/
 *ipynb
-
 .DS_Store
 
+*pdf

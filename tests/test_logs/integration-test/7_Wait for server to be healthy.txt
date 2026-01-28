@@ -1,0 +1,24 @@
+﻿2026-01-28T09:23:27.3745139Z ##[group]Run echo "Waiting for biocentral-server to be healthy..."
+2026-01-28T09:23:27.3745624Z [36;1mecho "Waiting for biocentral-server to be healthy..."[0m
+2026-01-28T09:23:27.3745953Z [36;1mfor i in {1..30}; do[0m
+2026-01-28T09:23:27.3746285Z [36;1m  if curl -s http://localhost:9540/health > /dev/null 2>&1; then[0m
+2026-01-28T09:23:27.3746655Z [36;1m    echo "Server is healthy!"[0m
+2026-01-28T09:23:27.3746883Z [36;1m    exit 0[0m
+2026-01-28T09:23:27.3747060Z [36;1m  fi[0m
+2026-01-28T09:23:27.3747308Z [36;1m  echo "Attempt $i/30 - Server not ready yet, waiting..."[0m
+2026-01-28T09:23:27.3747606Z [36;1m  sleep 5[0m
+2026-01-28T09:23:27.3747775Z [36;1mdone[0m
+2026-01-28T09:23:27.3747971Z [36;1mecho "Server failed to become healthy"[0m
+2026-01-28T09:23:27.3748338Z [36;1mdocker compose -f docker-compose.dev.yml logs biocentral-server[0m
+2026-01-28T09:23:27.3748675Z [36;1mexit 1[0m
+2026-01-28T09:23:27.4713315Z shell: /usr/bin/bash -e {0}
+2026-01-28T09:23:27.4713609Z env:
+2026-01-28T09:23:27.4713949Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:23:27.4714445Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib/pkgconfig
+2026-01-28T09:23:27.4714934Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:23:27.4715374Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:23:27.4715808Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:23:27.4716241Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib
+2026-01-28T09:23:27.4716610Z ##[endgroup]
+2026-01-28T09:23:27.4772891Z Waiting for biocentral-server to be healthy...
+2026-01-28T09:23:27.4856947Z Server is healthy!
