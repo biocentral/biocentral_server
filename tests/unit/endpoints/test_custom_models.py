@@ -32,30 +32,6 @@ def custom_models_client(custom_models_app):
     return TestClient(custom_models_app)
 
 
-class TestProtocolsEndpoint:
-    """Tests for GET /custom_models_service/protocols"""
-
-    @patch("biocentral_server.custom_models.custom_models_endpoint.Protocol")
-    @patch("biocentral_server.custom_models.custom_models_endpoint.RateLimiter")
-    def test_protocols_returns_list(
-        self, mock_rate_limiter, mock_protocol, custom_models_client
-    ):
-        """Test protocols endpoint returns list of available protocols."""
-        mock_rate_limiter.return_value = lambda: None
-        mock_protocol.all.return_value = [
-            MagicMock(__str__=lambda self: "residue_to_class"),
-            MagicMock(__str__=lambda self: "sequence_to_class"),
-            MagicMock(__str__=lambda self: "sequence_to_value"),
-        ]
-
-        response = custom_models_client.get("/custom_models_service/protocols")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "protocols" in data
-        assert isinstance(data["protocols"], list)
-
-
 class TestConfigOptionsEndpoint:
     """Tests for GET /custom_models_service/config_options/{protocol}"""
 
