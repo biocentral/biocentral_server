@@ -2,9 +2,47 @@
 Shared fixtures for endpoint unit tests.
 """
 
+import asyncio
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
+
+
+@pytest.fixture(autouse=True, scope="function")
+def mock_fastapi_limiter():
+    """
+    Initialize FastAPILimiter with a mock Redis for all endpoint unit tests.
+
+    This fixture runs automatically before each test and properly tears down after.
+    It prevents the "You must call FastAPILimiter.init" error by providing a
+    mock backend that doesn't require an actual Redis connection.
+    """
+    from fastapi_limiter import FastAPILimiter
+
+    # Create a mock redis that satisfies FastAPILimiter's interface
+    mock_redis = MagicMock()
+    mock_redis.evalsha = AsyncMock(return_value=[1, -1])  # Allow all requests
+    mock_redis.script_load = AsyncMock(return_value="fake_sha")
+    mock_redis.get = AsyncMock(return_value=None)
+    mock_redis.set = AsyncMock(return_value=True)
+    mock_redis.close = AsyncMock()
+
+    async def init_limiter():
+        await FastAPILimiter.init(redis=mock_redis)
+
+    async def close_limiter():
+        await FastAPILimiter.close()
+
+    # Run init before test
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(init_limiter())
+
+    yield
+
+    # Cleanup after test
+    loop.run_until_complete(close_limiter())
+    loop.close()
 
 
 @pytest.fixture
