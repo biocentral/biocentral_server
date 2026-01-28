@@ -1,6 +1,11 @@
 """Shared pytest fixtures for biocentral_server tests."""
 
+# Configure matplotlib to use non-interactive backend in CI environments
+# This avoids needing xvfb while preserving interactive backend locally
 import os
+if os.environ.get('CI') or not os.environ.get('DISPLAY'):
+    import matplotlib
+    matplotlib.use('Agg')
 import pytest
 import numpy as np
 from typing import Dict, List, Tuple
