@@ -96,19 +96,19 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
-      - name: Cache venv
-        uses: actions/cache@v4
-        id: cache-venv
-        with:
-          path: |
-            .venv
-            ~/.cache/uv
-          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('uv.lock') }}
-          restore-keys: |
-            venv-${{ runner.os }}-py3.12-
+      #- name: Cache venv
+       # uses: actions/cache@v4
+       # id: cache-venv
+       # with:
+       #   path: |
+       #     .venv
+       #     ~/.cache/uv
+       #   key: venv-${{ runner.os }}-py3.12-${{ hashFiles('uv.lock') }}
+       #   restore-keys: |
+       #     venv-${{ runner.os }}-py3.12-
 
       - name: Install dependencies
-        run: uv sync --frozen
+        run: uv sync
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
