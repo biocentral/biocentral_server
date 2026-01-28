@@ -1,26 +1,4 @@
-"""
-Fixed Embedder for deterministic, reproducible testing.
-
-This module provides a mock embedder that generates deterministic embeddings
-based on sequence content, enabling reproducible edge case testing without
-model overhead.
-
-The embeddings are generated using a seeded random number generator based on
-the SHA-256 hash of the input sequence, ensuring that:
-1. Different sequences produce different embeddings
-2. The same sequence always produces the same embedding
-3. Embeddings have realistic statistical properties
-
-Example:
-    >>> embedder = FixedEmbedder(model_name="prot_t5")
-    >>> embedding = embedder.embed("MKTAYIAK...")
-    >>> assert embedding.shape == (len(sequence), 1024)
-
-    >>> # Same sequence always gives same result
-    >>> embedding2 = embedder.embed("MKTAYIAK...")
-    >>> np.allclose(embedding, embedding2)
-    True
-"""
+"""Fixed Embedder for deterministic, reproducible testing."""
 
 import hashlib
 import numpy as np
@@ -353,9 +331,6 @@ class FixedEmbedderRegistry:
         """Clear the registry (useful for testing)."""
         cls._instances.clear()
 
-# ============================================================================
-# CONVENIENCE FUNCTIONS
-# ============================================================================
 
 def get_fixed_embedder(
     model_name: str = "prot_t5",
@@ -437,10 +412,6 @@ def convert_sequences_to_test_format(
     sequences_dict = {f"seq{i}": seq for i, seq in enumerate(sequences)}
     embeddings_dict = generate_test_embeddings_dict(sequences_dict, model_name)
     return sequences_dict, embeddings_dict
-
-# ============================================================================
-# VALIDATION UTILITIES
-# ============================================================================
 
 
 def get_expected_embedding_properties(model_name: str) -> Dict:

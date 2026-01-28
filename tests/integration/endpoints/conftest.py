@@ -1,15 +1,4 @@
-"""
-Shared fixtures for endpoint integration tests.
-
-The server must be running (via docker-compose.dev.yml) before running tests.
-
-Usage:
-    # Start the server first
-    docker compose -f docker-compose.dev.yml --env-file .env.ci up -d
-    
-    # Run integration tests
-    CI_SERVER_URL=http://localhost:9540 pytest tests/integration/endpoints/ -v
-"""
+"""Shared fixtures for endpoint integration tests."""
 
 import os
 import time
@@ -19,10 +8,6 @@ from typing import Any, Dict, List, Optional
 
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 
-
-# =============================================================================
-# SERVER CONNECTION
-# =============================================================================
 
 def get_server_url() -> str:
     """Get the server URL from environment variable."""
@@ -61,10 +46,6 @@ def client(server_url) -> httpx.Client:
     yield http_client
     http_client.close()
 
-
-# =============================================================================
-# TASK POLLING
-# =============================================================================
 
 @pytest.fixture(scope="session")
 def poll_task(client):
@@ -115,20 +96,9 @@ def poll_task(client):
     return _poll
 
 
-# =============================================================================
-# EMBEDDER CONFIGURATION
-# =============================================================================
-
-# Embedder options:
-#   - "esm2_t6_8m": Real ESM2-T6-8M model via ONNX (for CI pipeline)
-#   - "fixed": FixedEmbedder for fast local testing (deterministic, no downloads)
-#
-# Set via CI_EMBEDDER environment variable. Default is esm2_t6_8m for CI.
-
 EMBEDDER_ESM2_T6_8M = "facebook/esm2_t6_8M_UR50D"
-EMBEDDER_FIXED = "fixed"  # Special marker for FixedEmbedder
+EMBEDDER_FIXED = "fixed"
 
-# Map of CI_EMBEDDER values to actual embedder names
 EMBEDDER_MAP = {
     "esm2_t6_8m": EMBEDDER_ESM2_T6_8M,
     "fixed": EMBEDDER_FIXED,
@@ -136,16 +106,7 @@ EMBEDDER_MAP = {
 
 
 def get_embedder_name() -> str:
-    """
-    Get the embedder name from CI_EMBEDDER environment variable.
-    
-    Options:
-        - "esm2_t6_8m" (default): Uses facebook/esm2_t6_8M_UR50D via ONNX
-        - "fixed": Uses FixedEmbedder for fast deterministic testing
-    
-    Returns:
-        The embedder name string to use in API requests
-    """
+    """Get embedder name from CI_EMBEDDER env var."""
     ci_embedder = os.environ.get("CI_EMBEDDER", "esm2_t6_8m").lower()
     
     if ci_embedder not in EMBEDDER_MAP:
@@ -162,19 +123,9 @@ def is_fixed_embedder() -> bool:
 
 @pytest.fixture(scope="session")
 def embedder_name() -> str:
-    """
-    Get the embedder name to use for tests.
-    
-    Configured via CI_EMBEDDER environment variable:
-        - "esm2_t6_8m" (default): Real ESM2-T6-8M model via ONNX
-        - "fixed": FixedEmbedder for fast local testing
-    """
+    """Get the embedder name to use for tests."""
     return get_embedder_name()
 
-
-# =============================================================================
-# TEST SEQUENCES FROM CANONICAL DATASET
-# =============================================================================
 
 @pytest.fixture(scope="session")
 def test_sequences() -> Dict[str, str]:
@@ -301,10 +252,6 @@ def diverse_test_sequences() -> Dict[str, str]:
     }
 
 
-# =============================================================================
-# PARAMETERIZED TEST DATA
-# =============================================================================
-
 CANONICAL_STANDARD_IDS = ["standard_001", "standard_002", "standard_003"]
 CANONICAL_LENGTH_EDGE_IDS = [
     "length_min_1", "length_min_2", "length_short_5",
@@ -363,10 +310,6 @@ def large_batch_sequences() -> Dict[str, str]:
     return sequences
 
 
-# =============================================================================
-# RESPONSE VALIDATION HELPERS
-# =============================================================================
-
 def validate_task_response(response_json: Dict, expected_task_id_prefix: str = None) -> str:
     """
     Validate a task creation response and return the task_id.
@@ -418,10 +361,6 @@ def validate_error_response(response_json: Dict, expected_status: int = None) ->
     
     return response_json
 
-
-# =============================================================================
-# TEST RUN IDENTIFICATION
-# =============================================================================
 
 @pytest.fixture(scope="session")
 def test_run_id() -> str:

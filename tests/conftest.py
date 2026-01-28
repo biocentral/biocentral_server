@@ -1,12 +1,4 @@
-"""
-Shared pytest fixtures for biocentral_server tests.
-
-This file provides reusable fixtures for testing, including:
-- FixedEmbedder instances for deterministic testing
-- Pre-defined test sequences
-- Pre-computed embeddings in various formats
-- CLI options for embedder backend selection
-"""
+"""Shared pytest fixtures for biocentral_server tests."""
 
 import os
 import pytest
@@ -19,10 +11,6 @@ from tests.fixtures.fixed_embedder import (
     get_fixed_embedder,
 )
 
-
-# ============================================================================
-# PYTEST HOOKS FOR CLI OPTIONS
-# ============================================================================
 
 def pytest_addoption(parser):
     """Add custom CLI options for test configuration."""
@@ -46,10 +34,6 @@ def pytest_configure(config):
         "markers", "modifies_registry: mark test that modifies FixedEmbedderRegistry"
     )
 
-
-# ============================================================================
-# FIXED EMBEDDER FIXTURES
-# ============================================================================
 
 @pytest.fixture(scope="session")
 def fixed_embedder_prot_t5() -> FixedEmbedder:
@@ -84,9 +68,6 @@ def fixed_embedder_factory():
 
     return _factory
 
-# ============================================================================
-# TEST SEQUENCES
-# ============================================================================
 
 @pytest.fixture(scope="session")
 def single_sequence() -> List[str]:
@@ -120,9 +101,6 @@ def edge_case_sequences() -> List[str]:
         "MKTAYIAK" * 50,  # Long repetitive (400 residues)
     ]
 
-# ============================================================================
-# PRE-COMPUTED EMBEDDINGS FIXTURES
-# ============================================================================
 
 @pytest.fixture(scope="session")
 def prot_t5_embeddings_single(
@@ -172,9 +150,6 @@ def esm2_t36_embeddings_batch(
     """Pre-computed ESM2-T36 embeddings for 5 sequences."""
     return fixed_embedder_esm2_t36.embed_batch(five_sequences, pooled=False)
 
-# ============================================================================
-# DICT FORMAT FIXTURES (for model input)
-# ============================================================================
 
 def _sequences_to_dict(sequences: List[str]) -> Dict[str, str]:
     """Convert list of sequences to dict format."""
@@ -239,9 +214,6 @@ def esm2_t36_model_input_batch(
     """ESM2-T36 embeddings in model input format (5 sequences)."""
     return _convert_to_model_input(five_sequences, esm2_t36_embeddings_batch)
 
-# ============================================================================
-# CLEANUP
-# ============================================================================
 
 @pytest.fixture(autouse=True, scope="function")
 def reset_registry_for_isolated_tests(request):

@@ -1,6 +1,4 @@
-"""
-Shared fixtures for endpoint unit tests.
-"""
+"""Shared fixtures for endpoint unit tests."""
 
 import asyncio
 

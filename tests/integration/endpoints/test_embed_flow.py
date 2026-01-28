@@ -1,13 +1,4 @@
-"""
-Integration tests for embeddings endpoints.
-
-Requirements:
-    - Server running via docker-compose.dev.yml
-    - CI_SERVER_URL environment variable set
-
-Usage:
-    CI_SERVER_URL=http://localhost:9540 pytest tests/integration/endpoints/test_embed_flow.py -v
-"""
+"""Integration tests for embeddings endpoints."""
 
 import pytest
 from typing import Dict

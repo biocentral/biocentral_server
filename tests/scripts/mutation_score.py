@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""
-Calculate and display mutation score from mutmut results.
-
-Usage:
-    uv run python scripts/mutation_score.py
-
-The mutation score is calculated as:
-    score = (killed mutants / total mutants) * 100
-
-Where:
-    - killed = mutants caught by tests (test failed when mutant applied)
-    - total = all generated mutants
-"""
+"""Calculate and display mutation score from mutmut results."""
 
 import subprocess
 import sys

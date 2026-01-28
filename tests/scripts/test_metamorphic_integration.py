@@ -1,19 +1,5 @@
 #!/usr/bin/env python3
-"""
-Pytest Integration Tests for Metamorphic Relations.
-
-This module provides pytest-based tests for the metamorphic relations,
-enabling CI/CD integration and systematic validation of embedding services.
-
-Tests are organized into:
-1. Fundamental Invariants: Idempotency, batch variance, determinism (must pass)
-2. Exploratory Relations: Reversal, masking (data collection, no strict pass/fail)
-
-Usage:
-    pytest tests/scripts/test_metamorphic_integration.py -v
-    pytest tests/scripts/test_metamorphic_integration.py -v -k idempotency
-    pytest tests/scripts/test_metamorphic_integration.py -v --use-real-embedder
-"""
+"""Pytest integration tests for metamorphic relations."""
 
 import os
 from typing import Any, Dict, List
@@ -36,11 +22,6 @@ from tests.scripts.metamorphic_relations import (
 )
 
 
-# ============================================================================
-# PYTEST CONFIGURATION
-# ============================================================================
-
-
 def pytest_addoption(parser):
     """Add custom command line options."""
     parser.addoption(
@@ -49,11 +30,6 @@ def pytest_addoption(parser):
         default=False,
         help="Use real ESM2-T6-8M embedder instead of mock",
     )
-
-
-# ============================================================================
-# FIXTURES
-# ============================================================================
 
 
 @pytest.fixture(scope="module")
@@ -109,11 +85,6 @@ def short_sequences(test_sequences):
     return [s for s in test_sequences if len(s) < 10]
 
 
-# ============================================================================
-# FUNDAMENTAL INVARIANTS - IDEMPOTENCY
-# ============================================================================
-
-
 class TestIdempotencyRelation:
     """Tests for idempotency: embed(seq) == embed(seq)."""
     
@@ -167,11 +138,6 @@ class TestIdempotencyRelation:
         assert len(failed) == 0, (
             f"{len(failed)} idempotency tests failed out of {len(results)}"
         )
-
-
-# ============================================================================
-# FUNDAMENTAL INVARIANTS - BATCH VARIANCE
-# ============================================================================
 
 
 class TestBatchVarianceRelation:
@@ -256,11 +222,6 @@ class TestBatchVarianceRelation:
                 )
 
 
-# ============================================================================
-# FUNDAMENTAL INVARIANTS - PROJECTION DETERMINISM
-# ============================================================================
-
-
 class TestProjectionDeterminismRelation:
     """Tests for projection determinism with fixed seeds."""
     
@@ -321,11 +282,6 @@ class TestProjectionDeterminismRelation:
                 )
 
 
-# ============================================================================
-# EXPLORATORY RELATIONS - REVERSAL
-# ============================================================================
-
-
 class TestReversalRelation:
     """Exploratory tests for sequence reversal effects."""
     
@@ -359,11 +315,6 @@ class TestReversalRelation:
             for result in results:
                 if result.metrics:
                     print(f"  Palindrome '{seq}': distance={result.metrics.cosine_distance:.4f}")
-
-
-# ============================================================================
-# EXPLORATORY RELATIONS - PROGRESSIVE MASKING
-# ============================================================================
 
 
 class TestProgressiveMaskingRelation:
@@ -452,11 +403,6 @@ class TestProgressiveMaskingRelation:
                 print(f"  {length_cat}: avg 50% mask distance = {avg:.4f}")
 
 
-# ============================================================================
-# INTEGRATION TESTS
-# ============================================================================
-
-
 class TestMetamorphicIntegration:
     """Integration tests running multiple relations together."""
     
@@ -515,11 +461,6 @@ class TestMetamorphicIntegration:
         )
 
 
-# ============================================================================
-# EDGE CASES
-# ============================================================================
-
-
 class TestEdgeCases:
     """Edge case tests for metamorphic relations."""
     
@@ -567,11 +508,6 @@ class TestEdgeCases:
         
         # With empty fillers, only batch_size=1 should work
         assert len(results) > 0
-
-
-# ============================================================================
-# METRICS TESTS
-# ============================================================================
 
 
 class TestMetrics:

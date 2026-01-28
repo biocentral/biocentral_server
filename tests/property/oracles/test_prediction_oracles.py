@@ -1,14 +1,4 @@
-"""
-Prediction Oracle Tests for Output Consistency and Validity.
-
-This module implements test oracles that verify critical prediction properties:
-1. Determinism: Same input always produces the same prediction output.
-2. Output Range Validity: Classification probabilities in [0,1], per-residue 
-   predictions have correct length, etc.
-3. Shape Invariance: Output shapes match expected dimensions for the model.
-
-Uses the canonical test dataset for reproducible testing.
-"""
+"""Prediction oracle tests for output consistency and validity."""
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -22,10 +12,6 @@ from tests.fixtures.test_dataset import (
     get_test_sequences,
 )
 
-
-# ============================================================================
-# ORACLE RESULT STORAGE
-# ============================================================================
 
 _prediction_oracle_results: List[Dict[str, Any]] = []
 
@@ -45,11 +31,6 @@ def add_prediction_oracle_result(result: Dict[str, Any]) -> None:
 def clear_prediction_oracle_results() -> None:
     """Clear all accumulated prediction oracle results."""
     _prediction_oracle_results.clear()
-
-
-# ============================================================================
-# ORACLE CONFIGURATION
-# ============================================================================
 
 
 @dataclass
@@ -92,11 +73,6 @@ PREDICTION_ORACLE_CONFIGS = {
 }
 
 
-# ============================================================================
-# PREDICTOR PROTOCOL
-# ============================================================================
-
-
 class PredictorProtocol(Protocol):
     """Protocol defining the predictor interface for oracle tests."""
 
@@ -107,11 +83,6 @@ class PredictorProtocol(Protocol):
     def predict_batch(self, sequences: List[str]) -> List[Dict[str, Any]]:
         """Predict for multiple sequences."""
         ...
-
-
-# ============================================================================
-# MOCK PREDICTOR FOR TESTING
-# ============================================================================
 
 
 class MockPredictor:
@@ -171,11 +142,6 @@ class MockPredictor:
     def predict_batch(self, sequences: List[str]) -> List[Dict[str, Any]]:
         """Predict for batch of sequences."""
         return [self.predict(seq) for seq in sequences]
-
-
-# ============================================================================
-# DETERMINISM ORACLE
-# ============================================================================
 
 
 class PredictionDeterminismOracle:
@@ -242,11 +208,6 @@ class PredictionDeterminismOracle:
             elif v1 != v2:
                 return False
         return True
-
-
-# ============================================================================
-# OUTPUT VALIDITY ORACLE
-# ============================================================================
 
 
 class OutputValidityOracle:
@@ -326,11 +287,6 @@ class OutputValidityOracle:
         return result
 
 
-# ============================================================================
-# SHAPE INVARIANCE ORACLE
-# ============================================================================
-
-
 class ShapeInvarianceOracle:
     """
     Oracle verifying that output shapes are consistent with model specification.
@@ -396,11 +352,6 @@ class ShapeInvarianceOracle:
         return result
 
 
-# ============================================================================
-# PYTEST FIXTURES
-# ============================================================================
-
-
 @pytest.fixture(scope="module")
 def ss_oracle_config() -> PredictionOracleConfig:
     """Oracle configuration for secondary structure prediction."""
@@ -455,11 +406,6 @@ def varied_length_sequences() -> List[str]:
         CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
         CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
     ]
-
-
-# ============================================================================
-# TEST CLASSES
-# ============================================================================
 
 
 class TestPredictionDeterminism:
@@ -614,11 +560,6 @@ class TestShapeInvariance:
         assert result["passed"], (
             f"Shape invariance failed: {result['issues']}"
         )
-
-
-# ============================================================================
-# SESSION CLEANUP
-# ============================================================================
 
 
 @pytest.fixture(scope="module", autouse=True)
