@@ -39,36 +39,65 @@ class TestModelMetadataEndpoint:
         """Test that model metadata endpoint returns available models."""
         mock_rate_limiter.return_value = lambda: None
 
-        # Create mock metadata objects
-        mock_metadata = MagicMock()
-        mock_metadata.to_dict.return_value = {
-            "name": "BindEmbed",
-            "description": "Binding site prediction",
-            "input_type": "sequence",
-            "output_type": "per_residue",
-        }
-        mock_get_metadata.return_value = {"BindEmbed": mock_metadata}
+        # Create a real ModelMetadata instance that Pydantic will accept
+        from biocentral_server.predict.models.base_model.model_metadata import (
+            ModelMetadata,
+            ModelOutput,
+            OutputType,
+        )
+        from biocentral_server.predict.models import BiocentralPredictionModel
+        from biotrainer.protocols import Protocol
+
+        mock_metadata = ModelMetadata(
+            name=BiocentralPredictionModel.BindEmbed,
+            protocol=Protocol.residue_to_class,
+            description="Binding site prediction",
+            authors="Test Author",
+            model_link="https://example.com",
+            citation="Test Citation",
+            licence="MIT",
+            outputs=[
+                ModelOutput(
+                    name="binding",
+                    description="Binding site",
+                    output_type=OutputType.PER_RESIDUE,
+                    value_type="class",
+                )
+            ],
+            model_size="10MB",
+            embedder="prot_t5_xl_uniref50",
+        )
+        mock_get_metadata.return_value = [mock_metadata]
 
         response = predict_client.get("/prediction_service/model_metadata")
 
         assert response.status_code == 200
         data = response.json()
         assert "metadata" in data
-        assert "BindEmbed" in data["metadata"]
+        assert len(data["metadata"]) == 1
 
     @patch("biocentral_server.predict.predict_endpoint.get_metadata_for_all_models")
     @patch("biocentral_server.predict.predict_endpoint.RateLimiter")
     def test_model_metadata_empty_when_no_models(
         self, mock_rate_limiter, mock_get_metadata, predict_client
     ):
-        """Test metadata endpoint returns empty dict when no models available."""
+        """Test metadata endpoint raises error when no models available.
+        
+        ModelMetadataResponse requires min_length=1 for metadata, so an empty
+        list will cause a ResponseValidationError. We need to catch the exception
+        or configure the client not to raise.
+        """
+        import pydantic_core
+
         mock_rate_limiter.return_value = lambda: None
-        mock_get_metadata.return_value = {}
+        mock_get_metadata.return_value = []  # Return empty list
 
-        response = predict_client.get("/prediction_service/model_metadata")
-
-        assert response.status_code == 200
-        assert response.json()["metadata"] == {}
+        # The TestClient raises the ResponseValidationError by default
+        with pytest.raises(pydantic_core.ValidationError) as exc_info:
+            predict_client.get("/prediction_service/model_metadata")
+        
+        # Verify it's about the min_length constraint
+        assert "too_short" in str(exc_info.value)
 
 
 class TestPredictEndpoint:
@@ -89,8 +118,13 @@ class TestPredictEndpoint:
         predict_client,
     ):
         """Test prediction with valid model and sequence data."""
+        from biocentral_server.predict.models import BiocentralPredictionModel
+
         mock_rate_limiter.return_value = lambda: None
-        mock_get_metadata.return_value = {"bindembed": MagicMock()}
+        # Return list of objects with .name attribute matching the enum
+        mock_metadata = MagicMock()
+        mock_metadata.name = BiocentralPredictionModel.BindEmbed
+        mock_get_metadata.return_value = [mock_metadata]
         mock_filter_models.return_value = [MagicMock()]
         mock_user_manager.get_user_id_from_request = AsyncMock(return_value="user-1")
         mock_task_manager.return_value.add_task.return_value = "predict-task-123"
@@ -112,9 +146,13 @@ class TestPredictEndpoint:
     def test_predict_unknown_model(
         self, mock_rate_limiter, mock_get_metadata, predict_client
     ):
-        """Test prediction with non-existent model returns 404."""
+        """Test prediction with invalid model name fails validation.
+        
+        Since model_names must be valid BiocentralPredictionModel enum values,
+        an unknown model name will cause a 422 Validation Error.
+        """
         mock_rate_limiter.return_value = lambda: None
-        mock_get_metadata.return_value = {"bindembed": MagicMock()}
+        mock_get_metadata.return_value = []
 
         request_data = {
             "model_names": ["NonExistentModel"],
@@ -125,10 +163,8 @@ class TestPredictEndpoint:
 
         response = predict_client.post("/prediction_service/predict", json=request_data)
 
-        # Should return NotFoundErrorResponse
-        assert response.status_code == 200  # FastAPI returns model, not HTTP error
-        data = response.json()
-        assert "error" in data or "error_code" in data
+        # Invalid enum value causes validation error
+        assert response.status_code == 422
 
     @patch("biocentral_server.predict.predict_endpoint.RateLimiter")
     def test_predict_empty_model_names(self, mock_rate_limiter, predict_client):
