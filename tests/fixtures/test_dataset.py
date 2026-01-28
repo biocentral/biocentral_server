@@ -1,29 +1,4 @@
-"""
-Canonical Test Dataset for biocentral_server integration and property testing.
-
-This module provides a fixed, small input dataset that serves as the baseline
-for ALL integration tests, property tests, and CI pipelines. Using a consistent
-dataset across tests ensures:
-
-1. Reproducibility: Same inputs produce same outputs across runs
-2. Coverage: Edge cases are systematically tested
-3. Efficiency: Small dataset keeps CI fast
-4. Realism: Sequences mimic real-world patterns and edge cases
-
-Usage:
-    from tests.fixtures.test_dataset import (
-        CANONICAL_TEST_DATASET,
-        get_test_sequences,
-        get_test_sequences_dict,
-        get_test_embeddings,
-    )
-
-    # Get all sequences as list
-    sequences = get_test_sequences()
-
-    # Get sequences and embeddings ready for model testing
-    seq_dict, emb_dict = get_test_embeddings(model_name="esm2_t6")
-"""
+"""Canonical test dataset for biocentral_server testing."""
 
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
@@ -31,11 +6,6 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from tests.fixtures.fixed_embedder import get_fixed_embedder
-
-
-# ============================================================================
-# TEST SEQUENCE DEFINITIONS
-# ============================================================================
 
 
 @dataclass
@@ -72,18 +42,12 @@ class TestDataset:
         return {s.id: s.sequence for s in self.sequences}
 
 
-# ============================================================================
-# CANONICAL TEST DATASET
-# ============================================================================
-
 CANONICAL_TEST_DATASET = TestDataset(
     name="biocentral_canonical_test_set",
     version="1.0.0",
     description="Canonical test dataset for biocentral_server testing",
     sequences=[
-        # ====================================================================
-        # STANDARD SEQUENCES
-        # ====================================================================
+        # Standard sequences
         TestSequence(
             id="standard_001",
             sequence="MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQ",
@@ -99,9 +63,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGAFSDGLA",
             description="Hemoglobin-like sequence (77 aa)",
         ),
-        # ====================================================================
-        # LENGTH EDGE CASES
-        # ====================================================================
+        # Length edge cases
         TestSequence(
             id="length_min_1",
             sequence="M",
@@ -137,9 +99,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MKTAYIAK" * 50,
             description="Very long repetitive sequence (400 aa)",
         ),
-        # ====================================================================
-        # UNKNOWN TOKEN (X) EDGE CASES
-        # ====================================================================
+        # Unknown token (X) edge cases
         TestSequence(
             id="unknown_single",
             sequence="X",
@@ -175,9 +135,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MXXXXXKXXXXXAXXXX",
             description="High ratio of unknown residues (~70%)",
         ),
-        # ====================================================================
-        # AMINO ACID COMPOSITION EDGE CASES
-        # ====================================================================
+        # Amino acid composition edge cases
         TestSequence(
             id="all_standard_aa",
             sequence="ACDEFGHIKLMNPQRSTVWY",
@@ -213,9 +171,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MCCKCCMCCKCCKCCMCCKCCKCCM",
             description="Cysteine-rich sequence (25 aa) - disulfide potential",
         ),
-        # ====================================================================
-        # SPECIAL CHARACTERS AND AMBIGUOUS CODES
-        # ====================================================================
+        # Special characters and ambiguous codes
         TestSequence(
             id="ambiguous_B",
             sequence="MKTABIAK",
@@ -241,9 +197,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MKTAOIAK",
             description="Contains O (Pyrrolysine)",
         ),
-        # ====================================================================
-        # STRUCTURAL MOTIFS
-        # ====================================================================
+        # Structural motifs
         TestSequence(
             id="motif_alpha_helix",
             sequence="AEEAAKAAEEAAKAAEEAAKAAEEAAK",
@@ -259,9 +213,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="GGGGGGGGGGGGGGG",
             description="Glycine-rich flexible loop (15 aa)",
         ),
-        # ====================================================================
-        # REAL-WORLD REPRESENTATIVE SEQUENCES
-        # ====================================================================
+        # Real-world representative sequences
         TestSequence(
             id="real_insulin_b",
             sequence="FVNQHLCGSHLVEALYLVCGERGFFYTPKT",
@@ -279,11 +231,6 @@ CANONICAL_TEST_DATASET = TestDataset(
         ),
     ],
 )
-
-
-# ============================================================================
-# CONVENIENCE FUNCTIONS
-# ============================================================================
 
 
 def get_test_sequences(categories: Optional[List[str]] = None) -> List[str]:
@@ -361,11 +308,6 @@ def get_test_embeddings(
     embedder = get_fixed_embedder(model_name)
     embeddings_dict = embedder.embed_dict(sequences_dict, pooled=pooled)
     return sequences_dict, embeddings_dict
-
-
-# ============================================================================
-# DATASET STATISTICS
-# ============================================================================
 
 
 def get_dataset_statistics() -> Dict:

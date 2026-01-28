@@ -1,13 +1,4 @@
-"""
-Test memory usage and detect leaks.
-
-Tests measure:
-- Memory leaks from repeated embeddings
-- Memory footprint of embeddings
-- Pooled vs per-residue memory comparison
-
-All tests use sequences from the canonical test dataset.
-"""
+"""Test memory usage and detect leaks."""
 
 import pytest
 import gc

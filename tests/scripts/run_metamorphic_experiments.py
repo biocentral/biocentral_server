@@ -1,34 +1,5 @@
 #!/usr/bin/env python3
-"""
-Metamorphic Testing Experiment Runner for Embedding Services.
-
-This script executes metamorphic relation experiments against embedding services,
-generates comprehensive reports, and provides analysis of embedding reliability.
-
-Usage:
-    python tests/scripts/run_metamorphic_experiments.py
-    python tests/scripts/run_metamorphic_experiments.py --use-real-embedder
-    python tests/scripts/run_metamorphic_experiments.py --relations idempotency batch_variance
-    python tests/scripts/run_metamorphic_experiments.py --output-dir reports/metamorphic
-
-Examples:
-    # Run all relations with mock embedder (fast)
-    python tests/scripts/run_metamorphic_experiments.py
-
-    # Run with real ESM2-T6-8M model
-    python tests/scripts/run_metamorphic_experiments.py --use-real-embedder
-
-    # Run only fundamental invariants
-    python tests/scripts/run_metamorphic_experiments.py --relations idempotency batch_variance
-
-    # Run with custom thresholds
-    python tests/scripts/run_metamorphic_experiments.py --idempotency-threshold 1e-8
-
-Output:
-    - CSV report with all test results and metrics
-    - JSON summary with pass/fail statistics
-    - Console output with formatted results
-"""
+"""Metamorphic testing experiment runner for embedding services."""
 
 import argparse
 import csv
@@ -57,11 +28,6 @@ from tests.scripts.metamorphic_relations import (
     run_all_relations,
     summarize_results,
 )
-
-
-# ============================================================================
-# EMBEDDER SETUP
-# ============================================================================
 
 
 def get_fixed_embedder(model_name: str = "esm2_t6", strict: bool = False):
@@ -147,11 +113,6 @@ class RealEmbedderWrapper:
         return [np.array(emb) for _, emb in results]
 
 
-# ============================================================================
-# TEST SEQUENCES
-# ============================================================================
-
-
 def get_test_sequences(use_canonical: bool = True) -> List[str]:
     """
     Get test sequences for experiments.
@@ -179,11 +140,6 @@ def get_test_sequences(use_canonical: bool = True) -> List[str]:
         "AAAAAAAAAA",
         "KKKKKKKKKK",
     ]
-
-
-# ============================================================================
-# EXPERIMENT EXECUTION
-# ============================================================================
 
 
 def run_experiments(
@@ -374,11 +330,6 @@ def run_masking_experiments(
     return results
 
 
-# ============================================================================
-# REPORT GENERATION
-# ============================================================================
-
-
 def print_relation_summary(rel_name: str, results: List[RelationResult]) -> None:
     """Print summary for a single relation."""
     if not results:
@@ -514,11 +465,6 @@ def print_final_summary(summary: Dict[str, Any]) -> None:
     for rel_name, rel_summary in summary["by_relation"].items():
         status = "✓" if rel_summary["failed"] == 0 else "✗"
         print(f"  {status} {rel_name}: {rel_summary['passed']}/{rel_summary['total']} passed")
-
-
-# ============================================================================
-# MAIN
-# ============================================================================
 
 
 def parse_args() -> argparse.Namespace:

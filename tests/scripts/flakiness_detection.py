@@ -1,18 +1,5 @@
 #!/usr/bin/env python3
-"""
-Flakiness Detection Script
-
-Runs tests multiple times to detect non-deterministic (flaky) tests.
-Calculates the flakiness rate as: number of flaky tests / total tests
-
-Usage:
-    python tests/scripts/flakiness_detection.py [--runs N] [--output-dir DIR] [--threshold FLOAT]
-
-Examples:
-    python tests/scripts/flakiness_detection.py
-    python tests/scripts/flakiness_detection.py --runs 20
-    python tests/scripts/flakiness_detection.py --runs 10 --threshold 0.05
-"""
+"""Flakiness detection script - runs tests multiple times to detect flaky tests."""
 
 import argparse
 import os

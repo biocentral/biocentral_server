@@ -1,33 +1,5 @@
 #!/usr/bin/env python3
-"""
-Metamorphic Relations for Embedding Service Testing.
-
-This module implements metamorphic testing principles for validating embedding
-services. Metamorphic testing addresses the oracle problem in ML systems by
-defining relationships (metamorphic relations) between inputs and outputs
-rather than expected outputs directly.
-
-Implemented Relations:
-    1. IdempotencyRelation: embed(seq) == embed(seq) across multiple calls
-    2. BatchVarianceRelation: embed([A, B]) == [embed(A), embed(B)]
-    3. ProjectionDeterminismRelation: project(embeddings) is deterministic with fixed seed
-    4. ReversalRelation: embed(seq) vs embed(reverse(seq)) analysis
-    5. ProgressiveMaskingRelation: embed(seq) vs embed(mask(seq, ratio)) degradation
-
-Usage:
-    from tests.scripts.metamorphic_relations import (
-        IdempotencyRelation,
-        BatchVarianceRelation,
-        run_all_relations,
-    )
-
-    # Run individual relation
-    relation = IdempotencyRelation(embedder)
-    results = relation.verify(sequence)
-
-    # Run all relations
-    all_results = run_all_relations(embedder, sequences)
-"""
+"""Metamorphic relations for embedding service testing."""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -38,11 +10,6 @@ import random
 import itertools
 
 import numpy as np
-
-
-# ============================================================================
-# EMBEDDER PROTOCOL
-# ============================================================================
 
 
 class EmbedderProtocol(Protocol):
@@ -63,11 +30,6 @@ class EmbedderProtocol(Protocol):
     ) -> List[np.ndarray]:
         """Embed multiple sequences."""
         ...
-
-
-# ============================================================================
-# RESULT TYPES
-# ============================================================================
 
 
 class RelationVerdict(str, Enum):
@@ -120,11 +82,6 @@ class RelationResult:
         if self.metrics:
             result.update(self.metrics.to_dict())
         return result
-
-
-# ============================================================================
-# METRIC COMPUTATION
-# ============================================================================
 
 
 def _ensure_1d(arr: np.ndarray) -> np.ndarray:
@@ -189,11 +146,6 @@ def embeddings_are_identical(a: np.ndarray, b: np.ndarray, rtol: float = 1e-5, a
     return np.allclose(a, b, rtol=rtol, atol=atol)
 
 
-# ============================================================================
-# BASE METAMORPHIC RELATION
-# ============================================================================
-
-
 class MetamorphicRelation(ABC):
     """
     Abstract base class for metamorphic relations.
@@ -249,11 +201,6 @@ class MetamorphicRelation(ABC):
             threshold=self.threshold,
             details=details,
         )
-
-
-# ============================================================================
-# IDEMPOTENCY RELATION
-# ============================================================================
 
 
 class IdempotencyRelation(MetamorphicRelation):
@@ -336,11 +283,6 @@ class IdempotencyRelation(MetamorphicRelation):
         for seq in sequences:
             all_results.extend(self.verify(seq))
         return all_results
-
-
-# ============================================================================
-# BATCH VARIANCE RELATION
-# ============================================================================
 
 
 class BatchVarianceRelation(MetamorphicRelation):
@@ -519,11 +461,6 @@ class BatchVarianceRelation(MetamorphicRelation):
             return selected_fillers[:mid] + [target] + selected_fillers[mid:]
 
 
-# ============================================================================
-# PROJECTION DETERMINISM RELATION
-# ============================================================================
-
-
 class ProjectionDeterminismRelation(MetamorphicRelation):
     """
     Metamorphic relation verifying determinism of projection methods.
@@ -646,11 +583,6 @@ class ProjectionDeterminismRelation(MetamorphicRelation):
         return projector.fit_transform(embeddings)
 
 
-# ============================================================================
-# REVERSAL RELATION (EXPERIMENTAL)
-# ============================================================================
-
-
 class ReversalRelation(MetamorphicRelation):
     """
     Experimental metamorphic relation analyzing sequence reversal effects.
@@ -729,11 +661,6 @@ class ReversalRelation(MetamorphicRelation):
         for seq in sequences:
             all_results.extend(self.verify(seq))
         return all_results
-
-
-# ============================================================================
-# PROGRESSIVE MASKING RELATION (EXPERIMENTAL)
-# ============================================================================
 
 
 class ProgressiveMaskingRelation(MetamorphicRelation):
@@ -897,11 +824,6 @@ class ProgressiveMaskingRelation(MetamorphicRelation):
         for seq in sequences:
             all_results.extend(self.verify(seq, seed))
         return all_results
-
-
-# ============================================================================
-# RELATION REGISTRY AND RUNNER
-# ============================================================================
 
 
 class RelationRegistry:

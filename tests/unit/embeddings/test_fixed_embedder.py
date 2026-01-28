@@ -1,9 +1,4 @@
-"""
-Unit tests for FixedEmbedder.
-
-Tests that the FixedEmbedder produces deterministic, reproducible embeddings
-with the expected properties for edge case testing without model overhead.
-"""
+"""Unit tests for FixedEmbedder."""
 
 import pytest
 import numpy as np

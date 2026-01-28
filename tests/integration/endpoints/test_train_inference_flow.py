@@ -1,25 +1,9 @@
-"""
-Integration tests for custom models (training and inference) endpoints.
-
-Tests the /custom_models_service/* endpoints against a real running server:
-- GET /protocols - Get available training protocols
-- GET /config_options/{protocol} - Get config options for a protocol
-- POST /verify_config - Verify training configuration
-- POST /start_training - Start model training
-- POST /model_files - Get trained model files
-- POST /start_inference - Run inference on trained model
-
-"""
+"""Integration tests for custom models (training and inference) endpoints."""
 
 import pytest
 from typing import Dict, List
 
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
-
-
-# =============================================================================
-# FIXTURES - All sequences from canonical dataset
-# =============================================================================
 
 
 @pytest.fixture
@@ -131,11 +115,6 @@ def regression_config(embedder_name: str) -> Dict:
     }
 
 
-# =============================================================================
-# CONFIG OPTIONS ENDPOINT TESTS
-# =============================================================================
-
-
 class TestConfigOptionsEndpoint:
     """
     Integration tests for GET /custom_models_service/config_options/{protocol}.
@@ -167,11 +146,6 @@ class TestConfigOptionsEndpoint:
 
         # Should return 400 for invalid protocol
         assert response.status_code == 400
-
-
-# =============================================================================
-# VERIFY CONFIG ENDPOINT TESTS
-# =============================================================================
 
 
 class TestVerifyConfigEndpoint:
@@ -220,11 +194,6 @@ class TestVerifyConfigEndpoint:
         data = response.json()
         # Should have non-empty error message
         assert data.get("error") != ""
-
-
-# =============================================================================
-# START TRAINING ENDPOINT TESTS
-# =============================================================================
 
 
 class TestStartTrainingEndpoint:
@@ -333,11 +302,6 @@ class TestStartTrainingEndpoint:
         assert response.status_code in [400, 422]
 
 
-# =============================================================================
-# START INFERENCE ENDPOINT TESTS
-# =============================================================================
-
-
 class TestStartInferenceEndpoint:
     """
     Integration tests for POST /custom_models_service/start_inference.
@@ -395,11 +359,6 @@ class TestStartInferenceEndpoint:
         assert response.status_code in [200, 404]
 
 
-# =============================================================================
-# MODEL FILES ENDPOINT TESTS
-# =============================================================================
-
-
 class TestModelFilesEndpoint:
     """
     Integration tests for POST /custom_models_service/model_files.
@@ -415,11 +374,6 @@ class TestModelFilesEndpoint:
 
         # Should return 404 for non-existent model
         assert response.status_code == 404
-
-
-# =============================================================================
-# TRAINING TASK LIFECYCLE TESTS
-# =============================================================================
 
 
 class TestTrainingTaskLifecycle:
@@ -482,11 +436,6 @@ class TestTrainingTaskLifecycle:
 
         assert result is not None
         assert result.get("status") in ["finished", "failed"]
-
-
-# =============================================================================
-# END-TO-END TRAINING AND INFERENCE FLOW
-# =============================================================================
 
 
 class TestEndToEndTrainInferenceFlow:
@@ -626,11 +575,6 @@ class TestEndToEndTrainInferenceFlow:
         assert "out_config" in data or "logging_out" in data or "out_file" in data
 
 
-# =============================================================================
-# TRAINING DATA VALIDATION TESTS
-# =============================================================================
-
-
 class TestTrainingDataValidation:
     """
     Tests for training data validation.
@@ -711,11 +655,6 @@ class TestTrainingDataValidation:
         )
 
         assert response.status_code == 200
-
-
-# =============================================================================
-# INFERENCE VALIDATION TESTS
-# =============================================================================
 
 
 class TestInferenceValidation:
