@@ -147,8 +147,10 @@ class FixedEmbedder:
         Returns:
             Integer seed derived from sequence hash
         """
+        # Normalize to uppercase for case-insensitive hashing
+        normalized_sequence = sequence.upper()
         # Combine sequence with seed base for reproducibility
-        hash_input = f"{self.seed_base}:{sequence}".encode("utf-8")
+        hash_input = f"{self.seed_base}:{normalized_sequence}".encode("utf-8")
         hash_bytes = hashlib.sha256(hash_input).digest()
         # Use first 8 bytes as seed (enough for numpy)
         seed = int.from_bytes(hash_bytes[:8], byteorder="big") % (2**32)
