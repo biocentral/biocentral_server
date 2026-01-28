@@ -47,21 +47,17 @@ ARG UV_EXTRA_INDEX_URL
 ENV UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}
 
 # Install dependencies BEFORE copying source code (better cache hit rate)
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project
+# Note: Not using --mount=type=cache here so GHA can cache this layer properly
+RUN uv sync --no-install-project && rm -rf /root/.cache/uv
 
 # Copy application files (this layer changes frequently)
 COPY --chown=biocentral-server-user:biocentral-server-user ./biocentral_server ./biocentral_server
 
-# Final sync to install the project itself
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync
+# Final sync to install the project itself (should be fast - just installs the project)
+RUN uv sync && rm -rf /root/.cache/uv
 
 # Switch to non-root user
 USER biocentral-server-user
-
-# Remove cache
-RUN rm -rf ~/.cache/uv
 
 EXPOSE $PORT
 
