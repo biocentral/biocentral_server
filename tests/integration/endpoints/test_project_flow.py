@@ -343,7 +343,9 @@ class TestProjectionTaskLifecycle:
         assert status_response.status_code == 200
 
         status = status_response.json()
-        assert "status" in status
+        # API returns {"dtos": [TaskDTO, ...]} structure
+        assert "dtos" in status
+        assert isinstance(status["dtos"], list)
 
 
 class TestEndToEndProjectionFlow:

@@ -64,7 +64,7 @@ class TestModelMetadataEndpoint:
         response_json = response.json()
         assert "metadata" in response_json
         metadata = response_json["metadata"]
-        assert isinstance(metadata, dict)
+        assert isinstance(metadata, list)
 
     @pytest.mark.integration
     def test_model_metadata_structure(self, client):
@@ -73,9 +73,9 @@ class TestModelMetadataEndpoint:
         metadata = response.json()["metadata"]
 
         # Each model should have metadata
-        for model_name, model_meta in metadata.items():
-            assert isinstance(model_name, str)
+        for model_meta in metadata:
             assert isinstance(model_meta, dict)
+            assert "name" in model_meta
 
     @pytest.mark.integration
     def test_model_metadata_consistent(self, client):
@@ -102,7 +102,7 @@ class TestPredictEndpoint:
         """Test that prediction request creates a task."""
         # Get available models first
         meta_response = client.get("/prediction_service/model_metadata")
-        available_models = list(meta_response.json()["metadata"].keys())
+        available_models = [m["name"] for m in meta_response.json()["metadata"]]
 
         if not available_models:
             pytest.skip("No prediction models available")
@@ -127,7 +127,7 @@ class TestPredictEndpoint:
     ):
         """Test that prediction task completes successfully."""
         meta_response = client.get("/prediction_service/model_metadata")
-        available_models = list(meta_response.json()["metadata"].keys())
+        available_models = [m["name"] for m in meta_response.json()["metadata"]]
 
         if not available_models:
             pytest.skip("No prediction models available")
@@ -153,7 +153,7 @@ class TestPredictEndpoint:
     ):
         """Test prediction with multiple models."""
         meta_response = client.get("/prediction_service/model_metadata")
-        available_models = list(meta_response.json()["metadata"].keys())
+        available_models = [m["name"] for m in meta_response.json()["metadata"]]
 
         if len(available_models) < 2:
             pytest.skip("Need at least 2 models for this test")
@@ -177,7 +177,7 @@ class TestPredictEndpoint:
     ):
         """Test prediction with real-world protein sequences from canonical dataset."""
         meta_response = client.get("/prediction_service/model_metadata")
-        available_models = list(meta_response.json()["metadata"].keys())
+        available_models = [m["name"] for m in meta_response.json()["metadata"]]
 
         if not available_models:
             pytest.skip("No prediction models available")
@@ -203,7 +203,7 @@ class TestPredictEndpoint:
     ):
         """Test prediction with standard sequences from canonical dataset."""
         meta_response = client.get("/prediction_service/model_metadata")
-        available_models = list(meta_response.json()["metadata"].keys())
+        available_models = [m["name"] for m in meta_response.json()["metadata"]]
 
         if not available_models:
             pytest.skip("No prediction models available")
@@ -234,10 +234,9 @@ class TestPredictEndpoint:
 
         response = client.post("/prediction_service/predict", json=request_data)
 
-        # Should return 200 with error in response (NotFoundErrorResponse)
-        assert response.status_code == 200
-        response_json = response.json()
-        assert "error" in response_json
+        # Pydantic validates model_names against BiocentralPredictionModel enum,
+        # returning 422 for invalid values
+        assert response.status_code == 422
 
     @pytest.mark.integration
     def test_predict_empty_sequences_rejected(self, client):
@@ -301,7 +300,7 @@ class TestPredictionTaskLifecycle:
     ):
         """Test that multiple prediction submissions get unique task IDs."""
         meta_response = client.get("/prediction_service/model_metadata")
-        available_models = list(meta_response.json()["metadata"].keys())
+        available_models = [m["name"] for m in meta_response.json()["metadata"]]
 
         if not available_models:
             pytest.skip("No prediction models available")
@@ -331,7 +330,7 @@ class TestPredictionTaskLifecycle:
     ):
         """Test that task status can be retrieved."""
         meta_response = client.get("/prediction_service/model_metadata")
-        available_models = list(meta_response.json()["metadata"].keys())
+        available_models = [m["name"] for m in meta_response.json()["metadata"]]
 
         if not available_models:
             pytest.skip("No prediction models available")
@@ -351,7 +350,9 @@ class TestPredictionTaskLifecycle:
         assert status_response.status_code == 200
 
         status = status_response.json()
-        assert "status" in status
+        # API returns {"dtos": [TaskDTO, ...]} structure
+        assert "dtos" in status
+        assert isinstance(status["dtos"], list)
 
 
 class TestEndToEndPredictionFlow:
@@ -368,7 +369,7 @@ class TestEndToEndPredictionFlow:
     ):
         """Test complete prediction flow from request to completion."""
         meta_response = client.get("/prediction_service/model_metadata")
-        available_models = list(meta_response.json()["metadata"].keys())
+        available_models = [m["name"] for m in meta_response.json()["metadata"]]
 
         if not available_models:
             pytest.skip("No prediction models available")
@@ -406,7 +407,7 @@ class TestEndToEndPredictionFlow:
                 diverse_sequences[seq_id] = sequence
 
         meta_response = client.get("/prediction_service/model_metadata")
-        available_models = list(meta_response.json()["metadata"].keys())
+        available_models = [m["name"] for m in meta_response.json()["metadata"]]
 
         if not available_models:
             pytest.skip("No prediction models available")
@@ -432,7 +433,7 @@ class TestEndToEndPredictionFlow:
     ):
         """Test prediction with sequence at minimum valid length."""
         meta_response = client.get("/prediction_service/model_metadata")
-        available_models = list(meta_response.json()["metadata"].keys())
+        available_models = [m["name"] for m in meta_response.json()["metadata"]]
 
         if not available_models:
             pytest.skip("No prediction models available")
