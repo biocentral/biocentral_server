@@ -112,14 +112,23 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build Docker image with cache
         uses: docker/build-push-action@v6
         with:
           context: .
           load: true
           tags: biocentral-server:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          build-args: |
+            UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/biocentral-server-cache:latest
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/biocentral-server-cache:latest,mode=max
 
       - name: Start services with Docker Compose
         run: |
@@ -151,6 +160,7 @@ jobs:
         run: uv run pytest tests/integration/ -v -m "not triton"
         env:
           CI_SERVER_URL: http://localhost:9540
+          # CI_EMBEDDER: fixed # Uncomment and set if specific embedder is needed
 
       - name: Show logs on failure
         if: failure()

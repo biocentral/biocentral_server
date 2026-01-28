@@ -42,6 +42,10 @@ RUN mkdir -p /app/logs /var/log/biocentral-server /app/huggingface_models && \
 COPY pyproject.toml uv.lock ./
 RUN touch README.md
 
+# Optional: Set PyTorch index URL (pass --build-arg UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu for CPU-only)
+ARG UV_EXTRA_INDEX_URL
+ENV UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}
+
 # Install dependencies BEFORE copying source code (better cache hit rate)
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-install-project --frozen
