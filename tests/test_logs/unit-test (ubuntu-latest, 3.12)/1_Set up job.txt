@@ -1,0 +1,46 @@
+﻿2026-01-28T09:16:31.7506400Z Current runner version: '2.331.0'
+2026-01-28T09:16:31.7532843Z ##[group]Runner Image Provisioner
+2026-01-28T09:16:31.7533695Z Hosted Compute Agent
+2026-01-28T09:16:31.7534228Z Version: 20260115.477
+2026-01-28T09:16:31.7534900Z Commit: 4b342d620503cbe250a3154040964899ea7c9b00
+2026-01-28T09:16:31.7535537Z Build Date: 2026-01-15T22:32:41Z
+2026-01-28T09:16:31.7536160Z Worker ID: {6290793e-eac9-4df7-af93-805d0a3c0e88}
+2026-01-28T09:16:31.7536910Z Azure Region: westus
+2026-01-28T09:16:31.7537432Z ##[endgroup]
+2026-01-28T09:16:31.7538763Z ##[group]Operating System
+2026-01-28T09:16:31.7539633Z Ubuntu
+2026-01-28T09:16:31.7540149Z 24.04.3
+2026-01-28T09:16:31.7540619Z LTS
+2026-01-28T09:16:31.7541156Z ##[endgroup]
+2026-01-28T09:16:31.7541612Z ##[group]Runner Image
+2026-01-28T09:16:31.7542141Z Image: ubuntu-24.04
+2026-01-28T09:16:31.7542649Z Version: 20260119.4.1
+2026-01-28T09:16:31.7543646Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260119.4/images/ubuntu/Ubuntu2404-Readme.md
+2026-01-28T09:16:31.7545313Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260119.4
+2026-01-28T09:16:31.7546198Z ##[endgroup]
+2026-01-28T09:16:31.7548786Z ##[group]GITHUB_TOKEN Permissions
+2026-01-28T09:16:31.7551061Z Actions: write
+2026-01-28T09:16:31.7551607Z ArtifactMetadata: write
+2026-01-28T09:16:31.7552269Z Attestations: write
+2026-01-28T09:16:31.7552752Z Checks: write
+2026-01-28T09:16:31.7553226Z Contents: write
+2026-01-28T09:16:31.7553712Z Deployments: write
+2026-01-28T09:16:31.7554287Z Discussions: write
+2026-01-28T09:16:31.7554740Z Issues: write
+2026-01-28T09:16:31.7555230Z Metadata: read
+2026-01-28T09:16:31.7555738Z Models: read
+2026-01-28T09:16:31.7556215Z Packages: write
+2026-01-28T09:16:31.7556685Z Pages: write
+2026-01-28T09:16:31.7557274Z PullRequests: write
+2026-01-28T09:16:31.7557811Z RepositoryProjects: write
+2026-01-28T09:16:31.7558359Z SecurityEvents: write
+2026-01-28T09:16:31.7558931Z Statuses: write
+2026-01-28T09:16:31.7559556Z ##[endgroup]
+2026-01-28T09:16:31.7561584Z Secret source: Actions
+2026-01-28T09:16:31.7562385Z Prepare workflow directory
+2026-01-28T09:16:31.7894423Z Prepare all required actions
+2026-01-28T09:16:31.7952523Z Getting action download info
+2026-01-28T09:16:32.2593124Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+2026-01-28T09:16:32.3774129Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2026-01-28T09:16:32.5491917Z Download action repository 'coactions/setup-xvfb@v1' (SHA:b6b4fcfb9f5a895edadc3bc76318fae0ac17c8b3)
+2026-01-28T09:16:33.1643190Z Complete job name: unit-test (ubuntu-latest, 3.12)

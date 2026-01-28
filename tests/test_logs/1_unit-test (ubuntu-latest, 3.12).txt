@@ -1,0 +1,797 @@
+﻿2026-01-28T09:16:31.7507262Z Current runner version: '2.331.0'
+2026-01-28T09:16:31.7532866Z ##[group]Runner Image Provisioner
+2026-01-28T09:16:31.7533700Z Hosted Compute Agent
+2026-01-28T09:16:31.7534231Z Version: 20260115.477
+2026-01-28T09:16:31.7534904Z Commit: 4b342d620503cbe250a3154040964899ea7c9b00
+2026-01-28T09:16:31.7535540Z Build Date: 2026-01-15T22:32:41Z
+2026-01-28T09:16:31.7536163Z Worker ID: {6290793e-eac9-4df7-af93-805d0a3c0e88}
+2026-01-28T09:16:31.7536913Z Azure Region: westus
+2026-01-28T09:16:31.7537435Z ##[endgroup]
+2026-01-28T09:16:31.7538776Z ##[group]Operating System
+2026-01-28T09:16:31.7539641Z Ubuntu
+2026-01-28T09:16:31.7540152Z 24.04.3
+2026-01-28T09:16:31.7540623Z LTS
+2026-01-28T09:16:31.7541160Z ##[endgroup]
+2026-01-28T09:16:31.7541615Z ##[group]Runner Image
+2026-01-28T09:16:31.7542144Z Image: ubuntu-24.04
+2026-01-28T09:16:31.7542653Z Version: 20260119.4.1
+2026-01-28T09:16:31.7543832Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260119.4/images/ubuntu/Ubuntu2404-Readme.md
+2026-01-28T09:16:31.7545318Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260119.4
+2026-01-28T09:16:31.7546202Z ##[endgroup]
+2026-01-28T09:16:31.7548793Z ##[group]GITHUB_TOKEN Permissions
+2026-01-28T09:16:31.7551082Z Actions: write
+2026-01-28T09:16:31.7551611Z ArtifactMetadata: write
+2026-01-28T09:16:31.7552273Z Attestations: write
+2026-01-28T09:16:31.7552755Z Checks: write
+2026-01-28T09:16:31.7553228Z Contents: write
+2026-01-28T09:16:31.7553715Z Deployments: write
+2026-01-28T09:16:31.7554290Z Discussions: write
+2026-01-28T09:16:31.7554743Z Issues: write
+2026-01-28T09:16:31.7555233Z Metadata: read
+2026-01-28T09:16:31.7555777Z Models: read
+2026-01-28T09:16:31.7556217Z Packages: write
+2026-01-28T09:16:31.7556688Z Pages: write
+2026-01-28T09:16:31.7557279Z PullRequests: write
+2026-01-28T09:16:31.7557814Z RepositoryProjects: write
+2026-01-28T09:16:31.7558363Z SecurityEvents: write
+2026-01-28T09:16:31.7558934Z Statuses: write
+2026-01-28T09:16:31.7559615Z ##[endgroup]
+2026-01-28T09:16:31.7561601Z Secret source: Actions
+2026-01-28T09:16:31.7562390Z Prepare workflow directory
+2026-01-28T09:16:31.7894470Z Prepare all required actions
+2026-01-28T09:16:31.7952555Z Getting action download info
+2026-01-28T09:16:32.2593160Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+2026-01-28T09:16:32.3774160Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2026-01-28T09:16:32.5491943Z Download action repository 'coactions/setup-xvfb@v1' (SHA:b6b4fcfb9f5a895edadc3bc76318fae0ac17c8b3)
+2026-01-28T09:16:33.1643211Z Complete job name: unit-test (ubuntu-latest, 3.12)
+2026-01-28T09:16:33.2268226Z ##[group]Run actions/checkout@v4
+2026-01-28T09:16:33.2269035Z with:
+2026-01-28T09:16:33.2269695Z   fetch-depth: 1
+2026-01-28T09:16:33.2270229Z   repository: DenizOzturk95/biocentral_server
+2026-01-28T09:16:33.2270904Z   token: ***
+2026-01-28T09:16:33.2271268Z   ssh-strict: true
+2026-01-28T09:16:33.2271646Z   ssh-user: git
+2026-01-28T09:16:33.2272047Z   persist-credentials: true
+2026-01-28T09:16:33.2272479Z   clean: true
+2026-01-28T09:16:33.2272862Z   sparse-checkout-cone-mode: true
+2026-01-28T09:16:33.2273328Z   fetch-tags: false
+2026-01-28T09:16:33.2273720Z   show-progress: true
+2026-01-28T09:16:33.2274110Z   lfs: false
+2026-01-28T09:16:33.2274475Z   submodules: false
+2026-01-28T09:16:33.2274856Z   set-safe-directory: true
+2026-01-28T09:16:33.2275599Z ##[endgroup]
+2026-01-28T09:16:33.3330099Z Syncing repository: DenizOzturk95/biocentral_server
+2026-01-28T09:16:33.3331887Z ##[group]Getting Git version info
+2026-01-28T09:16:33.3332915Z Working directory is '/home/runner/work/biocentral_server/biocentral_server'
+2026-01-28T09:16:33.3334051Z [command]/usr/bin/git version
+2026-01-28T09:16:33.3394996Z git version 2.52.0
+2026-01-28T09:16:33.3420111Z ##[endgroup]
+2026-01-28T09:16:33.3440269Z Temporarily overriding HOME='/home/runner/work/_temp/9f3940bd-1dee-434e-b789-52ec289de557' before making global git config changes
+2026-01-28T09:16:33.3442971Z Adding repository directory to the temporary git global config as a safe directory
+2026-01-28T09:16:33.3446806Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/biocentral_server/biocentral_server
+2026-01-28T09:16:33.3485422Z Deleting the contents of '/home/runner/work/biocentral_server/biocentral_server'
+2026-01-28T09:16:33.3489050Z ##[group]Initializing the repository
+2026-01-28T09:16:33.3493895Z [command]/usr/bin/git init /home/runner/work/biocentral_server/biocentral_server
+2026-01-28T09:16:33.3580516Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-01-28T09:16:33.3581908Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-01-28T09:16:33.3582799Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-01-28T09:16:33.3583826Z hint: call:
+2026-01-28T09:16:33.3584448Z hint:
+2026-01-28T09:16:33.3584931Z hint: 	git config --global init.defaultBranch <name>
+2026-01-28T09:16:33.3585695Z hint:
+2026-01-28T09:16:33.3586672Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-01-28T09:16:33.3588294Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-01-28T09:16:33.3589774Z hint:
+2026-01-28T09:16:33.3590492Z hint: 	git branch -m <name>
+2026-01-28T09:16:33.3591312Z hint:
+2026-01-28T09:16:33.3592379Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-01-28T09:16:33.3594191Z Initialized empty Git repository in /home/runner/work/biocentral_server/biocentral_server/.git/
+2026-01-28T09:16:33.3597956Z [command]/usr/bin/git remote add origin https://github.com/DenizOzturk95/biocentral_server
+2026-01-28T09:16:33.3631901Z ##[endgroup]
+2026-01-28T09:16:33.3633158Z ##[group]Disabling automatic garbage collection
+2026-01-28T09:16:33.3637021Z [command]/usr/bin/git config --local gc.auto 0
+2026-01-28T09:16:33.3665595Z ##[endgroup]
+2026-01-28T09:16:33.3666776Z ##[group]Setting up auth
+2026-01-28T09:16:33.3672987Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-01-28T09:16:33.3702793Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-01-28T09:16:33.4033781Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-01-28T09:16:33.4063865Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-01-28T09:16:33.4280175Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-01-28T09:16:33.4309056Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-01-28T09:16:33.4538079Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-01-28T09:16:33.4573823Z ##[endgroup]
+2026-01-28T09:16:33.4575030Z ##[group]Fetching the repository
+2026-01-28T09:16:33.4583748Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +993b89b05085850bf844c6c2c0c08bccfc183b47:refs/remotes/origin/feature/tests
+2026-01-28T09:16:33.9494849Z From https://github.com/DenizOzturk95/biocentral_server
+2026-01-28T09:16:33.9496675Z  * [new ref]         993b89b05085850bf844c6c2c0c08bccfc183b47 -> origin/feature/tests
+2026-01-28T09:16:33.9528254Z ##[endgroup]
+2026-01-28T09:16:33.9529073Z ##[group]Determining the checkout info
+2026-01-28T09:16:33.9530930Z ##[endgroup]
+2026-01-28T09:16:33.9536168Z [command]/usr/bin/git sparse-checkout disable
+2026-01-28T09:16:33.9578759Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-01-28T09:16:33.9604832Z ##[group]Checking out the ref
+2026-01-28T09:16:33.9608321Z [command]/usr/bin/git checkout --progress --force -B feature/tests refs/remotes/origin/feature/tests
+2026-01-28T09:16:33.9821811Z Switched to a new branch 'feature/tests'
+2026-01-28T09:16:33.9824841Z branch 'feature/tests' set up to track 'origin/feature/tests'.
+2026-01-28T09:16:33.9832125Z ##[endgroup]
+2026-01-28T09:16:33.9868004Z [command]/usr/bin/git log -1 --format=%H
+2026-01-28T09:16:33.9890268Z 993b89b05085850bf844c6c2c0c08bccfc183b47
+2026-01-28T09:16:34.0135691Z ##[group]Run actions/setup-python@v5
+2026-01-28T09:16:34.0136308Z with:
+2026-01-28T09:16:34.0136699Z   python-version: 3.12
+2026-01-28T09:16:34.0137132Z   check-latest: false
+2026-01-28T09:16:34.0137724Z   token: ***
+2026-01-28T09:16:34.0138133Z   update-environment: true
+2026-01-28T09:16:34.0138671Z   allow-prereleases: false
+2026-01-28T09:16:34.0139126Z   freethreaded: false
+2026-01-28T09:16:34.0139742Z ##[endgroup]
+2026-01-28T09:16:34.1800418Z ##[group]Installed versions
+2026-01-28T09:16:34.2061521Z Successfully set up CPython (3.12.12)
+2026-01-28T09:16:34.2062983Z ##[endgroup]
+2026-01-28T09:16:34.2190731Z ##[group]Run git config --global url."https://github.com/".insteadOf git@github.com:
+2026-01-28T09:16:34.2192007Z [36;1mgit config --global url."https://github.com/".insteadOf git@github.com:[0m
+2026-01-28T09:16:34.2420496Z shell: /usr/bin/bash -e {0}
+2026-01-28T09:16:34.2421049Z env:
+2026-01-28T09:16:34.2421588Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:16:34.2422460Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib/pkgconfig
+2026-01-28T09:16:34.2423327Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:16:34.2424095Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:16:34.2424839Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:16:34.2425611Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib
+2026-01-28T09:16:34.2426254Z ##[endgroup]
+2026-01-28T09:16:34.2567570Z ##[group]Run sudo apt-get update
+2026-01-28T09:16:34.2568191Z [36;1msudo apt-get update[0m
+2026-01-28T09:16:34.2568816Z [36;1mcurl -LsSf https://astral.sh/uv/install.sh | sh[0m
+2026-01-28T09:16:34.2569668Z [36;1msource $HOME/.cargo/env[0m
+2026-01-28T09:16:34.2570160Z [36;1muv sync[0m
+2026-01-28T09:16:34.2600003Z shell: /usr/bin/bash -e {0}
+2026-01-28T09:16:34.2600486Z env:
+2026-01-28T09:16:34.2600982Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:16:34.2601816Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib/pkgconfig
+2026-01-28T09:16:34.2602639Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:16:34.2603374Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:16:34.2604112Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:16:34.2604850Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib
+2026-01-28T09:16:34.2605477Z ##[endgroup]
+2026-01-28T09:16:34.3342410Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-01-28T09:16:34.3732765Z Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+2026-01-28T09:16:34.3738682Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+2026-01-28T09:16:34.4828516Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [67.0 kB]
+2026-01-28T09:16:34.4935935Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main armhf Packages [12.3 kB]
+2026-01-28T09:16:34.4965470Z Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [86.7 kB]
+2026-01-28T09:16:34.5009333Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2026-01-28T09:16:34.5017225Z Get:11 https://packages.microsoft.com/ubuntu/24.04/prod noble/main all Packages [650 B]
+2026-01-28T09:16:34.5022779Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+2026-01-28T09:16:34.5053293Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+2026-01-28T09:16:34.5071908Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+2026-01-28T09:16:34.6141613Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1700 kB]
+2026-01-28T09:16:34.6243041Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [314 kB]
+2026-01-28T09:16:34.6268197Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [175 kB]
+2026-01-28T09:16:34.6298810Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 c-n-f Metadata [16.0 kB]
+2026-01-28T09:16:34.6308523Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1519 kB]
+2026-01-28T09:16:34.6468761Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [310 kB]
+2026-01-28T09:16:34.6499209Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [386 kB]
+2026-01-28T09:16:34.6538088Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 c-n-f Metadata [31.6 kB]
+2026-01-28T09:16:34.6562669Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2506 kB]
+2026-01-28T09:16:34.6721801Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [573 kB]
+2026-01-28T09:16:34.7141856Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Components [212 B]
+2026-01-28T09:16:34.7150050Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 c-n-f Metadata [556 B]
+2026-01-28T09:16:34.7164754Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [31.8 kB]
+2026-01-28T09:16:34.7173458Z Get:25 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [6348 B]
+2026-01-28T09:16:34.7183019Z Get:26 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+2026-01-28T09:16:34.7193644Z Get:27 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 c-n-f Metadata [496 B]
+2026-01-28T09:16:34.7202767Z Get:28 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [7284 B]
+2026-01-28T09:16:34.7251073Z Get:29 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [10.5 kB]
+2026-01-28T09:16:34.7255628Z Get:30 http://azure.archive.ubuntu.com/ubuntu noble-backports/restricted amd64 Components [216 B]
+2026-01-28T09:16:34.7259927Z Get:31 http://azure.archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Components [212 B]
+2026-01-28T09:16:34.7267368Z Get:32 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1410 kB]
+2026-01-28T09:16:34.7345367Z Get:33 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [229 kB]
+2026-01-28T09:16:34.7363667Z Get:34 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [21.5 kB]
+2026-01-28T09:16:34.7373651Z Get:35 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 c-n-f Metadata [9820 B]
+2026-01-28T09:16:34.7864911Z Get:36 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [924 kB]
+2026-01-28T09:16:34.7913627Z Get:37 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [209 kB]
+2026-01-28T09:16:34.7935781Z Get:38 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [74.3 kB]
+2026-01-28T09:16:34.7947822Z Get:39 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 c-n-f Metadata [19.7 kB]
+2026-01-28T09:16:34.7963929Z Get:40 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Components [212 B]
+2026-01-28T09:16:34.7973915Z Get:41 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [28.0 kB]
+2026-01-28T09:16:34.7984443Z Get:42 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse Translation-en [6472 B]
+2026-01-28T09:16:34.7992876Z Get:43 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Components [208 B]
+2026-01-28T09:16:43.3574395Z Fetched 11.1 MB in 1s (7988 kB/s)
+2026-01-28T09:16:44.1243072Z Reading package lists...
+2026-01-28T09:16:44.3041219Z downloading uv 0.9.27 x86_64-unknown-linux-gnu
+2026-01-28T09:16:44.4882570Z no checksums to verify
+2026-01-28T09:16:44.8830172Z installing to /home/runner/.local/bin
+2026-01-28T09:16:44.8872159Z   uv
+2026-01-28T09:16:44.8893867Z   uvx
+2026-01-28T09:16:44.8894194Z everything's installed!
+2026-01-28T09:16:45.4344706Z Using CPython 3.12.12 interpreter at: /opt/hostedtoolcache/Python/3.12.12/x64/bin/python3
+2026-01-28T09:16:45.4345982Z Creating virtual environment at: .venv
+2026-01-28T09:16:45.4441171Z Resolved 224 packages in 0.89ms
+2026-01-28T09:16:45.4610103Z    Updating https://github.com/tsenoner/protspace.git (v3.1.1)
+2026-01-28T09:16:45.4611995Z    Building biocentral-server @ file:///home/runner/work/biocentral_server/biocentral_server
+2026-01-28T09:16:45.4626266Z    Updating https://github.com/SebieF/hvi_toolkit.git (maintenance/update-biotrainer)
+2026-01-28T09:16:45.4629061Z    Updating https://github.com/biocentral/biotrainer.git (feature/bioengineer-base)
+2026-01-28T09:16:45.4630672Z    Updating https://github.com/biocentral/VespaG.git (onnx-deployment)
+2026-01-28T09:16:45.4633462Z    Updating https://github.com/biocentral/TMbed.git (onnx-deployment)
+2026-01-28T09:16:45.4797561Z Downloading nvidia-nvjitlink-cu12 (37.4MiB)
+2026-01-28T09:16:45.4808665Z Downloading scipy (33.4MiB)
+2026-01-28T09:16:45.4813628Z Downloading pandas (11.8MiB)
+2026-01-28T09:16:45.4814282Z Downloading transformers (11.4MiB)
+2026-01-28T09:16:45.4814719Z Downloading sympy (6.0MiB)
+2026-01-28T09:16:45.4815105Z Downloading virtualenv (5.7MiB)
+2026-01-28T09:16:45.4815612Z Downloading psycopg-binary (4.9MiB)
+2026-01-28T09:16:45.4819310Z Downloading fonttools (4.7MiB)
+2026-01-28T09:16:45.4822085Z Downloading numba (3.6MiB)
+2026-01-28T09:16:45.4823970Z Downloading hf-xet (3.2MiB)
+2026-01-28T09:16:45.4825542Z Downloading tokenizers (3.1MiB)
+2026-01-28T09:16:45.4837002Z Downloading pydantic-core (2.0MiB)
+2026-01-28T09:16:45.4842533Z Downloading nvidia-cusolver-cu12 (255.1MiB)
+2026-01-28T09:16:45.4957193Z Downloading cuda-bindings (11.6MiB)
+2026-01-28T09:16:45.4958345Z Downloading ncbi-refseq-accession-db (2.2MiB)
+2026-01-28T09:16:45.4960190Z Downloading tensorboard-data-server (6.3MiB)
+2026-01-28T09:16:45.4961146Z Downloading logomaker (12.6MiB)
+2026-01-28T09:16:45.4968479Z Downloading nvidia-nccl-cu12 (307.4MiB)
+2026-01-28T09:16:45.4975102Z Downloading pillow (6.3MiB)
+2026-01-28T09:16:45.4975556Z Downloading matplotlib (7.9MiB)
+2026-01-28T09:16:45.4979060Z Downloading zstandard (5.3MiB)
+2026-01-28T09:16:45.4982057Z Downloading biopython (3.1MiB)
+2026-01-28T09:16:45.4985817Z Downloading nvidia-cublas-cu12 (566.8MiB)
+2026-01-28T09:16:45.4987346Z Downloading aaanalysis (7.8MiB)
+2026-01-28T09:16:45.4995230Z Downloading nvidia-cufft-cu12 (184.2MiB)
+2026-01-28T09:16:45.4998761Z Downloading nvidia-curand-cu12 (60.7MiB)
+2026-01-28T09:16:45.5003043Z Downloading h5py (4.9MiB)
+2026-01-28T09:16:45.5007895Z Downloading libcst (2.2MiB)
+2026-01-28T09:16:45.5013026Z Downloading ncbi-refseq-accession-offsets (110.8MiB)
+2026-01-28T09:16:45.5017142Z Downloading ncbi-refseq-accession-lengths (35.1MiB)
+2026-01-28T09:16:45.5021032Z Downloading ncbi-taxon-db (85.4MiB)
+2026-01-28T09:16:45.5024282Z Downloading ml-dtypes (4.8MiB)
+2026-01-28T09:16:45.5027877Z Downloading tensorboard (5.3MiB)
+2026-01-28T09:16:45.5031607Z Downloading numpy (15.3MiB)
+2026-01-28T09:16:45.5035162Z Downloading llvmlite (53.7MiB)
+2026-01-28T09:16:45.5038739Z Downloading nvidia-nvshmem-cu12 (132.7MiB)
+2026-01-28T09:16:45.5043344Z Downloading nvidia-cusparselt-cu12 (273.9MiB)
+2026-01-28T09:16:45.5047140Z Downloading scikit-learn (8.5MiB)
+2026-01-28T09:16:45.5051058Z Downloading nvidia-cuda-nvrtc-cu12 (84.0MiB)
+2026-01-28T09:16:45.5054801Z Downloading nvidia-cusparse-cu12 (274.9MiB)
+2026-01-28T09:16:45.5115051Z Downloading triton (179.5MiB)
+2026-01-28T09:16:45.5120183Z Downloading pyarrow (45.4MiB)
+2026-01-28T09:16:45.5124175Z Downloading nvidia-cudnn-cu12 (674.0MiB)
+2026-01-28T09:16:45.5129042Z Downloading torch (873.3MiB)
+2026-01-28T09:16:45.5133659Z Downloading ruff (13.2MiB)
+2026-01-28T09:16:45.5137504Z Downloading onnx (17.4MiB)
+2026-01-28T09:16:45.5141683Z Downloading grpcio (5.6MiB)
+2026-01-28T09:16:45.5145715Z Downloading blosc2 (4.2MiB)
+2026-01-28T09:16:45.5150355Z Downloading onnxruntime-gpu (286.6MiB)
+2026-01-28T09:16:45.5156872Z Downloading nvidia-cuda-cupti-cu12 (9.8MiB)
+2026-01-28T09:16:46.9773162Z     Updated https://github.com/biocentral/biotrainer.git (8b0c840bf2200718e967a37ceecab90d6e558289)
+2026-01-28T09:16:46.9987139Z    Building biotrainer @ git+https://github.com/biocentral/biotrainer.git@8b0c840bf2200718e967a37ceecab90d6e558289
+2026-01-28T09:16:47.3238841Z     Updated https://github.com/biocentral/TMbed.git (7008e95d7f468246ce385b37efd2f4db6c5c068d)
+2026-01-28T09:16:47.3291736Z     Updated https://github.com/biocentral/VespaG.git (e1bc34efe55eb53660672f8f2adde8738ae3a38e)
+2026-01-28T09:16:47.3327102Z    Building vespag @ git+https://github.com/biocentral/VespaG.git@e1bc34efe55eb53660672f8f2adde8738ae3a38e
+2026-01-28T09:16:47.3332960Z    Building tmbed @ git+https://github.com/biocentral/TMbed.git@7008e95d7f468246ce385b37efd2f4db6c5c068d
+2026-01-28T09:16:47.7134214Z  Downloaded pydantic-core
+2026-01-28T09:16:47.7546429Z Downloading networkx (2.0MiB)
+2026-01-28T09:16:47.8544178Z  Downloaded ncbi-refseq-accession-db
+2026-01-28T09:16:47.8687579Z Downloading pip (1.7MiB)
+2026-01-28T09:16:48.3513576Z  Downloaded libcst
+2026-01-28T09:16:48.3711886Z Downloading python-rapidjson (1.7MiB)
+2026-01-28T09:16:48.5497418Z  Downloaded hf-xet
+2026-01-28T09:16:48.5805758Z Downloading aiohttp (1.7MiB)
+2026-01-28T09:16:48.6392449Z  Downloaded tokenizers
+2026-01-28T09:16:48.6540804Z Downloading jedi (1.5MiB)
+2026-01-28T09:16:49.0121913Z  Downloaded biopython
+2026-01-28T09:16:49.0269544Z Downloading kiwisolver (1.4MiB)
+2026-01-28T09:16:49.4519638Z  Downloaded pip
+2026-01-28T09:16:49.4733613Z Downloading sentencepiece (1.3MiB)
+2026-01-28T09:16:49.4977092Z  Downloaded numba
+2026-01-28T09:16:49.5184855Z Downloading marisa-trie (1.2MiB)
+2026-01-28T09:16:49.5541940Z  Downloaded networkx
+2026-01-28T09:16:49.5780566Z Downloading pygments (1.2MiB)
+2026-01-28T09:16:49.7040927Z  Downloaded blosc2
+2026-01-28T09:16:49.7235417Z Downloading nvidia-cufile-cu12 (1.1MiB)
+2026-01-28T09:16:49.8111521Z  Downloaded python-rapidjson
+2026-01-28T09:16:49.8411415Z Downloading setuptools (1.0MiB)
+2026-01-28T09:16:49.9255077Z  Downloaded fonttools
+2026-01-28T09:16:50.0602300Z  Downloaded aiohttp
+2026-01-28T09:16:50.0644370Z  Downloaded ml-dtypes
+2026-01-28T09:16:50.1094701Z  Downloaded h5py
+2026-01-28T09:16:50.1782079Z  Downloaded psycopg-binary
+2026-01-28T09:16:50.3812367Z  Downloaded kiwisolver
+2026-01-28T09:16:50.5683710Z  Downloaded zstandard
+2026-01-28T09:16:50.6163053Z  Downloaded tensorboard
+2026-01-28T09:16:50.6735740Z  Downloaded marisa-trie
+2026-01-28T09:16:50.6844422Z       Built tmbed @ git+https://github.com/biocentral/TMbed.git@7008e95d7f468246ce385b37efd2f4db6c5c068d
+2026-01-28T09:16:50.7469895Z  Downloaded sentencepiece
+2026-01-28T09:16:50.8001211Z  Downloaded grpcio
+2026-01-28T09:16:50.8173942Z  Downloaded nvidia-cufile-cu12
+2026-01-28T09:16:50.8500097Z  Downloaded virtualenv
+2026-01-28T09:16:50.8795877Z  Downloaded pygments
+2026-01-28T09:16:51.1609036Z  Downloaded setuptools
+2026-01-28T09:16:51.5981860Z  Downloaded tensorboard-data-server
+2026-01-28T09:16:51.7447484Z  Downloaded pillow
+2026-01-28T09:16:51.8914667Z  Downloaded sympy
+2026-01-28T09:16:52.9171208Z  Downloaded matplotlib
+2026-01-28T09:16:53.0372676Z  Downloaded aaanalysis
+2026-01-28T09:16:53.7039647Z  Downloaded scikit-learn
+2026-01-28T09:16:53.8474524Z    Building pymmseqs==1.0.5
+2026-01-28T09:16:54.0810006Z    Building annoy==1.17.3
+2026-01-28T09:16:54.1641341Z       Built biotrainer @ git+https://github.com/biocentral/biotrainer.git@8b0c840bf2200718e967a37ceecab90d6e558289
+2026-01-28T09:16:54.3324700Z       Built vespag @ git+https://github.com/biocentral/VespaG.git@e1bc34efe55eb53660672f8f2adde8738ae3a38e
+2026-01-28T09:16:54.3905695Z  Downloaded nvidia-cuda-cupti-cu12
+2026-01-28T09:16:54.4154951Z       Built biocentral-server @ file:///home/runner/work/biocentral_server/biocentral_server
+2026-01-28T09:16:55.1944359Z  Downloaded jedi
+2026-01-28T09:16:55.5242687Z  Downloaded transformers
+2026-01-28T09:16:55.6257042Z  Downloaded cuda-bindings
+2026-01-28T09:16:55.9167925Z  Downloaded logomaker
+2026-01-28T09:16:56.2649237Z  Downloaded ruff
+2026-01-28T09:16:56.9756887Z  Downloaded pandas
+2026-01-28T09:16:56.9844029Z  Downloaded numpy
+2026-01-28T09:16:57.5181846Z     Updated https://github.com/tsenoner/protspace.git (055f8228eaae75711861dbe244c20bd334ed9dcb)
+2026-01-28T09:16:57.5220236Z    Building protspace @ git+https://github.com/tsenoner/protspace.git@055f8228eaae75711861dbe244c20bd334ed9dcb
+2026-01-28T09:16:58.3907855Z       Built pymmseqs==1.0.5
+2026-01-28T09:16:58.6434451Z       Built protspace @ git+https://github.com/tsenoner/protspace.git@055f8228eaae75711861dbe244c20bd334ed9dcb
+2026-01-28T09:16:59.6753676Z     Updated https://github.com/SebieF/hvi_toolkit.git (330be569cbdaec5be30bb7368940cab02570be61)
+2026-01-28T09:16:59.6779040Z    Building hvi-toolkit @ git+https://github.com/SebieF/hvi_toolkit.git@330be569cbdaec5be30bb7368940cab02570be61
+2026-01-28T09:17:00.4470792Z       Built hvi-toolkit @ git+https://github.com/SebieF/hvi_toolkit.git@330be569cbdaec5be30bb7368940cab02570be61
+2026-01-28T09:17:01.5265142Z  Downloaded ncbi-refseq-accession-lengths
+2026-01-28T09:17:01.6121764Z  Downloaded scipy
+2026-01-28T09:17:01.9527462Z  Downloaded nvidia-nvjitlink-cu12
+2026-01-28T09:17:03.9417893Z  Downloaded pyarrow
+2026-01-28T09:17:04.5696965Z  Downloaded llvmlite
+2026-01-28T09:17:05.4842166Z  Downloaded nvidia-curand-cu12
+2026-01-28T09:17:08.2110342Z  Downloaded nvidia-cuda-nvrtc-cu12
+2026-01-28T09:17:08.2725532Z  Downloaded ncbi-taxon-db
+2026-01-28T09:17:08.5363672Z       Built annoy==1.17.3
+2026-01-28T09:17:10.8449576Z  Downloaded ncbi-refseq-accession-offsets
+2026-01-28T09:17:12.8208939Z  Downloaded nvidia-nvshmem-cu12
+2026-01-28T09:17:16.7893707Z  Downloaded triton
+2026-01-28T09:17:17.0291448Z  Downloaded nvidia-cufft-cu12
+2026-01-28T09:17:18.2170504Z  Downloaded onnx
+2026-01-28T09:17:21.0599930Z  Downloaded nvidia-cusolver-cu12
+2026-01-28T09:17:21.9071455Z  Downloaded nvidia-cusparse-cu12
+2026-01-28T09:17:22.0156770Z  Downloaded nvidia-cusparselt-cu12
+2026-01-28T09:17:22.7769664Z  Downloaded nvidia-nccl-cu12
+2026-01-28T09:17:24.7043443Z  Downloaded onnxruntime-gpu
+2026-01-28T09:17:26.0313163Z  Downloaded nvidia-cublas-cu12
+2026-01-28T09:17:26.9331657Z  Downloaded nvidia-cudnn-cu12
+2026-01-28T09:17:34.0653859Z  Downloaded torch
+2026-01-28T09:17:34.0656561Z Prepared 221 packages in 48.61s
+2026-01-28T09:17:34.6807546Z Installed 221 packages in 614ms
+2026-01-28T09:17:34.8377801Z  + aaanalysis==1.0.2
+2026-01-28T09:17:34.8378180Z  + absl-py==2.3.1
+2026-01-28T09:17:34.8381204Z  + accelerate==1.12.0
+2026-01-28T09:17:34.8382129Z  + aiohappyeyeballs==2.6.1
+2026-01-28T09:17:34.8382502Z  + aiohttp==3.13.3
+2026-01-28T09:17:34.8382830Z  + aiosignal==1.4.0
+2026-01-28T09:17:34.8383145Z  + annotated-doc==0.0.4
+2026-01-28T09:17:34.8383507Z  + annotated-types==0.7.0
+2026-01-28T09:17:34.8383845Z  + annoy==1.17.3
+2026-01-28T09:17:34.8384125Z  + anyio==4.12.1
+2026-01-28T09:17:34.8384409Z  + appdirs==1.4.4
+2026-01-28T09:17:34.8384980Z  + asttokens==3.0.1
+2026-01-28T09:17:34.8385276Z  + attrs==25.4.0
+2026-01-28T09:17:34.8385887Z  + biocentral-server==1.1.0 (from file:///home/runner/work/biocentral_server/biocentral_server)
+2026-01-28T09:17:34.8387951Z  + biopython==1.86
+2026-01-28T09:17:34.8388895Z  + biotrainer==1.3.0 (from git+https://github.com/biocentral/biotrainer.git@8b0c840bf2200718e967a37ceecab90d6e558289)
+2026-01-28T09:17:34.8390068Z  + blosc2==2.7.1
+2026-01-28T09:17:34.8390401Z  + blosum==2.2.0
+2026-01-28T09:17:34.8390844Z  + boolean-py==5.0
+2026-01-28T09:17:34.8391263Z  + cachecontrol==0.14.4
+2026-01-28T09:17:34.8391705Z  + certifi==2026.1.4
+2026-01-28T09:17:34.8392103Z  + cfgv==3.5.0
+2026-01-28T09:17:34.8392523Z  + charset-normalizer==3.4.4
+2026-01-28T09:17:34.8392956Z  + circuitbreaker==2.1.3
+2026-01-28T09:17:34.8393340Z  + click==8.3.1
+2026-01-28T09:17:34.8393957Z  + coloredlogs==15.0.1
+2026-01-28T09:17:34.8394315Z  + contourpy==1.3.3
+2026-01-28T09:17:34.8394656Z  + coverage==7.13.1
+2026-01-28T09:17:34.8394986Z  + croniter==6.0.0
+2026-01-28T09:17:34.8395756Z  + cuda-bindings==12.9.4
+2026-01-28T09:17:34.8396161Z  + cuda-pathfinder==1.3.3
+2026-01-28T09:17:34.8396649Z  + cycler==0.12.1
+2026-01-28T09:17:34.8398984Z  + cyclonedx-python-lib==11.6.0
+2026-01-28T09:17:34.8399507Z  + cyclopts==4.5.0
+2026-01-28T09:17:34.8399812Z  + datasets==4.5.0
+2026-01-28T09:17:34.8400100Z  + decorator==5.2.1
+2026-01-28T09:17:34.8400408Z  + defusedxml==0.7.1
+2026-01-28T09:17:34.8400710Z  + dill==0.4.0
+2026-01-28T09:17:34.8400990Z  + distlib==0.4.0
+2026-01-28T09:17:34.8401296Z  + docstring-parser==0.17.0
+2026-01-28T09:17:34.8401650Z  + docutils==0.22.4
+2026-01-28T09:17:34.8401946Z  + et-xmlfile==2.0.0
+2026-01-28T09:17:34.8402265Z  + executing==2.2.1
+2026-01-28T09:17:34.8402556Z  + fastapi==0.128.0
+2026-01-28T09:17:34.8402869Z  + fastapi-limiter==0.1.6
+2026-01-28T09:17:34.8403325Z  + filelock==3.20.3
+2026-01-28T09:17:34.8403623Z  + flatbuffers==25.12.19
+2026-01-28T09:17:34.8403955Z  + fonttools==4.61.1
+2026-01-28T09:17:34.8404280Z  + frozenlist==1.8.0
+2026-01-28T09:17:34.8404582Z  + fsspec==2025.10.0
+2026-01-28T09:17:34.8404880Z  + gpytorch==1.15.1
+2026-01-28T09:17:34.8405175Z  + grpcio==1.67.1
+2026-01-28T09:17:34.8405449Z  + h11==0.16.0
+2026-01-28T09:17:34.8405731Z  + h5py==3.15.1
+2026-01-28T09:17:34.8406443Z  + hf-xet==1.2.0
+2026-01-28T09:17:34.8406749Z  + httpcore==1.0.9
+2026-01-28T09:17:34.8407051Z  + httpx==0.28.1
+2026-01-28T09:17:34.8407365Z  + huggingface-hub==0.36.0
+2026-01-28T09:17:34.8407728Z  + humanfriendly==10.0
+2026-01-28T09:17:34.8408525Z  + hvi-toolkit==0.2.1 (from git+https://github.com/SebieF/hvi_toolkit.git@330be569cbdaec5be30bb7368940cab02570be61)
+2026-01-28T09:17:34.8409537Z  + hypothesis==6.150.2
+2026-01-28T09:17:34.8410076Z  + identify==2.6.16
+2026-01-28T09:17:34.8410388Z  + idna==3.11
+2026-01-28T09:17:34.8410678Z  + iniconfig==2.3.0
+2026-01-28T09:17:34.8411028Z  + ipython==8.38.0
+2026-01-28T09:17:34.8411448Z  + jaxtyping==0.3.5
+2026-01-28T09:17:34.8411741Z  + jedi==0.19.2
+2026-01-28T09:17:34.8412023Z  + jinja2==3.1.6
+2026-01-28T09:17:34.8412299Z  + joblib==1.5.3
+2026-01-28T09:17:34.8412596Z  + kiwisolver==1.4.9
+2026-01-28T09:17:34.8412911Z  + libcst==1.8.6
+2026-01-28T09:17:34.8413224Z  + license-expression==30.4.4
+2026-01-28T09:17:34.8413624Z  + lightning-utilities==0.15.2
+2026-01-28T09:17:34.8414009Z  + linear-operator==0.6
+2026-01-28T09:17:34.8414359Z  + linkify-it-py==2.0.3
+2026-01-28T09:17:34.8414688Z  + llvmlite==0.46.0
+2026-01-28T09:17:34.8414996Z  + logomaker==0.8.7
+2026-01-28T09:17:34.8415295Z  + marisa-trie==1.3.1
+2026-01-28T09:17:34.8415640Z  + markdown==3.10.1
+2026-01-28T09:17:34.8415977Z  + markdown-it-py==4.0.0
+2026-01-28T09:17:34.8416331Z  + markupsafe==3.0.3
+2026-01-28T09:17:34.8416649Z  + matplotlib==3.9.0
+2026-01-28T09:17:34.8416988Z  + matplotlib-inline==0.2.1
+2026-01-28T09:17:34.8417376Z  + mdit-py-plugins==0.5.0
+2026-01-28T09:17:34.8417719Z  + mdurl==0.1.2
+2026-01-28T09:17:34.8418014Z  + ml-dtypes==0.5.4
+2026-01-28T09:17:34.8418329Z  + more-itertools==10.8.0
+2026-01-28T09:17:34.8418666Z  + mpmath==1.3.0
+2026-01-28T09:17:34.8418959Z  + msgpack==1.1.2
+2026-01-28T09:17:34.8419255Z  + multidict==6.7.0
+2026-01-28T09:17:34.8419716Z  + multiprocess==0.70.18
+2026-01-28T09:17:34.8420046Z  + mutmut==3.4.0
+2026-01-28T09:17:34.8420383Z  + ncbi-refseq-accession-db==2024.9.7
+2026-01-28T09:17:34.8420850Z  + ncbi-refseq-accession-lengths==2024.9.7
+2026-01-28T09:17:34.8421348Z  + ncbi-refseq-accession-offsets==2024.9.7
+2026-01-28T09:17:34.8421790Z  + ncbi-taxon-db==2024.9.7
+2026-01-28T09:17:34.8422141Z  + ndindex==1.10.1
+2026-01-28T09:17:34.8422433Z  + networkx==3.6.1
+2026-01-28T09:17:34.8422732Z  + nodeenv==1.10.0
+2026-01-28T09:17:34.8423016Z  + numba==0.63.1
+2026-01-28T09:17:34.8423313Z  + numexpr==2.14.1
+2026-01-28T09:17:34.8423617Z  + numpy==2.1.3
+2026-01-28T09:17:34.8423931Z  + nvidia-cublas-cu12==12.8.4.1
+2026-01-28T09:17:34.8424341Z  + nvidia-cuda-cupti-cu12==12.8.90
+2026-01-28T09:17:34.8424945Z  + nvidia-cuda-nvrtc-cu12==12.8.93
+2026-01-28T09:17:34.8425390Z  + nvidia-cuda-runtime-cu12==12.8.90
+2026-01-28T09:17:34.8425813Z  + nvidia-cudnn-cu12==9.10.2.21
+2026-01-28T09:17:34.8426212Z  + nvidia-cufft-cu12==11.3.3.83
+2026-01-28T09:17:34.8426596Z  + nvidia-cufile-cu12==1.13.1.3
+2026-01-28T09:17:34.8426982Z  + nvidia-curand-cu12==10.3.9.90
+2026-01-28T09:17:34.8427386Z  + nvidia-cusolver-cu12==11.7.3.90
+2026-01-28T09:17:34.8427789Z  + nvidia-cusparse-cu12==12.5.8.93
+2026-01-28T09:17:34.8428204Z  + nvidia-cusparselt-cu12==0.7.1
+2026-01-28T09:17:34.8428599Z  + nvidia-nccl-cu12==2.27.5
+2026-01-28T09:17:34.8428980Z  + nvidia-nvjitlink-cu12==12.8.93
+2026-01-28T09:17:34.8429535Z  + nvidia-nvshmem-cu12==3.4.5
+2026-01-28T09:17:34.8429927Z  + nvidia-nvtx-cu12==12.8.90
+2026-01-28T09:17:34.8430286Z  + onnx==1.19.1
+2026-01-28T09:17:34.8430580Z  + onnx-ir==0.1.15
+2026-01-28T09:17:34.8430903Z  + onnxruntime-gpu==1.23.2
+2026-01-28T09:17:34.8431259Z  + onnxscript==0.5.7
+2026-01-28T09:17:34.8431583Z  + openpyxl==3.1.5
+2026-01-28T09:17:34.8431907Z  + packageurl-python==0.17.6
+2026-01-28T09:17:34.8432277Z  + packaging==24.2
+2026-01-28T09:17:34.8432571Z  + pacmap==0.8.0
+2026-01-28T09:17:34.8432874Z  + pandas==2.3.3
+2026-01-28T09:17:34.8433163Z  + parso==0.8.5
+2026-01-28T09:17:34.8433453Z  + patsy==1.0.2
+2026-01-28T09:17:34.8433724Z  + peft==0.18.1
+2026-01-28T09:17:34.8434013Z  + pexpect==4.9.0
+2026-01-28T09:17:34.8434322Z  + pillow==11.3.0
+2026-01-28T09:17:34.8434611Z  + pip==25.3
+2026-01-28T09:17:34.8434902Z  + pip-api==0.0.34
+2026-01-28T09:17:34.8435205Z  + pip-audit==2.10.0
+2026-01-28T09:17:34.8435563Z  + pip-requirements-parser==32.0.1
+2026-01-28T09:17:34.8435975Z  + platformdirs==4.5.1
+2026-01-28T09:17:34.8436319Z  + pluggy==1.6.0
+2026-01-28T09:17:34.8436614Z  + pre-commit==4.5.1
+2026-01-28T09:17:34.8436956Z  + prometheus-client==0.24.1
+2026-01-28T09:17:34.8437550Z  + prometheus-fastapi-instrumentator==7.1.0
+2026-01-28T09:17:34.8438037Z  + prompt-toolkit==3.0.52
+2026-01-28T09:17:34.8438397Z  + propcache==0.4.1
+2026-01-28T09:17:34.8438710Z  + protobuf==5.29.5
+2026-01-28T09:17:34.8439616Z  + protspace==3.1.1 (from git+https://github.com/tsenoner/protspace.git@055f8228eaae75711861dbe244c20bd334ed9dcb)
+2026-01-28T09:17:34.8440507Z  + psutil==7.2.1
+2026-01-28T09:17:34.8440813Z  + psycopg==3.3.2
+2026-01-28T09:17:34.8441131Z  + psycopg-binary==3.3.2
+2026-01-28T09:17:34.8441498Z  + ptyprocess==0.7.0
+2026-01-28T09:17:34.8441823Z  + pure-eval==0.2.3
+2026-01-28T09:17:34.8442138Z  + py-cpuinfo==9.0.0
+2026-01-28T09:17:34.8442464Z  + py-serializable==2.1.0
+2026-01-28T09:17:34.8442811Z  + pyarrow==23.0.0
+2026-01-28T09:17:34.8443118Z  + pydantic==2.12.5
+2026-01-28T09:17:34.8443427Z  + pydantic-core==2.41.5
+2026-01-28T09:17:34.8443772Z  + pygments==2.19.2
+2026-01-28T09:17:34.8444072Z  + pymmseqs==1.0.5
+2026-01-28T09:17:34.8444381Z  + pynndescent==0.6.0
+2026-01-28T09:17:34.8444705Z  + pyparsing==3.3.2
+2026-01-28T09:17:34.8445014Z  + pytest==8.3.1
+2026-01-28T09:17:34.8445318Z  + pytest-asyncio==1.3.0
+2026-01-28T09:17:34.8445680Z  + pytest-benchmark==5.2.3
+2026-01-28T09:17:34.8446037Z  + pytest-cov==7.0.0
+2026-01-28T09:17:34.8446368Z  + python-dateutil==2.9.0.post0
+2026-01-28T09:17:34.8446783Z  + python-dotenv==1.2.1
+2026-01-28T09:17:34.8447133Z  + python-rapidjson==1.23
+2026-01-28T09:17:34.8447476Z  + pytz==2024.2
+2026-01-28T09:17:34.8447762Z  + pyyaml==6.0.3
+2026-01-28T09:17:34.8448051Z  + redis==7.1.0
+2026-01-28T09:17:34.8448333Z  + regex==2026.1.15
+2026-01-28T09:17:34.8448639Z  + requests==2.32.5
+2026-01-28T09:17:34.8448934Z  + rich==14.2.0
+2026-01-28T09:17:34.8449213Z  + rich-rst==1.3.2
+2026-01-28T09:17:34.8449625Z  + rq==2.6.1
+2026-01-28T09:17:34.8449906Z  + ruamel-yaml==0.17.40
+2026-01-28T09:17:34.8450265Z  + ruamel-yaml-clib==0.2.15
+2026-01-28T09:17:34.8450618Z  + ruff==0.14.13
+2026-01-28T09:17:34.8450924Z  + safetensors==0.7.0
+2026-01-28T09:17:34.8451255Z  + scikit-learn==1.8.0
+2026-01-28T09:17:34.8451583Z  + scipy==1.17.0
+2026-01-28T09:17:34.8451873Z  + seaborn==0.13.2
+2026-01-28T09:17:34.8452424Z  + sentencepiece==0.2.1
+2026-01-28T09:17:34.8452774Z  + setproctitle==1.3.7
+2026-01-28T09:17:34.8453103Z  + setuptools==80.10.1
+2026-01-28T09:17:34.8453419Z  + six==1.17.0
+2026-01-28T09:17:34.8453717Z  + sortedcontainers==2.4.0
+2026-01-28T09:17:34.8454082Z  + stack-data==0.6.3
+2026-01-28T09:17:34.8454398Z  + starlette==0.50.0
+2026-01-28T09:17:34.8454704Z  + sympy==1.14.0
+2026-01-28T09:17:34.8454991Z  + taxoniq==1.0.3
+2026-01-28T09:17:34.8455292Z  + taxopy==0.14.0
+2026-01-28T09:17:34.8455593Z  + tensorboard==2.20.0
+2026-01-28T09:17:34.8455964Z  + tensorboard-data-server==0.7.2
+2026-01-28T09:17:34.8456410Z  + textual==7.3.0
+2026-01-28T09:17:34.8456723Z  + threadpoolctl==3.6.0
+2026-01-28T09:17:34.8457433Z  + tmbed==1.0.1 (from git+https://github.com/biocentral/TMbed.git@7008e95d7f468246ce385b37efd2f4db6c5c068d)
+2026-01-28T09:17:34.8458161Z  + tokenizers==0.22.2
+2026-01-28T09:17:34.8458453Z  + tomli==2.4.0
+2026-01-28T09:17:34.8458739Z  + tomli-w==1.2.0
+2026-01-28T09:17:34.8458995Z  + torch==2.10.0
+2026-01-28T09:17:34.8459326Z  + torchmetrics==1.8.2
+2026-01-28T09:17:34.8459777Z  + tqdm==4.67.1
+2026-01-28T09:17:34.8460043Z  + traitlets==5.14.3
+2026-01-28T09:17:34.8460332Z  + transformers==4.57.6
+2026-01-28T09:17:34.8460628Z  + triton==3.6.0
+2026-01-28T09:17:34.8460911Z  + tritonclient==2.64.0
+2026-01-28T09:17:34.8461228Z  + typing-extensions==4.15.0
+2026-01-28T09:17:34.8461584Z  + typing-inspection==0.4.2
+2026-01-28T09:17:34.8461921Z  + tzdata==2025.3
+2026-01-28T09:17:34.8462236Z  + uc-micro-py==1.0.3
+2026-01-28T09:17:34.8462570Z  + umap-learn==0.5.11
+2026-01-28T09:17:34.8462893Z  + unipressed==1.4.0
+2026-01-28T09:17:34.8463081Z  + urllib3==2.6.3
+2026-01-28T09:17:34.8463260Z  + uvicorn==0.40.0
+2026-01-28T09:17:34.8463698Z  + vespag==0.1.0 (from git+https://github.com/biocentral/VespaG.git@e1bc34efe55eb53660672f8f2adde8738ae3a38e)
+2026-01-28T09:17:34.8464205Z  + virtualenv==20.36.1
+2026-01-28T09:17:34.8464584Z  + wadler-lindig==0.1.7
+2026-01-28T09:17:34.8464785Z  + wcwidth==0.3.0
+2026-01-28T09:17:34.8464965Z  + werkzeug==3.1.5
+2026-01-28T09:17:34.8465150Z  + xxhash==3.6.0
+2026-01-28T09:17:34.8465324Z  + yarl==1.22.0
+2026-01-28T09:17:34.8465494Z  + zstandard==0.25.0
+2026-01-28T09:17:35.0308009Z ##[group]Run coactions/setup-xvfb@v1
+2026-01-28T09:17:35.0308275Z with:
+2026-01-28T09:17:35.0308461Z   run: uv run pytest tests/unit/ -v
+2026-01-28T09:17:35.0308695Z env:
+2026-01-28T09:17:35.0308938Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:17:35.0309528Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib/pkgconfig
+2026-01-28T09:17:35.0310034Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:17:35.0310389Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:17:35.0310746Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.12/x64
+2026-01-28T09:17:35.0311103Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.12/x64/lib
+2026-01-28T09:17:35.0311436Z ##[endgroup]
+2026-01-28T09:17:35.0704043Z [command]/usr/bin/sudo apt-get install -y xvfb x11-xserver-utils
+2026-01-28T09:17:35.2001459Z Reading package lists...
+2026-01-28T09:17:35.3920214Z Building dependency tree...
+2026-01-28T09:17:35.3927375Z Reading state information...
+2026-01-28T09:17:35.5723879Z xvfb is already the newest version (2:21.1.12-1ubuntu1.5).
+2026-01-28T09:17:35.5724358Z Suggested packages:
+2026-01-28T09:17:35.5724600Z   nickle cairo-5c xorg-docs-core
+2026-01-28T09:17:35.5934633Z The following NEW packages will be installed:
+2026-01-28T09:17:35.5935090Z   x11-xserver-utils
+2026-01-28T09:17:35.6123064Z 0 upgraded, 1 newly installed, 0 to remove and 73 not upgraded.
+2026-01-28T09:17:35.6123682Z Need to get 169 kB of archives.
+2026-01-28T09:17:35.6124227Z After this operation, 573 kB of additional disk space will be used.
+2026-01-28T09:17:35.6124885Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-01-28T09:17:35.6993951Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 x11-xserver-utils amd64 7.7+10build2 [169 kB]
+2026-01-28T09:17:35.9878254Z Fetched 169 kB in 0s (1682 kB/s)
+2026-01-28T09:17:36.0481117Z Selecting previously unselected package x11-xserver-utils.
+2026-01-28T09:17:36.0907065Z (Reading database ... 
+2026-01-28T09:17:36.0907535Z (Reading database ... 5%
+2026-01-28T09:17:36.0907991Z (Reading database ... 10%
+2026-01-28T09:17:36.0908399Z (Reading database ... 15%
+2026-01-28T09:17:36.0908865Z (Reading database ... 20%
+2026-01-28T09:17:36.0909658Z (Reading database ... 25%
+2026-01-28T09:17:36.0910058Z (Reading database ... 30%
+2026-01-28T09:17:36.0910326Z (Reading database ... 35%
+2026-01-28T09:17:36.0910581Z (Reading database ... 40%
+2026-01-28T09:17:36.0910838Z (Reading database ... 45%
+2026-01-28T09:17:36.0911086Z (Reading database ... 50%
+2026-01-28T09:17:36.0995389Z (Reading database ... 55%
+2026-01-28T09:17:36.2349701Z (Reading database ... 60%
+2026-01-28T09:17:36.3268328Z (Reading database ... 65%
+2026-01-28T09:17:36.3844703Z (Reading database ... 70%
+2026-01-28T09:17:36.5354627Z (Reading database ... 75%
+2026-01-28T09:17:36.7317381Z (Reading database ... 80%
+2026-01-28T09:17:36.9438416Z (Reading database ... 85%
+2026-01-28T09:17:37.1753201Z (Reading database ... 90%
+2026-01-28T09:17:37.3827813Z (Reading database ... 95%
+2026-01-28T09:17:37.3828259Z (Reading database ... 100%
+2026-01-28T09:17:37.3828800Z (Reading database ... 217173 files and directories currently installed.)
+2026-01-28T09:17:37.3874450Z Preparing to unpack .../x11-xserver-utils_7.7+10build2_amd64.deb ...
+2026-01-28T09:17:37.3898580Z Unpacking x11-xserver-utils (7.7+10build2) ...
+2026-01-28T09:17:37.4544515Z Setting up x11-xserver-utils (7.7+10build2) ...
+2026-01-28T09:17:37.4576574Z Processing triggers for man-db (2.12.0-4build2) ...
+2026-01-28T09:17:37.4600698Z Not building database; man-db/auto-update is not 'true'.
+2026-01-28T09:17:38.1640506Z 
+2026-01-28T09:17:38.1641060Z Running kernel seems to be up-to-date.
+2026-01-28T09:17:38.1641426Z 
+2026-01-28T09:17:38.1641690Z No services need to be restarted.
+2026-01-28T09:17:38.1641950Z 
+2026-01-28T09:17:38.1642083Z No containers need to be restarted.
+2026-01-28T09:17:38.1642384Z 
+2026-01-28T09:17:38.1642553Z No user sessions are running outdated binaries.
+2026-01-28T09:17:38.1642876Z 
+2026-01-28T09:17:38.1643538Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-01-28T09:17:39.2161544Z Command: uv run pytest tests/unit/ -v
+2026-01-28T09:17:39.2186704Z [command]/usr/bin/xvfb-run --auto-servernum uv run pytest tests/unit/ -v
+2026-01-28T09:17:43.0142635Z ============================= test session starts ==============================
+2026-01-28T09:17:43.0143961Z platform linux -- Python 3.12.12, pytest-8.3.1, pluggy-1.6.0 -- /home/runner/work/biocentral_server/biocentral_server/.venv/bin/python
+2026-01-28T09:17:43.0145004Z cachedir: .pytest_cache
+2026-01-28T09:17:43.0146263Z benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+2026-01-28T09:17:43.0148209Z hypothesis profile 'ci' -> database=None, deadline=None, print_blob=True, derandomize=True, suppress_health_check=(HealthCheck.too_slow,)
+2026-01-28T09:17:43.0149734Z rootdir: /home/runner/work/biocentral_server/biocentral_server
+2026-01-28T09:17:43.0150348Z configfile: pyproject.toml
+2026-01-28T09:17:43.0151142Z plugins: jaxtyping-0.3.5, benchmark-5.2.3, cov-7.0.0, hypothesis-6.150.2, asyncio-1.3.0, anyio-4.12.1
+2026-01-28T09:17:43.0152556Z asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+2026-01-28T09:18:38.2410428Z collecting ... collected 79 items
+2026-01-28T09:18:38.2411067Z 
+2026-01-28T09:18:38.2480665Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderDeterminism::test_same_sequence_same_embedding PASSED [  1%]
+2026-01-28T09:18:38.2543404Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderDeterminism::test_same_sequence_different_instances PASSED [  2%]
+2026-01-28T09:18:38.2581317Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderDeterminism::test_different_sequences_different_embeddings PASSED [  3%]
+2026-01-28T09:18:38.2633061Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderDeterminism::test_different_seeds_different_embeddings PASSED [  5%]
+2026-01-28T09:18:38.2682307Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderDeterminism::test_pooled_embedding_determinism PASSED [  6%]
+2026-01-28T09:18:38.2755862Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderDeterminism::test_determinism_across_batch_methods PASSED [  7%]
+2026-01-28T09:18:38.2787483Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderDimensions::test_model_dimensions[prot_t5-1024] PASSED [  8%]
+2026-01-28T09:18:38.2819927Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderDimensions::test_model_dimensions[esm2_t33-1280] PASSED [ 10%]
+2026-01-28T09:18:38.2860208Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderDimensions::test_model_dimensions[esm2_t36-2560] PASSED [ 11%]
+2026-01-28T09:18:38.2887522Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderDimensions::test_custom_dimension PASSED [ 12%]
+2026-01-28T09:18:38.2917376Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderDimensions::test_pooled_dimension PASSED [ 13%]
+2026-01-28T09:18:38.2941981Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderDimensions::test_get_embedding_dimension PASSED [ 15%]
+2026-01-28T09:18:38.2966014Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderEdgeCases::test_empty_sequence PASSED [ 16%]
+2026-01-28T09:18:38.2991907Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderEdgeCases::test_single_residue PASSED [ 17%]
+2026-01-28T09:18:38.4555593Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderEdgeCases::test_very_long_sequence PASSED [ 18%]
+2026-01-28T09:18:38.4585782Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderEdgeCases::test_unknown_amino_acid PASSED [ 20%]
+2026-01-28T09:18:38.4622980Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderEdgeCases::test_all_amino_acids PASSED [ 21%]
+2026-01-28T09:18:38.4681360Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderEdgeCases::test_homopolymer PASSED [ 22%]
+2026-01-28T09:18:38.4720070Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderEdgeCases::test_lowercase_handling PASSED [ 24%]
+2026-01-28T09:18:38.4761405Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderBatchOperations::test_batch_embedding PASSED [ 25%]
+2026-01-28T09:18:38.4808870Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderBatchOperations::test_batch_pooled PASSED [ 26%]
+2026-01-28T09:18:38.4867053Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderBatchOperations::test_dict_embedding PASSED [ 27%]
+2026-01-28T09:18:38.4902450Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderBatchOperations::test_empty_batch PASSED [ 29%]
+2026-01-28T09:18:38.4930351Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderBatchOperations::test_empty_dict PASSED [ 30%]
+2026-01-28T09:18:38.4956839Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderRegistry::test_get_embedder_creates_instance PASSED [ 31%]
+2026-01-28T09:18:38.4981437Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderRegistry::test_get_embedder_reuses_instance PASSED [ 32%]
+2026-01-28T09:18:38.5020479Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderRegistry::test_get_embedder_different_models PASSED [ 34%]
+2026-01-28T09:18:38.5059100Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderRegistry::test_clear_registry PASSED [ 35%]
+2026-01-28T09:18:38.5089855Z tests/unit/embeddings/test_fixed_embedder.py::TestConvenienceFunctions::test_get_fixed_embedder PASSED [ 36%]
+2026-01-28T09:18:38.5113353Z tests/unit/embeddings/test_fixed_embedder.py::TestConvenienceFunctions::test_generate_test_embeddings PASSED [ 37%]
+2026-01-28T09:18:38.5137477Z tests/unit/embeddings/test_fixed_embedder.py::TestConvenienceFunctions::test_generate_test_embeddings_pooled PASSED [ 39%]
+2026-01-28T09:18:38.5161974Z tests/unit/embeddings/test_fixed_embedder.py::TestConvenienceFunctions::test_generate_test_embeddings_dict PASSED [ 40%]
+2026-01-28T09:18:38.5192802Z tests/unit/embeddings/test_fixed_embedder.py::TestEmbeddingQuality::test_embedding_not_all_zeros PASSED [ 41%]
+2026-01-28T09:18:38.5297144Z tests/unit/embeddings/test_fixed_embedder.py::TestEmbeddingQuality::test_embedding_no_nan PASSED [ 43%]
+2026-01-28T09:18:38.5327592Z tests/unit/embeddings/test_fixed_embedder.py::TestEmbeddingQuality::test_embedding_no_inf PASSED [ 44%]
+2026-01-28T09:18:38.5357736Z tests/unit/embeddings/test_fixed_embedder.py::TestEmbeddingQuality::test_embedding_reasonable_magnitude PASSED [ 45%]
+2026-01-28T09:18:38.5386632Z tests/unit/embeddings/test_fixed_embedder.py::TestEmbeddingQuality::test_embedding_dtype PASSED [ 46%]
+2026-01-28T09:18:38.5418740Z tests/unit/embeddings/test_fixed_embedder.py::TestEmbeddingQuality::test_different_positions_have_different_embeddings PASSED [ 48%]
+2026-01-28T09:18:38.5443700Z tests/unit/embeddings/test_fixed_embedder.py::TestFixedEmbedderRepr::test_repr PASSED [ 49%]
+2026-01-28T09:18:38.5621192Z tests/unit/endpoints/test_custom_models.py::TestConfigOptionsEndpoint::test_config_options_valid_protocol PASSED [ 50%]
+2026-01-28T09:18:38.5749110Z tests/unit/endpoints/test_custom_models.py::TestConfigOptionsEndpoint::test_config_options_invalid_protocol PASSED [ 51%]
+2026-01-28T09:18:38.5879295Z tests/unit/endpoints/test_custom_models.py::TestVerifyConfigEndpoint::test_verify_config_valid PASSED [ 53%]
+2026-01-28T09:18:38.6008369Z tests/unit/endpoints/test_custom_models.py::TestVerifyConfigEndpoint::test_verify_config_invalid PASSED [ 54%]
+2026-01-28T09:18:38.6144999Z tests/unit/endpoints/test_custom_models.py::TestVerifyConfigEndpoint::test_verify_config_empty_dict PASSED [ 55%]
+2026-01-28T09:18:38.6281787Z tests/unit/endpoints/test_custom_models.py::TestStartTrainingEndpoint::test_start_training_valid PASSED [ 56%]
+2026-01-28T09:18:38.6400057Z tests/unit/endpoints/test_custom_models.py::TestStartTrainingEndpoint::test_start_training_invalid_config PASSED [ 58%]
+2026-01-28T09:18:38.6517764Z tests/unit/endpoints/test_custom_models.py::TestStartTrainingEndpoint::test_start_training_empty_training_data PASSED [ 59%]
+2026-01-28T09:18:38.6662205Z tests/unit/endpoints/test_custom_models.py::TestModelFilesEndpoint::test_model_files_found PASSED [ 60%]
+2026-01-28T09:18:38.6784938Z tests/unit/endpoints/test_custom_models.py::TestModelFilesEndpoint::test_model_files_not_found PASSED [ 62%]
+2026-01-28T09:18:38.6917109Z tests/unit/endpoints/test_custom_models.py::TestStartInferenceEndpoint::test_start_inference_valid PASSED [ 63%]
+2026-01-28T09:18:38.7040925Z tests/unit/endpoints/test_custom_models.py::TestStartInferenceEndpoint::test_start_inference_model_not_found PASSED [ 64%]
+2026-01-28T09:18:38.7178808Z tests/unit/endpoints/test_custom_models.py::TestStartInferenceEndpoint::test_start_inference_empty_sequences PASSED [ 65%]
+2026-01-28T09:18:38.7269977Z tests/unit/endpoints/test_embeddings.py::TestCommonEmbeddersEndpoint::test_common_embedders_returns_list PASSED [ 67%]
+2026-01-28T09:18:38.7352408Z tests/unit/endpoints/test_embeddings.py::TestCommonEmbeddersEndpoint::test_common_embedders_contains_expected_models PASSED [ 68%]
+2026-01-28T09:18:38.7437531Z tests/unit/endpoints/test_embeddings.py::TestCommonEmbeddersEndpoint::test_common_embedders_includes_prot_t5 PASSED [ 69%]
+2026-01-28T09:18:38.7520598Z tests/unit/endpoints/test_embeddings.py::TestCommonEmbeddersEndpoint::test_common_embedders_includes_esm2 PASSED [ 70%]
+2026-01-28T09:18:38.7603674Z tests/unit/endpoints/test_embeddings.py::TestCommonEmbeddersEndpoint::test_common_embedders_includes_baseline_models PASSED [ 72%]
+2026-01-28T09:18:38.7755017Z tests/unit/endpoints/test_embeddings.py::TestEmbedEndpoint::test_embed_valid_request PASSED [ 73%]
+2026-01-28T09:18:38.7843844Z tests/unit/endpoints/test_embeddings.py::TestEmbedEndpoint::test_embed_empty_sequences PASSED [ 74%]
+2026-01-28T09:18:38.7933324Z tests/unit/endpoints/test_embeddings.py::TestEmbedEndpoint::test_embed_missing_embedder_name PASSED [ 75%]
+2026-01-28T09:18:38.8036534Z tests/unit/endpoints/test_embeddings.py::TestGetMissingEmbeddingsEndpoint::test_get_missing_embeddings_valid PASSED [ 77%]
+2026-01-28T09:18:38.8127318Z tests/unit/endpoints/test_embeddings.py::TestGetMissingEmbeddingsEndpoint::test_get_missing_embeddings_invalid_json PASSED [ 78%]
+2026-01-28T09:18:38.8236574Z tests/unit/endpoints/test_embeddings.py::TestGetMissingEmbeddingsEndpoint::test_get_missing_embeddings_sequences_not_dict PASSED [ 79%]
+2026-01-28T09:18:38.8401614Z tests/unit/endpoints/test_embeddings.py::TestAddEmbeddingsEndpoint::test_add_embeddings_valid PASSED [ 81%]
+2026-01-28T09:18:38.8498761Z tests/unit/endpoints/test_embeddings.py::TestAddEmbeddingsEndpoint::test_add_embeddings_invalid_base64 PASSED [ 82%]
+2026-01-28T09:18:38.8578075Z tests/unit/endpoints/test_predict.py::TestModelMetadataEndpoint::test_model_metadata_returns_available_models PASSED [ 83%]
+2026-01-28T09:18:38.8651529Z tests/unit/endpoints/test_predict.py::TestModelMetadataEndpoint::test_model_metadata_empty_when_no_models PASSED [ 84%]
+2026-01-28T09:18:38.8757985Z tests/unit/endpoints/test_predict.py::TestPredictEndpoint::test_predict_valid_request PASSED [ 86%]
+2026-01-28T09:18:38.8828168Z tests/unit/endpoints/test_predict.py::TestPredictEndpoint::test_predict_unknown_model PASSED [ 87%]
+2026-01-28T09:18:38.8897753Z tests/unit/endpoints/test_predict.py::TestPredictEndpoint::test_predict_empty_model_names PASSED [ 88%]
+2026-01-28T09:18:38.8967603Z tests/unit/endpoints/test_predict.py::TestPredictEndpoint::test_predict_empty_sequences PASSED [ 89%]
+2026-01-28T09:18:38.9036364Z tests/unit/endpoints/test_predict.py::TestPredictEndpoint::test_predict_sequence_too_short PASSED [ 91%]
+2026-01-28T09:18:38.9133570Z tests/unit/endpoints/test_predict.py::TestPredictEndpoint::test_predict_sequence_too_long PASSED [ 92%]
+2026-01-28T09:18:38.9224960Z tests/unit/endpoints/test_projection.py::TestProjectionConfigEndpoint::test_projection_config_returns_methods PASSED [ 93%]
+2026-01-28T09:18:38.9316650Z tests/unit/endpoints/test_projection.py::TestProjectionConfigEndpoint::test_projection_config_includes_all_methods PASSED [ 94%]
+2026-01-28T09:18:38.9402238Z tests/unit/endpoints/test_projection.py::TestProjectEndpoint::test_project_valid_request PASSED [ 96%]
+2026-01-28T09:18:38.9472634Z tests/unit/endpoints/test_projection.py::TestProjectEndpoint::test_project_unknown_method PASSED [ 97%]
+2026-01-28T09:18:38.9563092Z tests/unit/endpoints/test_projection.py::TestProjectEndpoint::test_project_missing_required_fields PASSED [ 98%]
+2026-01-28T09:18:38.9680920Z tests/unit/endpoints/test_projection.py::TestProjectEndpoint::test_project_with_custom_config PASSED [100%]
+2026-01-28T09:18:38.9681695Z 
+2026-01-28T09:18:38.9681932Z =============================== warnings summary ===============================
+2026-01-28T09:18:38.9682604Z .venv/lib/python3.12/site-packages/torch/jit/_script.py:1480
+2026-01-28T09:18:38.9707528Z .venv/lib/python3.12/site-packages/torch/jit/_script.py:1480
+2026-01-28T09:18:38.9709259Z   /home/runner/work/biocentral_server/biocentral_server/.venv/lib/python3.12/site-packages/torch/jit/_script.py:1480: DeprecationWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+2026-01-28T09:18:38.9710921Z     warnings.warn(
+2026-01-28T09:18:38.9711133Z 
+2026-01-28T09:18:38.9711278Z <frozen importlib._bootstrap>:488
+2026-01-28T09:18:38.9712112Z   <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+2026-01-28T09:18:38.9712785Z 
+2026-01-28T09:18:38.9712914Z <frozen importlib._bootstrap>:488
+2026-01-28T09:18:38.9713635Z   <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+2026-01-28T09:18:38.9714295Z 
+2026-01-28T09:18:38.9714579Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:64
+2026-01-28T09:18:38.9715976Z   /home/runner/work/biocentral_server/biocentral_server/.venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:64: PyparsingDeprecationWarning: 'oneOf' deprecated - use 'one_of'
+2026-01-28T09:18:38.9717742Z     prop = Group((name + Suppress("=") + comma_separated(value)) | oneOf(_CONSTANTS))
+2026-01-28T09:18:38.9718271Z 
+2026-01-28T09:18:38.9718558Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:85
+2026-01-28T09:18:38.9719299Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:85
+2026-01-28T09:18:38.9720187Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:85
+2026-01-28T09:18:38.9720864Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:85
+2026-01-28T09:18:38.9721548Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:85
+2026-01-28T09:18:38.9722228Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:85
+2026-01-28T09:18:38.9723692Z   /home/runner/work/biocentral_server/biocentral_server/.venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:85: PyparsingDeprecationWarning: 'parseString' deprecated - use 'parse_string'
+2026-01-28T09:18:38.9725027Z     parse = parser.parseString(pattern)
+2026-01-28T09:18:38.9725289Z 
+2026-01-28T09:18:38.9725560Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:89
+2026-01-28T09:18:38.9726250Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:89
+2026-01-28T09:18:38.9726930Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:89
+2026-01-28T09:18:38.9727611Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:89
+2026-01-28T09:18:38.9728284Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:89
+2026-01-28T09:18:38.9728966Z .venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:89
+2026-01-28T09:18:38.9730555Z   /home/runner/work/biocentral_server/biocentral_server/.venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:89: PyparsingDeprecationWarning: 'resetCache' deprecated - use 'reset_cache'
+2026-01-28T09:18:38.9731846Z     parser.resetCache()
+2026-01-28T09:18:38.9732049Z 
+2026-01-28T09:18:38.9732469Z .venv/lib/python3.12/site-packages/matplotlib/_mathtext.py:45
+2026-01-28T09:18:38.9733827Z   /home/runner/work/biocentral_server/biocentral_server/.venv/lib/python3.12/site-packages/matplotlib/_mathtext.py:45: PyparsingDeprecationWarning: 'enablePackrat' deprecated - use 'enable_packrat'
+2026-01-28T09:18:38.9735101Z     ParserElement.enablePackrat()
+2026-01-28T09:18:38.9735352Z 
+2026-01-28T09:18:38.9735648Z -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2026-01-28T09:18:38.9736283Z ======================= 79 passed, 18 warnings in 56.64s =======================
+2026-01-28T09:18:39.3924712Z sys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+2026-01-28T09:18:41.2855785Z [command]/usr/bin/bash /home/runner/work/_actions/coactions/setup-xvfb/v1/dist/cleanup.sh
+2026-01-28T09:18:41.2878083Z /usr/bin/bash: /home/runner/work/_actions/coactions/setup-xvfb/v1/dist/cleanup.sh: No such file or directory
+2026-01-28T09:18:41.2971311Z Post job cleanup.
+2026-01-28T09:18:41.4652601Z Post job cleanup.
+2026-01-28T09:18:41.5631982Z [command]/usr/bin/git version
+2026-01-28T09:18:41.5667777Z git version 2.52.0
+2026-01-28T09:18:41.5706969Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/bffa10cd-9ca4-4c95-b7de-a885aa281514/.gitconfig'
+2026-01-28T09:18:41.5717466Z Temporarily overriding HOME='/home/runner/work/_temp/bffa10cd-9ca4-4c95-b7de-a885aa281514' before making global git config changes
+2026-01-28T09:18:41.5718772Z Adding repository directory to the temporary git global config as a safe directory
+2026-01-28T09:18:41.5732001Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/biocentral_server/biocentral_server
+2026-01-28T09:18:41.5768137Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-01-28T09:18:41.5803222Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-01-28T09:18:41.6056779Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-01-28T09:18:41.6082316Z http.https://github.com/.extraheader
+2026-01-28T09:18:41.6095090Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-01-28T09:18:41.6129959Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-01-28T09:18:41.6376917Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-01-28T09:18:41.6412031Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-01-28T09:18:41.6808773Z Cleaning up orphan processes
