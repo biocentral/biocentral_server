@@ -42,10 +42,11 @@ class TestProjectionConfigEndpoint:
         mock_reducers.keys.return_value = ["umap", "tsne", "pca"]
 
         mock_config_instance = MagicMock()
-        mock_config_instance.parameters_by_method.return_value = {
-            "n_neighbors": 15,
-            "min_dist": 0.1,
-        }
+        # parameters_by_method returns a LIST of parameter dicts, not a single dict
+        mock_config_instance.parameters_by_method.return_value = [
+            {"name": "n_neighbors", "default": 15},
+            {"name": "min_dist", "default": 0.1},
+        ]
         mock_config.return_value = mock_config_instance
 
         response = projection_client.get("/projection_service/projection_config")
@@ -67,10 +68,11 @@ class TestProjectionConfigEndpoint:
         mock_reducers.keys.return_value = methods
 
         mock_config_instance = MagicMock()
-        mock_config_instance.parameters_by_method.side_effect = lambda m: {
-            "method": m,
-            "params": {}
-        }
+        # parameters_by_method returns a LIST of parameter dicts
+        mock_config_instance.parameters_by_method.side_effect = lambda m: [
+            {"name": "method", "default": m},
+            {"name": "n_components", "default": 2},
+        ]
         mock_config.return_value = mock_config_instance
 
         response = projection_client.get("/projection_service/projection_config")
