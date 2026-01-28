@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ 'main', 'develop', 'feature/tests' ]
 
+# Required for GHA cache to work on pull requests
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   unit-test:
     runs-on: ${{ matrix.os }}
