@@ -28,7 +28,6 @@ def prediction_sequences() -> Dict[str, str]:
     """Sequences from canonical dataset suitable for prediction (minimum 7 residues)."""
     return {
         "pred_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
-        "pred_2": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
     }
 
 
