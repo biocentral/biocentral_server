@@ -16,6 +16,7 @@ on:
 # Required for GHA cache to work on pull requests
 permissions:
   contents: read
+  packages: read
   actions: write
 
 jobs:
@@ -116,8 +117,6 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
-      # Skipping restoring a cached .venv to avoid filling runner disk space
-
       - name: Install dependencies
         run: uv sync --no-install-project
 
@@ -128,8 +127,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          # Do not load the built image into the local Docker daemon (saves runner disk)
-          load: false
+          load: true
           tags: biocentral-server:ci
           build-args: |
             UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
