@@ -269,7 +269,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.2.1,<2.0.0" },
     { name = "rq", specifier = ">=2.1.0,<3.0.0" },
     { name = "taxoniq", specifier = ">=1.0.1,<2.0.0" },
-    { name = "tmbed", git = "https://github.com/DenizOzturk95/TMbed.git?rev=setuptools-fix" },
+    { name = "tmbed", git = "https://github.com/biocentral/TMbed.git?rev=onnx-deployment" },
     { name = "tritonclient", extras = ["grpc"], specifier = ">=2.64.0" },
     { name = "uvicorn", specifier = ">=0.40.0" },
     { name = "vespag", git = "https://github.com/biocentral/VespaG.git?rev=onnx-deployment" },
@@ -3188,7 +3188,7 @@ wheels = [
 [[package]]
 name = "tmbed"
 version = "1.0.1"
-source = { git = "https://github.com/DenizOzturk95/TMbed.git?rev=setuptools-fix#905148a10270c5c6e5b336a86b2591e1f5869fed" }
+source = { git = "https://github.com/biocentral/TMbed.git?rev=onnx-deployment#7008e95d7f468246ce385b37efd2f4db6c5c068d" }
 dependencies = [
     { name = "torch" },
 ]
