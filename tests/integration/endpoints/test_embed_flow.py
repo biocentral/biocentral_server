@@ -413,13 +413,13 @@ class TestEndToEndEmbedFlow:
         client,
         poll_task,
         embedder_name,
-        test_sequences,
+        single_short_sequence,
     ):
         """Test complete embedding flow from request to completion."""
         request_data = {
             "embedder_name": embedder_name,
             "reduce": True,
-            "sequence_data": test_sequences,
+            "sequence_data": single_short_sequence,
             "use_half_precision": True,
         }
 

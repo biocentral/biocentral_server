@@ -188,6 +188,13 @@ def single_test_sequence() -> Dict[str, str]:
     }
 
 
+
+@pytest.fixture(scope="session")
+def single_short_sequence() -> Dict[str, str]:
+    """Short sequences from canonical dataset."""
+    return {
+        "short_1": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
+    }
 @pytest.fixture(scope="session")
 def short_test_sequences() -> Dict[str, str]:
     """Short sequences from canonical dataset."""
