@@ -12,6 +12,10 @@ on:
         required: false
         default: true
         type: boolean
+      reason:
+        description: 'Why are you running this?'
+        required: false
+        default: 'Manual trigger'
 
 # Required for GHA cache to work on pull requests
 permissions:
