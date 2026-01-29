@@ -288,7 +288,6 @@ def diverse_test_sequences() -> Dict[str, str]:
     Useful for projection tests that need more data points.
     """
     return {
-        "standard_001": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence, 
         "ubiquitin": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence, 
     }
 
