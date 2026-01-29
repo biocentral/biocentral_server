@@ -24,7 +24,13 @@ def classification_training_data() -> List[Dict]:
             "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
             "label": "membrane",
             "set": "train",
-        }, 
+        },
+        {
+            "seq_id": "standard_002",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+            "label": "soluble",
+            "set": "train",
+        },
         {
             "seq_id": "standard_003",
             "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
@@ -43,7 +49,7 @@ def real_world_training_data() -> List[Dict]:
             "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
             "label": "hormone",
             "set": "train",
-        }, 
+        },
         {
             "seq_id": "gfp_core",
             "sequence": CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
@@ -62,7 +68,7 @@ def regression_training_data() -> List[Dict]:
             "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
             "label": "0.75",
             "set": "train",
-        }, 
+        },
         {
             "seq_id": "standard_003",
             "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
@@ -77,7 +83,6 @@ def inference_sequences() -> Dict[str, str]:
     """Sequences for inference testing from canonical dataset."""
     return {
         "infer_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
-        "infer_2": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
     }
 
 
@@ -598,7 +603,9 @@ class TestTrainingDataValidation:
         # Data with explicit train/val split using canonical dataset
         training_data = [
             {"seq_id": "train_1", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence, "label": "A", "set": "train"},
+            {"seq_id": "train_2", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence, "label": "B", "set": "train"},
             {"seq_id": "train_3", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence, "label": "A", "set": "train"},
+            {"seq_id": "val_1", "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence, "label": "B", "set": "val"},
         ]
 
         response = client.post(
@@ -620,6 +627,8 @@ class TestTrainingDataValidation:
         """Test training with multiple classes."""
         training_data = [
             {"seq_id": "s1", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence, "label": "class_A", "set": "train"},
+            {"seq_id": "s2", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence, "label": "class_B", "set": "train"},
+            {"seq_id": "s3", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence, "label": "class_C", "set": "train"},
             {"seq_id": "s4", "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence, "label": "class_A", "set": "val"},
         ]
 
@@ -646,6 +655,7 @@ class TestTrainingDataValidation:
         
         training_data = [
             {"seq_id": "long_1", "sequence": long_seq, "label": "A", "set": "train"},
+            {"seq_id": "long_2", "sequence": very_long_seq, "label": "B", "set": "train"},
             {"seq_id": "long_3", "sequence": long_seq[:100], "label": "A", "set": "val"},
         ]
 

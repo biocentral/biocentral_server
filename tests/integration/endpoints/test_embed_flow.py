@@ -420,7 +420,7 @@ class TestEndToEndEmbedFlow:
             "embedder_name": embedder_name,
             "reduce": True,
             "sequence_data": test_sequences,
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         # Submit embedding task
@@ -447,13 +447,13 @@ class TestEndToEndEmbedFlow:
         client,
         poll_task,
         embedder_name,
-        real_world_sequences,
+        diverse_test_sequences,
     ):
         """Test embedding diverse sequences from canonical dataset."""
         request_data = {
             "embedder_name": embedder_name,
             "reduce": True,
-            "sequence_data": real_world_sequences,
+            "sequence_data": diverse_test_sequences,
             "use_half_precision": False,
         }
 
