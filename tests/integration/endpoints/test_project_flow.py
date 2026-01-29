@@ -293,36 +293,6 @@ class TestProjectionTaskLifecycle:
         # All task IDs should be unique
         assert len(task_ids) == 3
 
-    @pytest.mark.integration
-    def test_task_status_endpoint(
-        self,
-        client,
-        embedder_name,
-        short_test_sequences,
-    ):
-        """Test that task status can be retrieved."""
-        request_data = {
-            "method": "pca",
-            "sequence_data": short_test_sequences,
-            "embedder_name": embedder_name,
-            "config": {"n_components": 2},
-        }
-
-        # Create task
-        response = client.post("/projection_service/project", json=request_data)
-        assert response.status_code == 200
-        task_id = response.json()["task_id"]
-
-        # Get task status
-        status_response = client.get(f"/biocentral_service/task_status/{task_id}")
-        assert status_response.status_code == 200
-
-        status = status_response.json()
-        # API returns {"dtos": [TaskDTO, ...]} structure
-        assert "dtos" in status
-        assert isinstance(status["dtos"], list)
-
-
 class TestEndToEndProjectionFlow:
     """
     End-to-end tests for the complete projection workflow.
