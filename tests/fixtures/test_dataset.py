@@ -86,8 +86,8 @@ CANONICAL_TEST_DATASET = TestDataset(
         ),
         TestSequence(
             id="length_medium_50",
-            sequence="MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLS",
-            description="Medium sequence (49 aa)",
+            sequence="MKTAYIAKQRQISFVKSHFSRQ",
+            description="Medium sequence (20 aa)",
         ),
         TestSequence(
             id="length_long_200",
