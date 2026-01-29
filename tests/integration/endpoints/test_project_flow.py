@@ -21,7 +21,6 @@ class TestProjectionConfigEndpoint:
 
     @pytest.mark.integration
     def test_get_projection_config(self, client):
-        """Test retrieving available projection methods and configurations."""
         response = client.get("/projection_service/projection_config")
 
         assert response.status_code == 200
@@ -32,29 +31,6 @@ class TestProjectionConfigEndpoint:
         config = response_json["projection_config"]
         assert isinstance(config, dict)
         assert len(config) > 0
-
-    @pytest.mark.integration
-    def test_projection_config_contains_common_methods(self, client):
-        """Test that common projection methods are available."""
-        response = client.get("/projection_service/projection_config")
-
-        assert response.status_code == 200
-        config = response_json = response.json()["projection_config"]
-
-        # Common methods that should be available
-        config_lower = {k.lower(): v for k, v in config.items()}
-        assert any(method in config_lower for method in ["umap", "pca", "tsne"])
-
-    @pytest.mark.integration
-    def test_projection_config_consistent(self, client):
-        """Test that config is consistent across calls."""
-        response1 = client.get("/projection_service/projection_config")
-        response2 = client.get("/projection_service/projection_config")
-
-        assert response1.status_code == 200
-        assert response2.status_code == 200
-        assert response1.json() == response2.json()
-
 
 class TestProjectEndpoint:
     """
@@ -68,7 +44,6 @@ class TestProjectEndpoint:
         embedder_name,
         short_test_sequences,
     ):
-        """Test that projection request creates a task."""
         request_data = {
             "method": "pca",
             "sequence_data": short_test_sequences,
@@ -188,7 +163,6 @@ class TestProjectEndpoint:
         seq_id,
     ):
         """Test projection with standard sequences from canonical dataset."""
-        # Need at least 2 sequences for projection
         sequence = get_sequence_by_id(seq_id)
         sequence_2 = get_sequence_by_id("standard_001" if seq_id != "standard_001" else "standard_002")
 

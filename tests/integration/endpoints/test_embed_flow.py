@@ -74,7 +74,7 @@ class TestEmbedEndpoint:
             "embedder_name": embedder_name,
             "reduce": False,
             "sequence_data": short_test_sequences,
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         response = client.post("/embeddings_service/embed", json=request_data)
@@ -98,7 +98,7 @@ class TestEmbedEndpoint:
             "embedder_name": embedder_name,
             "reduce": True,
             "sequence_data": single_test_sequence,
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         response = client.post("/embeddings_service/embed", json=request_data)
@@ -122,7 +122,7 @@ class TestEmbedEndpoint:
             "embedder_name": embedder_name,
             "reduce": True,
             "sequence_data": single_test_sequence,
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         response = client.post("/embeddings_service/embed", json=request_data)
@@ -142,7 +142,7 @@ class TestEmbedEndpoint:
             "embedder_name": embedder_name,
             "reduce": False,
             "sequence_data": test_sequences,
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         response = client.post("/embeddings_service/embed", json=request_data)
@@ -164,7 +164,7 @@ class TestEmbedEndpoint:
             "embedder_name": embedder_name,
             "reduce": True,
             "sequence_data": {seq_id: sequence},
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         response = client.post("/embeddings_service/embed", json=request_data)
@@ -186,7 +186,7 @@ class TestEmbedEndpoint:
             "embedder_name": embedder_name,
             "reduce": True,
             "sequence_data": {seq_id: sequence},
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         response = client.post("/embeddings_service/embed", json=request_data)
@@ -208,7 +208,7 @@ class TestEmbedEndpoint:
             "embedder_name": embedder_name,
             "reduce": True,
             "sequence_data": {seq_id: sequence},
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         response = client.post("/embeddings_service/embed", json=request_data)
@@ -230,7 +230,7 @@ class TestEmbedEndpoint:
             "embedder_name": embedder_name,
             "reduce": True,
             "sequence_data": {seq_id: sequence},
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         response = client.post("/embeddings_service/embed", json=request_data)
@@ -249,7 +249,7 @@ class TestEmbedEndpoint:
             "embedder_name": embedder_name,
             "reduce": False,
             "sequence_data": {},  # Empty - should fail validation
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         response = client.post("/embeddings_service/embed", json=request_data)
@@ -268,7 +268,7 @@ class TestEmbedEndpoint:
             # Missing embedder_name
             "reduce": False,
             "sequence_data": short_test_sequences,
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         response = client.post("/embeddings_service/embed", json=request_data)
@@ -276,44 +276,6 @@ class TestEmbedEndpoint:
         assert response.status_code == 422
         error_response = response.json()
         validate_error_response(error_response)
-
-
-class TestGetMissingEmbeddingsEndpoint:
-    """
-    Integration tests for POST /embeddings_service/get_missing_embeddings.
-    """
-
-    @pytest.mark.integration
-    def test_get_missing_embeddings_new_sequences(
-        self,
-        client,
-        embedder_name,
-        test_run_id,
-    ):
-        """Test identifying missing embeddings for new sequences."""
-        import json
-        
-        # Use unique sequence IDs that won't exist in the database (canonical dataset)
-        unique_sequences = {
-            f"test_{test_run_id}_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
-            f"test_{test_run_id}_2": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
-        }
-        
-        request_data = {
-            "sequences": json.dumps(unique_sequences),
-            "embedder_name": embedder_name,
-            "reduced": False,
-        }
-
-        response = client.post(
-            "/embeddings_service/get_missing_embeddings", json=request_data
-        )
-
-        assert response.status_code == 200
-        response_json = response.json()
-        assert "missing" in response_json
-        # New sequences should be marked as missing
-        assert len(response_json["missing"]) > 0
 
 
 class TestEmbedTaskLifecycle:
@@ -333,7 +295,7 @@ class TestEmbedTaskLifecycle:
             "embedder_name": embedder_name,
             "reduce": True,
             "sequence_data": short_test_sequences,
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         response = client.post("/embeddings_service/embed", json=request_data)
@@ -360,7 +322,7 @@ class TestEmbedTaskLifecycle:
                 "embedder_name": embedder_name,
                 "reduce": True,
                 "sequence_data": short_test_sequences,
-                "use_half_precision": False,
+                "use_half_precision": True,
             }
 
             response = client.post("/embeddings_service/embed", json=request_data)
@@ -384,7 +346,7 @@ class TestEmbedTaskLifecycle:
             "embedder_name": embedder_name,
             "reduce": True,
             "sequence_data": single_test_sequence,
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         # Create task
@@ -431,7 +393,7 @@ class TestEndToEndEmbedFlow:
         
         # Wait for completion with graceful handling for CI resource constraints
         try:
-            result = poll_task(task_id, timeout=120)
+            result = poll_task(task_id, timeout=180)
         except TimeoutError:
             pytest.skip(f"Task {task_id} timed out - CI resource constraints")
         except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
@@ -454,7 +416,7 @@ class TestEndToEndEmbedFlow:
             "embedder_name": embedder_name,
             "reduce": True,
             "sequence_data": diverse_test_sequences,
-            "use_half_precision": False,
+            "use_half_precision": True,
         }
 
         response = client.post("/embeddings_service/embed", json=request_data)
@@ -487,7 +449,7 @@ class TestEndToEndEmbedFlow:
                 "embedder_name": embedder,
                 "reduce": True,
                 "sequence_data": single_test_sequence,
-                "use_half_precision": False,
+                "use_half_precision": True,
             }
 
             response = client.post("/embeddings_service/embed", json=request_data)

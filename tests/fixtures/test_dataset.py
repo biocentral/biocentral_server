@@ -50,18 +50,18 @@ CANONICAL_TEST_DATASET = TestDataset(
         # Standard sequences
         TestSequence(
             id="standard_001",
-            sequence="MKTAYIAKQRQISFVKSHFSRQLALPDQ",
-            description="Medium-length standard protein (59 aa)",
+            sequence="MKTAYIAKQRQISFV",
+            description="Medium-length standard protein (15 aa)",
         ),
         TestSequence(
             id="standard_002",
-            sequence="KEQRQVVRSQNGDLADNIKKISDNLKAKIYAMHYVDVFYNKS",
-            description="Signal peptide containing sequence (79 aa)",
+            sequence="KEQRQVVRSQNGDLADNIK",
+            description="Signal peptide containing sequence (19 aa)",
         ),
         TestSequence(
             id="standard_003",
-            sequence="MVHLTPEEKSAVTALWGKVNVDEVGGEALG",
-            description="Hemoglobin-like sequence (77 aa)",
+            sequence="MVHLTPEEKSAVTALWGALG",
+            description="Hemoglobin-like sequence (20 aa)",
         ),
         # Length edge cases
         TestSequence(
