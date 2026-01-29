@@ -46,11 +46,14 @@ RUN touch README.md
 ARG UV_EXTRA_INDEX_URL
 ENV UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}
 
-# Copy application files (this layer changes frequently)
+# Final sync to install the project itself (should be fast - just installs the project)
+RUN uv sync --no-install-project && rm -rf /root/.cache/uv
+
+# Copy application files  
 COPY --chown=biocentral-server-user:biocentral-server-user ./biocentral_server ./biocentral_server
 
-# Final sync to install the project itself (should be fast - just installs the project)
-RUN uv sync && rm -rf /root/.cache/uv
+# Install project
+RUN uv sync
 
 # Switch to non-root user
 USER biocentral-server-user
