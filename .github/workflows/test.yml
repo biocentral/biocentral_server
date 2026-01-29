@@ -164,10 +164,10 @@ jobs:
         timeout-minutes: 5
 
       - name: Run integration tests
-        run: uv run pytest tests/integration/ -v -m "not triton"
+        run: uv run pytest tests/integration/ -v -m "not triton" --durations=0
         env:
           CI_SERVER_URL: http://localhost:9540
-          CI_EMBEDDER: fixed
+          CI_EMBEDDER: fixed # Uncomment and set if specific embedder is needed
 
       - name: Show logs on failure
         if: failure()
