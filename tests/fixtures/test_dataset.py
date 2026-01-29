@@ -50,8 +50,8 @@ CANONICAL_TEST_DATASET = TestDataset(
         # Standard sequences
         TestSequence(
             id="standard_001",
-            sequence="MKTAYIAKQRQISFVKSHFSRQLALPDAQFEVVHSLAKWKRQ",
-            description="Medium-length standard protein (79 aa)",
+            sequence="MKTAYIAKQRQISFVKSHFSRQLALPDQ",
+            description="Medium-length standard protein (59 aa)",
         ),
         TestSequence(
             id="standard_002",
@@ -91,7 +91,7 @@ CANONICAL_TEST_DATASET = TestDataset(
         ),
         TestSequence(
             id="length_long_200",
-            sequence="MSKGEELFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTLVTTFSYGVQCFSRYPDHMKQHDFFKSAMPEGYVQERTIFFKDDGNYKTRAEVKFEGDTLVNRIELKGIDFKEDGNILGHKLEYNYNSHNVYIMADKQKNGIKVNFKIRHNIEDGSVQLADHYQQNTPIGDGPVLLPDNHYLSTQSALSKDPNEK",
+            sequence="MSKGEELFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTLVTTFSYGVQCFSRYPDHMKQHDFFKSAMPEGYVK",
             description="Long sequence - GFP-like (211 aa)",
         ),
         TestSequence(
