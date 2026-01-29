@@ -3,6 +3,7 @@
 import os
 import time
 import logging
+import sys
 import pytest
 import httpx
 from typing import Any, Dict, Generator, List, Optional
@@ -18,7 +19,14 @@ def get_server_url() -> str:
     """Get the server URL from environment variable."""
     url = os.environ.get("CI_SERVER_URL")
     if not url:
-        pytest.skip("CI_SERVER_URL environment variable not set. Start the server and set CI_SERVER_URL=http://localhost:9540")
+        msg = (
+            "CI_SERVER_URL environment variable not set. Start the server and set "
+            "CI_SERVER_URL=http://localhost:9540"
+        )
+        # Log and print so the reason is visible in CI/local runs before skipping
+        logging.warning(msg)
+        print(f"SKIPPING integration tests: {msg}", file=sys.stderr)
+        pytest.skip(msg)
     return url
 
 
