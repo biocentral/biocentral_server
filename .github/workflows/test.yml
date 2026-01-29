@@ -70,14 +70,28 @@ jobs:
     runs-on: ubuntu-latest
     needs: unit-test
     if: ${{ always() && (needs.unit-test.result == 'success' || needs.unit-test.result == 'skipped') }}
+    env:
+      CI_AGGRESSIVE_CLEAN: 'false' # set to 'true' to enable destructive cleanup (opt-in)
+      CI_PRUNE_VOLUMES: 'false'     # set to 'true' to allow pruning volumes
 
     steps:
       - name: Free disk space
         run: |
+            echo "Disk before cleanup"
             df -h
-            sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache /usr/local/lib/node_modules /usr/local/go /usr/local/lib/android-sdk
-            sudo rm -rf /home/runner/.cache /home/runner/.npm /home/runner/.npm/_cacache /home/runner/.cache/pip /home/runner/.cache/pypoetry /home/runner/.cargo /home/runner/.local/share/virtualenvs
-            sudo rm -rf /tmp/* /var/cache/apt/archives/* /var/lib/apt/lists/*
+
+            # Remove common large system items and runner caches to free disk space
+            sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache /usr/local/lib/node_modules /usr/local/go /usr/local/lib/android-sdk /usr/local/share/dotnet || true
+            sudo rm -rf /home/runner/.cache /home/runner/.npm /home/runner/.npm/_cacache /home/runner/.cache/pip /home/runner/.cache/pypoetry /home/runner/.cargo /home/runner/.local/share/virtualenvs || true
+            sudo rm -rf /tmp/* /var/cache/apt/archives/* /var/lib/apt/lists/* || true
+            sudo apt-get clean || true
+
+            # Safer Docker cleanup: builder and old images/containers
+            docker builder prune -af || true
+            docker image prune -af 
+            docker container prune -f || true
+ 
+            echo "Disk after cleanup"
             df -h
 
 
@@ -102,16 +116,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
-      - name: Cache venv
-        uses: actions/cache@v4
-        id: cache-venv
-        with:
-          path: |
-            .venv
-            ~/.cache/uv
-          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('uv.lock') }}
-          restore-keys: |
-            venv-${{ runner.os }}-py3.12-
+      # Skipping restoring a cached .venv to avoid filling runner disk space
 
       - name: Install dependencies
         run: uv sync --no-install-project
@@ -123,7 +128,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          load: true
+          # Do not load the built image into the local Docker daemon (saves runner disk)
+          load: false
           tags: biocentral-server:ci
           build-args: |
             UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
@@ -138,6 +144,7 @@ jobs:
           COMPOSE_DOCKER_CLI_BUILD: 1
           BUILDKIT_STEP_LOG_MAX_SIZE: 10000000
           CI_IMAGE: biocentral-server:ci
+          CI_EMBEDDER: fixed
         timeout-minutes: 10
 
       - name: Wait for server to be healthy
@@ -160,7 +167,7 @@ jobs:
         run: uv run pytest tests/integration/ -v -m "not triton"
         env:
           CI_SERVER_URL: http://localhost:9540
-          # CI_EMBEDDER: fixed # Uncomment and set if specific embedder is needed
+          CI_EMBEDDER: fixed
 
       - name: Show logs on failure
         if: failure()
