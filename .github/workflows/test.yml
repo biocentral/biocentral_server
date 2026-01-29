@@ -74,11 +74,12 @@ jobs:
     steps:
       - name: Free disk space
         run: |
-            # Remove common large system items and caches to free disk space
-            sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache /usr/local/lib/node_modules /usr/local/go
-            sudo rm -rf /home/runner/.cache /tmp/* /var/cache/apt/archives/* /var/lib/apt/lists/*
-            # Prune Docker resources (images, containers, volumes) aggressively
-            docker system prune -af --volumes
+            df -h
+            sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache /usr/local/lib/node_modules /usr/local/go /usr/local/lib/android-sdk
+            sudo rm -rf /home/runner/.cache /home/runner/.npm /home/runner/.npm/_cacache /home/runner/.cache/pip /home/runner/.cache/pypoetry /home/runner/.cargo /home/runner/.local/share/virtualenvs
+            sudo rm -rf /tmp/* /var/cache/apt/archives/* /var/lib/apt/lists/*
+            df -h
+
 
       - name: Checkout Repository
         uses: actions/checkout@v4
