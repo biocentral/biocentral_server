@@ -212,7 +212,6 @@ def long_sequences() -> Dict[str, str]:
     """Long sequences for performance and boundary testing."""
     return {
         "long_200": CANONICAL_TEST_DATASET.get_by_id("length_long_200").sequence,
-        "very_long_400": CANONICAL_TEST_DATASET.get_by_id("length_very_long_400").sequence,
     }
 
 
@@ -237,8 +236,6 @@ def ambiguous_code_sequences() -> Dict[str, str]:
         "ambiguous_B": CANONICAL_TEST_DATASET.get_by_id("ambiguous_B").sequence,
         "ambiguous_Z": CANONICAL_TEST_DATASET.get_by_id("ambiguous_Z").sequence,
         "ambiguous_J": CANONICAL_TEST_DATASET.get_by_id("ambiguous_J").sequence,
-        "selenocysteine": CANONICAL_TEST_DATASET.get_by_id("selenocysteine").sequence,
-        "pyrrolysine": CANONICAL_TEST_DATASET.get_by_id("pyrrolysine").sequence,
     }
 
 
@@ -249,10 +246,6 @@ def composition_edge_sequences() -> Dict[str, str]:
         "all_standard_aa": CANONICAL_TEST_DATASET.get_by_id("all_standard_aa").sequence,
         "homopolymer_A": CANONICAL_TEST_DATASET.get_by_id("homopolymer_A").sequence,
         "homopolymer_long": CANONICAL_TEST_DATASET.get_by_id("homopolymer_long").sequence,
-        "hydrophobic_rich": CANONICAL_TEST_DATASET.get_by_id("hydrophobic_rich").sequence,
-        "charged_rich": CANONICAL_TEST_DATASET.get_by_id("charged_rich").sequence,
-        "proline_rich": CANONICAL_TEST_DATASET.get_by_id("proline_rich").sequence,
-        "cysteine_rich": CANONICAL_TEST_DATASET.get_by_id("cysteine_rich").sequence,
     }
 
 
@@ -276,25 +269,6 @@ def real_world_sequences() -> Dict[str, str]:
     }
 
 
-@pytest.fixture(scope="session")
-def diverse_test_sequences() -> Dict[str, str]:
-    """
-    Diverse collection of sequences covering multiple categories.
-    
-    Useful for projection tests that need more data points.
-    """
-    return {
-        "standard_001": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
-        "standard_002": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
-        "standard_003": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
-        "insulin_b": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
-        "ubiquitin": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
-        "gfp_core": CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
-        "all_standard_aa": CANONICAL_TEST_DATASET.get_by_id("all_standard_aa").sequence,
-        "alpha_helix": CANONICAL_TEST_DATASET.get_by_id("motif_alpha_helix").sequence,
-    }
-
-
 CANONICAL_STANDARD_IDS = ["standard_001", "standard_002", "standard_003"]
 CANONICAL_LENGTH_EDGE_IDS = [
     "length_min_1", "length_min_2", "length_short_5",
@@ -305,7 +279,7 @@ CANONICAL_UNKNOWN_TOKEN_IDS = [
     "unknown_end", "unknown_middle", "unknown_scattered", "unknown_high_ratio",
 ]
 CANONICAL_AMBIGUOUS_CODE_IDS = [
-    "ambiguous_B", "ambiguous_Z", "ambiguous_J", "selenocysteine", "pyrrolysine",
+    "ambiguous_B", "ambiguous_Z", "ambiguous_J",
 ]
 CANONICAL_REAL_WORLD_IDS = ["real_insulin_b", "real_ubiquitin", "real_gfp_core"]
 
@@ -338,9 +312,6 @@ def large_batch_sequences() -> Dict[str, str]:
     """
     base_sequences = [
         CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
-        CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
-        CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
-        CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
         CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
     ]
     

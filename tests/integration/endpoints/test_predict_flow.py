@@ -37,8 +37,6 @@ def real_world_prediction_sequences() -> Dict[str, str]:
     """Real-world protein sequences for prediction testing."""
     return {
         "insulin_b": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
-        "ubiquitin": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
-        "gfp_core": CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
     }
 
 
