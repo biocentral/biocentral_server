@@ -210,9 +210,6 @@ services:
 
   biocentral-worker:
     image: ${CI_IMAGE:-}
-    build:
-      context: .
-      dockerfile: Dockerfile
     command: rq worker-pool --url redis://redis-jobs:6379/0 high default low -n 3
     volumes:
       - huggingface_models_cache:/app/huggingface_models
