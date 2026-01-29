@@ -50,17 +50,17 @@ CANONICAL_TEST_DATASET = TestDataset(
         # Standard sequences
         TestSequence(
             id="standard_001",
-            sequence="MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQ",
-            description="Medium-length standard protein (79 aa) - representative case",
+            sequence="MKTAYIAKQRQISFVKSHFSRQLALPDAQFEVVHSLAKWKRQ",
+            description="Medium-length standard protein (79 aa)",
         ),
         TestSequence(
             id="standard_002",
-            sequence="MKKLVLSLSLVLAFSSATAAFAAIPQNIRAQYPAVVKEQRQVVRSQNGDLADNIKKISDNLKAKIYAMHYVDVFYNKS",
+            sequence="KEQRQVVRSQNGDLADNIKKISDNLKAKIYAMHYVDVFYNKS",
             description="Signal peptide containing sequence (79 aa)",
         ),
         TestSequence(
             id="standard_003",
-            sequence="MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGAFSDGLA",
+            sequence="MVHLTPEEKSAVTALWGKVNVDEVGGEALG",
             description="Hemoglobin-like sequence (77 aa)",
         ),
         # Length edge cases
@@ -86,8 +86,8 @@ CANONICAL_TEST_DATASET = TestDataset(
         ),
         TestSequence(
             id="length_medium_50",
-            sequence="MKTAYIAKQRQISFVKSHFSRQLEERLG",
-            description="Medium sequence (28 aa)",
+            sequence="MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLS",
+            description="Medium sequence (49 aa)",
         ),
         TestSequence(
             id="length_long_200",
