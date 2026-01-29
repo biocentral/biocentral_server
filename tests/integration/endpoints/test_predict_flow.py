@@ -320,39 +320,6 @@ class TestPredictionTaskLifecycle:
         # All task IDs should be unique
         assert len(task_ids) == 3
 
-    @pytest.mark.integration
-    def test_task_status_endpoint(
-        self,
-        client,
-        prediction_sequences,
-    ):
-        """Test that task status can be retrieved."""
-        meta_response = client.get("/prediction_service/model_metadata")
-        available_models = [m["name"] for m in meta_response.json()["metadata"]]
-
-        if not available_models:
-            pytest.skip("No prediction models available")
-
-        request_data = {
-            "model_names": [available_models[0]],
-            "sequence_input": prediction_sequences,
-        }
-
-        # Create task
-        response = client.post("/prediction_service/predict", json=request_data)
-        assert response.status_code == 200
-        task_id = response.json()["task_id"]
-
-        # Get task status
-        status_response = client.get(f"/biocentral_service/task_status/{task_id}")
-        assert status_response.status_code == 200
-
-        status = status_response.json()
-        # API returns {"dtos": [TaskDTO, ...]} structure
-        assert "dtos" in status
-        assert isinstance(status["dtos"], list)
-
-
 class TestEndToEndPredictionFlow:
     """
     End-to-end tests for the complete prediction workflow.

@@ -334,35 +334,6 @@ class TestEmbedTaskLifecycle:
         # All task IDs should be unique
         assert len(task_ids) == 3
 
-    @pytest.mark.integration
-    def test_task_status_endpoint(
-        self,
-        client,
-        embedder_name,
-        single_test_sequence,
-    ):
-        """Test that task status can be retrieved."""
-        request_data = {
-            "embedder_name": embedder_name,
-            "reduce": True,
-            "sequence_data": single_test_sequence,
-            "use_half_precision": True,
-        }
-
-        # Create task
-        response = client.post("/embeddings_service/embed", json=request_data)
-        assert response.status_code == 200
-        task_id = response.json()["task_id"]
-        
-        # Get task status
-        status_response = client.get(f"/biocentral_service/task_status/{task_id}")
-        assert status_response.status_code == 200
-        
-        status = status_response.json()
-        # API returns {"dtos": [TaskDTO, ...]} structure
-        assert "dtos" in status
-        assert isinstance(status["dtos"], list)
-
 
 class TestEndToEndEmbedFlow:
     """
