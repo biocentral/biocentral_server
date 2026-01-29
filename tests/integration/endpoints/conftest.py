@@ -177,7 +177,6 @@ def test_sequences() -> Dict[str, str]:
     return {
         "protein_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
         "protein_2": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
-        "protein_3": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
     }
 
 
