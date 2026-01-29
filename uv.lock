@@ -269,7 +269,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.2.1,<2.0.0" },
     { name = "rq", specifier = ">=2.1.0,<3.0.0" },
     { name = "taxoniq", specifier = ">=1.0.1,<2.0.0" },
-    { name = "tmbed", git = "https://github.com/biocentral/TMbed.git?rev=onnx-deployment" },
+    { name = "tmbed", git = "https://github.com/DenizOzturk95/TMbed.git?rev=setuptools-fix" },
     { name = "tritonclient", extras = ["grpc"], specifier = ">=2.64.0" },
     { name = "uvicorn", specifier = ">=0.40.0" },
     { name = "vespag", git = "https://github.com/biocentral/VespaG.git?rev=onnx-deployment" },
@@ -3041,11 +3041,11 @@ wheels = [
 
 [[package]]
 name = "setuptools"
-version = "65.5.0"
+version = "80.10.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c5/41/247814d8b7a044717164c74080725a6c8f3d2b5fc82b34bd825b617df663/setuptools-65.5.0.tar.gz", hash = "sha256:512e5536220e38146176efb833d4a62aa726b7bbff82cfbc8ba9eaa3996e0b17", size = 2616463, upload-time = "2022-10-14T12:35:23.314Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/95/faf61eb8363f26aa7e1d762267a8d602a1b26d4f3a1e758e92cb3cb8b054/setuptools-80.10.2.tar.gz", hash = "sha256:8b0e9d10c784bf7d262c4e5ec5d4ec94127ce206e8738f29a437945fbc219b70", size = 1200343, upload-time = "2026-01-25T22:38:17.252Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/82/7f54bbfe5c247a8c9f78d8d1d7c051847bcb78843c397b866dba335c1e88/setuptools-65.5.0-py3-none-any.whl", hash = "sha256:f62ea9da9ed6289bfe868cd6845968a2c854d1427f8548d52cae02a42b4f0356", size = 1232695, upload-time = "2022-10-14T12:35:21.095Z" },
+    { url = "https://files.pythonhosted.org/packages/94/b8/f1f62a5e3c0ad2ff1d189590bfa4c46b4f3b6e49cef6f26c6ee4e575394d/setuptools-80.10.2-py3-none-any.whl", hash = "sha256:95b30ddfb717250edb492926c92b5221f7ef3fbcc2b07579bcd4a27da21d0173", size = 1064234, upload-time = "2026-01-25T22:38:15.216Z" },
 ]
 
 [[package]]
@@ -3188,7 +3188,7 @@ wheels = [
 [[package]]
 name = "tmbed"
 version = "1.0.1"
-source = { git = "https://github.com/biocentral/TMbed.git?rev=onnx-deployment#7008e95d7f468246ce385b37efd2f4db6c5c068d" }
+source = { git = "https://github.com/DenizOzturk95/TMbed.git?rev=setuptools-fix#f66767e676b056e1b7e103d078b06107e8b37c4c" }
 dependencies = [
     { name = "torch" },
 ]

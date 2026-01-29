@@ -31,8 +31,6 @@ WORKDIR /app
 # Install uv
 RUN pip3 install --break-system-packages uv
 
-RUN python3 -m pip install --break-system-packages --upgrade "setuptools==65.5.0"
-
 # Add non-root user
 RUN useradd --create-home --shell /bin/bash --uid 10001 biocentral-server-user
 
