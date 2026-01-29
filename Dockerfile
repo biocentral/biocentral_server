@@ -47,13 +47,15 @@ ARG UV_EXTRA_INDEX_URL
 ENV UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}
 
 # Final sync to install the project itself (should be fast - just installs the project)
-RUN uv sync --no-install-project && rm -rf /root/.cache/uv
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project --no-dev
 
 # Copy application files  
 COPY --chown=biocentral-server-user:biocentral-server-user ./biocentral_server ./biocentral_server
 
 # Install project
-RUN uv sync
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 # Switch to non-root user
 USER biocentral-server-user
