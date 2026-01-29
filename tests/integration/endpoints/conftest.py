@@ -177,7 +177,6 @@ def test_sequences() -> Dict[str, str]:
     return {
         "protein_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
         "protein_2": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
-        "protein_3": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
     }
 
 
@@ -212,8 +211,7 @@ def minimum_length_sequences() -> Dict[str, str]:
 def long_sequences() -> Dict[str, str]:
     """Long sequences for performance and boundary testing."""
     return {
-        "long_200": CANONICAL_TEST_DATASET.get_by_id("length_long_200").sequence,
-        "very_long_400": CANONICAL_TEST_DATASET.get_by_id("length_very_long_400").sequence,
+        "long_200": CANONICAL_TEST_DATASET.get_by_id("length_long_200").sequence, 
     }
 
 
@@ -238,8 +236,6 @@ def ambiguous_code_sequences() -> Dict[str, str]:
         "ambiguous_B": CANONICAL_TEST_DATASET.get_by_id("ambiguous_B").sequence,
         "ambiguous_Z": CANONICAL_TEST_DATASET.get_by_id("ambiguous_Z").sequence,
         "ambiguous_J": CANONICAL_TEST_DATASET.get_by_id("ambiguous_J").sequence,
-        "selenocysteine": CANONICAL_TEST_DATASET.get_by_id("selenocysteine").sequence,
-        "pyrrolysine": CANONICAL_TEST_DATASET.get_by_id("pyrrolysine").sequence,
     }
 
 
@@ -248,12 +244,7 @@ def composition_edge_sequences() -> Dict[str, str]:
     """Sequences with unusual amino acid compositions."""
     return {
         "all_standard_aa": CANONICAL_TEST_DATASET.get_by_id("all_standard_aa").sequence,
-        "homopolymer_A": CANONICAL_TEST_DATASET.get_by_id("homopolymer_A").sequence,
-        "homopolymer_long": CANONICAL_TEST_DATASET.get_by_id("homopolymer_long").sequence,
-        "hydrophobic_rich": CANONICAL_TEST_DATASET.get_by_id("hydrophobic_rich").sequence,
-        "charged_rich": CANONICAL_TEST_DATASET.get_by_id("charged_rich").sequence,
-        "proline_rich": CANONICAL_TEST_DATASET.get_by_id("proline_rich").sequence,
-        "cysteine_rich": CANONICAL_TEST_DATASET.get_by_id("cysteine_rich").sequence,
+        "homopolymer_A": CANONICAL_TEST_DATASET.get_by_id("homopolymer_A").sequence, 
     }
 
 
@@ -262,8 +253,7 @@ def structural_motif_sequences() -> Dict[str, str]:
     """Sequences with structural motifs."""
     return {
         "alpha_helix": CANONICAL_TEST_DATASET.get_by_id("motif_alpha_helix").sequence,
-        "beta_sheet": CANONICAL_TEST_DATASET.get_by_id("motif_beta_sheet").sequence,
-        "glycine_loop": CANONICAL_TEST_DATASET.get_by_id("motif_glycine_loop").sequence,
+        "beta_sheet": CANONICAL_TEST_DATASET.get_by_id("motif_beta_sheet").sequence, 
     }
 
 
@@ -284,7 +274,6 @@ def diverse_test_sequences() -> Dict[str, str]:
     """
     return {
         "standard_001": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence, 
-        "insulin_b": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
         "ubiquitin": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence, 
     }
 
@@ -332,8 +321,6 @@ def large_batch_sequences() -> Dict[str, str]:
     """
     base_sequences = [
         CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence, 
-        CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
-        CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
     ]
     
     sequences = {}

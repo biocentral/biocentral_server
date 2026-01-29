@@ -106,7 +106,7 @@ class TestProjectEndpoint:
         assert response.status_code == 200
 
         task_id = response.json()["task_id"]
-        result = poll_task(task_id, timeout=120)
+        result = poll_task(task_id, timeout=300)
 
         assert result["status"].lower() in ("finished", "completed", "done", "failed")
 

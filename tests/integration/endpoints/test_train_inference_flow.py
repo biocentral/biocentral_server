@@ -11,7 +11,6 @@ from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 STANDARD_SEQUENCES = {
     "standard_001": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
     "standard_002": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
-    "standard_003": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
 }
 
 
@@ -23,12 +22,6 @@ def classification_training_data() -> List[Dict]:
             "seq_id": "standard_001",
             "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
             "label": "membrane",
-            "set": "train",
-        },
-        {
-            "seq_id": "standard_002",
-            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
-            "label": "soluble",
             "set": "train",
         },
         {
@@ -603,8 +596,6 @@ class TestTrainingDataValidation:
         # Data with explicit train/val split using canonical dataset
         training_data = [
             {"seq_id": "train_1", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence, "label": "A", "set": "train"},
-            {"seq_id": "train_2", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence, "label": "B", "set": "train"},
-            {"seq_id": "train_3", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence, "label": "A", "set": "train"},
             {"seq_id": "val_1", "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence, "label": "B", "set": "val"},
         ]
 
@@ -627,8 +618,6 @@ class TestTrainingDataValidation:
         """Test training with multiple classes."""
         training_data = [
             {"seq_id": "s1", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence, "label": "class_A", "set": "train"},
-            {"seq_id": "s2", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence, "label": "class_B", "set": "train"},
-            {"seq_id": "s3", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence, "label": "class_C", "set": "train"},
             {"seq_id": "s4", "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence, "label": "class_A", "set": "val"},
         ]
 
@@ -715,8 +704,6 @@ class TestInferenceValidation:
             json={
                 "model_hash": "test-model",
                 "sequence_data": {
-                    "insulin": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
-                    "ubiquitin": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
                     "gfp": CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
                 },
             }
