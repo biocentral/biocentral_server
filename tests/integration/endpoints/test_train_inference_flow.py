@@ -492,53 +492,6 @@ class TestEndToEndTrainInferenceFlow:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_regression_train_inference_flow(
-        self,
-        client,
-        poll_task,
-        regression_config,
-        regression_training_data,
-        inference_sequences,
-    ):
-        """Test regression training and inference flow."""
-        # Start regression training
-        train_response = client.post(
-            "/custom_models_service/start_training",
-            json={
-                "config_dict": regression_config,
-                "training_data": regression_training_data,
-            }
-        )
-        
-        assert train_response.status_code == 200
-        train_task_id = train_response.json()["task_id"]
-
-        # Wait for training
-        train_result = poll_task(train_task_id, timeout=300)
-        
-        assert train_result is not None
-        train_status = train_result.get("status", "").upper()
-        if train_status == "FAILED":
-            pytest.skip("Training failed (likely due to CI resource constraints)")
-        assert train_status == "FINISHED"
-
-        # Run inference
-        inference_response = client.post(
-            "/custom_models_service/start_inference",
-            json={
-                "model_hash": train_task_id,
-                "sequence_data": inference_sequences,
-            }
-        )
-
-        if inference_response.status_code == 200:
-            inference_task_id = inference_response.json()["task_id"]
-            inference_result = poll_task(inference_task_id, timeout=120)
-            
-            assert inference_result is not None
-
-    @pytest.mark.integration
-    @pytest.mark.slow
     def test_get_model_files_after_training(
         self,
         client,

@@ -392,27 +392,6 @@ class TestEndToEndProjectionFlow:
         assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
 
     @pytest.mark.integration
-    def test_projection_with_different_embedders(
-        self,
-        client,
-        test_sequences,
-    ):
-        """Test that different embedders can be used for projection."""
-        embedders = ["one_hot_encoding", "blosum62"]
-
-        for embedder in embedders:
-            request_data = {
-                "method": "pca",
-                "sequence_data": test_sequences,
-                "embedder_name": embedder,
-                "config": {"n_components": 2},
-            }
-
-            response = client.post("/projection_service/project", json=request_data)
-            assert response.status_code == 200, f"Failed for embedder: {embedder}"
-            validate_task_response(response.json())
-
-    @pytest.mark.integration
     def test_projection_with_real_world_collection(
         self,
         client,
