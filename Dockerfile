@@ -48,10 +48,6 @@ RUN touch README.md
 ARG UV_EXTRA_INDEX_URL
 ENV UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}
 
-# Install dependencies BEFORE copying source code (better cache hit rate)
-# Note: Not using --mount=type=cache here so GHA can cache this layer properly
-RUN uv sync --no-install-project && rm -rf /root/.cache/uv
-
 # Copy application files (this layer changes frequently)
 COPY --chown=biocentral-server-user:biocentral-server-user ./biocentral_server ./biocentral_server
 
