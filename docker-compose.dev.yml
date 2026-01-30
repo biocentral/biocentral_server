@@ -165,7 +165,7 @@ services:
 
   # Biocentral application stack
   biocentral-server:
-    image: ${CI_IMAGE:-}
+    image: ${CI_IMAGE:-biocentral-server:ci}
     build:
       context: .
       dockerfile: Dockerfile
@@ -209,7 +209,7 @@ services:
       start_period: 30s
 
   biocentral-worker:
-    image: ${CI_IMAGE:-}
+    image: ${CI_IMAGE:-biocentral-server:ci}
     command: rq worker-pool --url redis://redis-jobs:6379/0 high default low -n 3
     volumes:
       - huggingface_models_cache:/app/huggingface_models
