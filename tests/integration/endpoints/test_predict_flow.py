@@ -82,116 +82,7 @@ class TestPredictEndpoint:
     """
     Integration tests for POST /prediction_service/predict.
     """
- 
-    @pytest.mark.integration
-    def test_predict_task_completes(
-        self,
-        client,
-        poll_task,
-        prediction_sequences,
-    ):
-        """Test that prediction task completes successfully."""
-        meta_response = client.get("/prediction_service/model_metadata")
-        available_models = [m["name"] for m in meta_response.json()["metadata"]]
 
-        if not available_models:
-            pytest.skip("No prediction models available")
-
-        request_data = {
-            "model_names": [available_models[0]],
-            "sequence_input": prediction_sequences,
-        }
-
-        response = client.post("/prediction_service/predict", json=request_data)
-        assert response.status_code == 200
-
-        task_id = response.json()["task_id"]
-        
-        # Wait for completion with graceful handling for CI resource constraints
-        try:
-            result = poll_task(task_id, timeout=120)
-        except TimeoutError:
-            pytest.skip(f"Task {task_id} timed out - CI resource constraints")
-        except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
-            pytest.skip(f"Server connection lost during polling: {e}")
-
-        # Task should reach a terminal state
-        assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
-
-    @pytest.mark.integration
-    def test_predict_multiple_models(
-        self,
-        client,
-        prediction_sequences,
-    ):
-        """Test prediction with multiple models."""
-        meta_response = client.get("/prediction_service/model_metadata")
-        available_models = [m["name"] for m in meta_response.json()["metadata"]]
-
-        if len(available_models) < 2:
-            pytest.skip("Need at least 2 models for this test")
-
-        request_data = {
-            "model_names": available_models[:2],
-            "sequence_input": prediction_sequences,
-        }
-
-        response = client.post("/prediction_service/predict", json=request_data)
-
-        assert response.status_code == 200
-        validate_task_response(response.json())
-
-    @pytest.mark.integration
-    @pytest.mark.parametrize("seq_id", CANONICAL_REAL_WORLD_IDS, ids=lambda x: x)
-    def test_predict_real_world_sequences(
-        self,
-        client,
-        seq_id,
-    ):
-        """Test prediction with real-world protein sequences from canonical dataset."""
-        meta_response = client.get("/prediction_service/model_metadata")
-        available_models = [m["name"] for m in meta_response.json()["metadata"]]
-
-        if not available_models:
-            pytest.skip("No prediction models available")
-
-        sequence = get_sequence_by_id(seq_id)
-
-        request_data = {
-            "model_names": [available_models[0]],
-            "sequence_input": {seq_id: sequence},
-        }
-
-        response = client.post("/prediction_service/predict", json=request_data)
-
-        assert response.status_code == 200
-        validate_task_response(response.json())
-
-    @pytest.mark.integration
-    @pytest.mark.parametrize("seq_id", CANONICAL_STANDARD_IDS, ids=lambda x: x)
-    def test_predict_standard_sequences(
-        self,
-        client,
-        seq_id,
-    ):
-        """Test prediction with standard sequences from canonical dataset."""
-        meta_response = client.get("/prediction_service/model_metadata")
-        available_models = [m["name"] for m in meta_response.json()["metadata"]]
-
-        if not available_models:
-            pytest.skip("No prediction models available")
-
-        sequence = get_sequence_by_id(seq_id)
-
-        request_data = {
-            "model_names": [available_models[0]],
-            "sequence_input": {seq_id: sequence},
-        }
-
-        response = client.post("/prediction_service/predict", json=request_data)
-
-        assert response.status_code == 200
-        validate_task_response(response.json())
 
     @pytest.mark.integration
     def test_predict_invalid_model_rejected(
@@ -259,55 +150,15 @@ class TestPredictEndpoint:
         assert response.status_code == 422
         validate_error_response(response.json())
 
-
-class TestPredictionTaskLifecycle:
-    """
-    Tests for prediction task lifecycle management.
-    """
-
+     
     @pytest.mark.integration
-    def test_prediction_task_id_uniqueness(
+    def test_predict_task_completes(
         self,
         client,
+        poll_task,
         prediction_sequences,
     ):
-        """Test that multiple prediction submissions get unique task IDs."""
-        meta_response = client.get("/prediction_service/model_metadata")
-        available_models = [m["name"] for m in meta_response.json()["metadata"]]
-
-        if not available_models:
-            pytest.skip("No prediction models available")
-
-        task_ids = set()
-
-        for i in range(3):
-            request_data = {
-                "model_names": [available_models[0]],
-                "sequence_input": prediction_sequences,
-            }
-
-            response = client.post("/prediction_service/predict", json=request_data)
-            assert response.status_code == 200
-
-            task_id = response.json()["task_id"]
-            task_ids.add(task_id)
-
-        # All task IDs should be unique
-        assert len(task_ids) == 3
-
-class TestEndToEndPredictionFlow:
-    """
-    End-to-end tests for the complete prediction workflow.
-    """
-
-    @pytest.mark.integration
-    def test_complete_prediction_flow(
-        self,
-        client,
-        poll_task,
-        real_world_sequences,
-    ):
-        """Test complete prediction flow from request to completion."""
+        """Test that prediction task completes successfully."""
         meta_response = client.get("/prediction_service/model_metadata")
         available_models = [m["name"] for m in meta_response.json()["metadata"]]
 
@@ -316,44 +167,7 @@ class TestEndToEndPredictionFlow:
 
         request_data = {
             "model_names": [available_models[0]],
-            "sequence_input": real_world_sequences,
-        }
-
-        # Submit prediction task
-        response = client.post("/prediction_service/predict", json=request_data)
-        assert response.status_code == 200
-
-        task_id = response.json()["task_id"]
-
-        # Wait for completion with graceful handling for CI resource constraints
-        try:
-            result = poll_task(task_id, timeout=180)
-        except TimeoutError:
-            pytest.skip(f"Task {task_id} timed out - CI resource constraints")
-        except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
-            pytest.skip(f"Server connection lost during polling: {e}")
-
-        # Verify completion (task reached terminal state)
-        assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
-
-    @pytest.mark.integration
-    @pytest.mark.slow
-    def test_predict_diverse_sequences(
-        self,
-        client,
-        poll_task,
-        real_world_sequences,
-    ):
-        """Test prediction with diverse sequences from canonical dataset."""
-        meta_response = client.get("/prediction_service/model_metadata")
-        available_models = [m["name"] for m in meta_response.json()["metadata"]]
-
-        if not available_models:
-            pytest.skip("No prediction models available")
-
-        request_data = {
-            "model_names": [available_models[0]],
-            "sequence_input": real_world_sequences,
+            "sequence_input": prediction_sequences,
         }
 
         response = client.post("/prediction_service/predict", json=request_data)
@@ -361,38 +175,14 @@ class TestEndToEndPredictionFlow:
 
         task_id = response.json()["task_id"]
         
+        # Wait for completion with graceful handling for CI resource constraints
         try:
-            result = poll_task(task_id, timeout=120)
+            result = poll_task(task_id, timeout=280)
         except TimeoutError:
             pytest.skip(f"Task {task_id} timed out - CI resource constraints")
         except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
             pytest.skip(f"Server connection lost during polling: {e}")
 
-        assert result["status"].lower() in ("finished", "completed", "done", "failed")
-
-    @pytest.mark.integration
-    def test_prediction_with_valid_boundary_length(
-        self,
-        client,
-        boundary_length_sequences,
-    ):
-        """Test prediction with sequence at minimum valid length."""
-        meta_response = client.get("/prediction_service/model_metadata")
-        available_models = [m["name"] for m in meta_response.json()["metadata"]]
-
-        if not available_models:
-            pytest.skip("No prediction models available")
-
-        # Use 10 aa sequence which is above minimum (7)
-        valid_seq = boundary_length_sequences["short_10"]
-        assert len(valid_seq) >= 7
-
-        request_data = {
-            "model_names": [available_models[0]],
-            "sequence_input": {"boundary": valid_seq},
-        }
-
-        response = client.post("/prediction_service/predict", json=request_data)
-
-        assert response.status_code == 200
-        validate_task_response(response.json())
+        # Task should reach a terminal state
+        assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
+ 

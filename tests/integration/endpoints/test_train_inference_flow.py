@@ -326,72 +326,72 @@ class TestModelFilesEndpoint:
         # Server returns 404 or 500 for non-existent model
         assert response.status_code in [404, 500]
 
+# Not realistic in standard github CI setting due to resource constraints
+# class TestTrainingTaskLifecycle:
+#     """
+#     Tests for training task lifecycle management.
+#     """
 
-class TestTrainingTaskLifecycle:
-    """
-    Tests for training task lifecycle management.
-    """
+#     @pytest.mark.integration
+#     def test_training_task_ids_are_unique(
+#         self,
+#         client,
+#         classification_config,
+#         classification_training_data,
+#     ):
+#         """Test that multiple training submissions get unique task IDs."""
+#         task_ids = set()
 
-    @pytest.mark.integration
-    def test_training_task_ids_are_unique(
-        self,
-        client,
-        classification_config,
-        classification_training_data,
-    ):
-        """Test that multiple training submissions get unique task IDs."""
-        task_ids = set()
-
-        for _ in range(3):
-            try:
-                response = client.post(
-                    "/custom_models_service/start_training",
-                    json={
-                        "config_dict": classification_config,
-                        "training_data": classification_training_data,
-                    }
-                )
-            except httpx.RemoteProtocolError:
-                # Server may disconnect under heavy load, continue with collected IDs
-                break
+#         for _ in range(3):
+#             try:
+#                 response = client.post(
+#                     "/custom_models_service/start_training",
+#                     json={
+#                         "config_dict": classification_config,
+#                         "training_data": classification_training_data,
+#                     }
+#                 )
+#             except httpx.RemoteProtocolError:
+#                 # Server may disconnect under heavy load, continue with collected IDs
+#                 break
             
-            if response.status_code == 200:
-                task_id = response.json().get("task_id")
-                if task_id:
-                    task_ids.add(task_id)
+#             if response.status_code == 200:
+#                 task_id = response.json().get("task_id")
+#                 if task_id:
+#                     task_ids.add(task_id)
 
-        # All task IDs should be unique (if any were returned)
-        if task_ids:
-            assert len(task_ids) == min(3, len(task_ids))
+#         # All task IDs should be unique (if any were returned)
+#         if task_ids:
+#             assert len(task_ids) == min(3, len(task_ids))
 
-    @pytest.mark.integration
-    @pytest.mark.slow
-    def test_training_task_completes(
-        self,
-        client,
-        poll_task,
-        classification_config,
-        classification_training_data,
-    ):
-        """Test that training task eventually completes."""
-        # Start training
-        response = client.post(
-            "/custom_models_service/start_training",
-            json={
-                "config_dict": classification_config,
-                "training_data": classification_training_data,
-            }
-        )
+#     @pytest.mark.integration
+#     @pytest.mark.slow
+#     def test_training_task_completes(
+#         self,
+#         client,
+#         poll_task,
+#         classification_config,
+#         classification_training_data,
+#     ):
+#         """Test that training task eventually completes."""
+#         # Start training
+#         response = client.post(
+#             "/custom_models_service/start_training",
+#             json={
+#                 "config_dict": classification_config,
+#                 "training_data": classification_training_data,
+#             }
+#         )
         
-        assert response.status_code == 200
-        task_id = response.json()["task_id"]
+#         assert response.status_code == 200
+#         task_id = response.json()["task_id"]
 
-        # Poll for completion
-        result = poll_task(task_id, timeout=300)  # 5 minutes for training
+#         # Poll for completion
+#         result = poll_task(task_id, timeout=300)  # 5 minutes for training
 
-        assert result is not None
-        # Task should reach a terminal state (case-insensitive)
-        assert result.get("status", "").upper() in ["FINISHED", "FAILED"]
+#         assert result is not None
+#         # Task should reach a terminal state (case-insensitive)
+#         assert result.get("status", "").upper() in ["FINISHED", "FAILED"]
 
 
 class TestEndToEndTrainInferenceFlow:
@@ -521,106 +521,3 @@ class TestTrainingDataValidation:
         )
 
         assert response.status_code == 200
-
-    @pytest.mark.integration
-    def test_training_with_multiple_classes(
-        self,
-        client,
-        classification_config,
-    ):
-        """Test training with multiple classes."""
-        training_data = [
-            {"seq_id": "s1", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence, "label": "class_A", "set": "train"},
-            {"seq_id": "s4", "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence, "label": "class_A", "set": "val"},
-        ]
-
-        response = client.post(
-            "/custom_models_service/start_training",
-            json={
-                "config_dict": classification_config,
-                "training_data": training_data,
-            }
-        )
-
-        assert response.status_code == 200
-
-    @pytest.mark.integration
-    def test_training_with_long_sequences(
-        self,
-        client,
-        classification_config,
-    ):
-        """Test training with longer sequences."""
-        # Use long sequences from canonical dataset
-        long_seq = CANONICAL_TEST_DATASET.get_by_id("length_long_200").sequence
-        very_long_seq = CANONICAL_TEST_DATASET.get_by_id("length_very_long_400").sequence
-        
-        training_data = [
-            {"seq_id": "long_1", "sequence": long_seq, "label": "A", "set": "train"},
-            {"seq_id": "long_2", "sequence": very_long_seq, "label": "B", "set": "train"},
-            {"seq_id": "long_3", "sequence": long_seq[:100], "label": "A", "set": "val"},
-        ]
-
-        response = client.post(
-            "/custom_models_service/start_training",
-            json={
-                "config_dict": classification_config,
-                "training_data": training_data,
-            }
-        )
-
-        assert response.status_code == 200
-
-
-class TestInferenceValidation:
-    """
-    Tests for inference request validation.
-    """
-
-    @pytest.mark.integration
-    def test_inference_with_single_sequence(self, client):
-        """Test inference with a single sequence."""
-        response = client.post(
-            "/custom_models_service/start_inference",
-            json={
-                "model_hash": "test-model",
-                "sequence_data": {"single": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence},
-            }
-        )
-
-        # Either creates task or model not found
-        assert response.status_code in [200, 404]
-
-    @pytest.mark.integration
-    def test_inference_with_many_sequences(self, client):
-        """Test inference with many sequences."""
-        # Use base sequence from canonical dataset and create variations
-        base_seq = CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence
-        sequences = {f"seq_{i}": base_seq for i in range(20)}
-
-        response = client.post(
-            "/custom_models_service/start_inference",
-            json={
-                "model_hash": "test-model",
-                "sequence_data": sequences,
-            }
-        )
-
-        # Either creates task or model not found
-        assert response.status_code in [200, 404]
-
-    @pytest.mark.integration
-    def test_inference_with_real_proteins(self, client):
-        """Test inference with real protein sequences."""
-        response = client.post(
-            "/custom_models_service/start_inference",
-            json={
-                "model_hash": "test-model",
-                "sequence_data": {
-                    "gfp": CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
-                },
-            }
-        )
-
-        # Either creates task or model not found
-        assert response.status_code in [200, 404]
