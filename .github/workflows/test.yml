@@ -83,7 +83,6 @@ jobs:
       - name: Maximize build disk space
         uses: easimon/maximize-build-space@v10
         with:
-          build-mount-path: '/home/runner/work'
           root-reserve-mb: 8192
           swap-size-mb: 1024
           remove-dotnet: 'true'
@@ -112,7 +111,7 @@ jobs:
           version: "0.9.26"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
-          cache-local-path: "/home/runner/work/setup-uv-cache"
+          cache-local-path: "${{ github.workspace }}/.uv-cache"
 
       - name: Install dependencies
         run: uv sync --no-install-project
