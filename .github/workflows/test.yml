@@ -80,28 +80,16 @@ jobs:
       CI_PRUNE_VOLUMES: 'false'     # set to 'true' to allow pruning volumes
 
     steps:
-      - name: Free disk space
-        run: |
-            echo "Disk before cleanup"
-            df -h
-
-            # Remove common large system items and runner caches to free disk space
-            sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache /usr/local/lib/node_modules /usr/local/go /usr/local/lib/android-sdk /usr/local/share/dotnet || true
-            sudo rm -rf /home/runner/.cache /home/runner/.npm /home/runner/.npm/_cacache /home/runner/.cache/pip /home/runner/.cache/pypoetry /home/runner/.cargo /home/runner/.local/share/virtualenvs || true
-            sudo rm -rf /tmp/* /var/cache/apt/archives/* /var/lib/apt/lists/* || true
-            sudo apt-get clean || true
- 
-            echo "Disk after cleanup"
-            df -h
-
       - name: Maximize build disk space
         uses: easimon/maximize-build-space@v10
         with:
-          root-reserve-mb: 5120
+          root-reserve-mb: 8192
           swap-size-mb: 1024
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'       
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
 
       - name: Checkout Repository
         uses: actions/checkout@v4
