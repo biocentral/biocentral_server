@@ -67,15 +67,23 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
         original_post = http_client.post
         original_get = http_client.get
 
+        class FakeResponse:
+            def __init__(self, status_code: int, payload: Dict):
+                self.status_code = status_code
+                self._payload = payload
+
+            def json(self, *args, **kwargs):
+                return self._payload
+
         def _fake_post(url, *args, **kwargs):
             # Only intercept embed endpoint
             if "/embeddings_service/embed" in str(url):
                 data = kwargs.get("json", {}) if kwargs.get("json") is not None else args[1] if len(args) > 1 else {}
                 # Basic validation: require embedder_name and non-empty sequence_data
                 if not data.get("embedder_name"):
-                    return type("R", (), {"status_code": 422, "json": lambda: {"detail": "embedder_name missing"}})()
+                    return FakeResponse(422, {"detail": "embedder_name missing"})
                 if not data.get("sequence_data"):
-                    return type("R", (), {"status_code": 422, "json": lambda: {"detail": "sequence_data empty"}})()
+                    return FakeResponse(422, {"detail": "sequence_data empty"})
 
                 # Fast local embedding: compute deterministic embeddings for provided sequences
                 embedder_name = data.get("embedder_name")
@@ -95,14 +103,14 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
 
                 # Return a fake task_id
                 task_id = f"local-{uuid.uuid4().hex[:8]}"
-                return type("R", (), {"status_code": 200, "json": lambda: {"task_id": task_id}})()
+                return FakeResponse(200, {"task_id": task_id})
             return original_post(url, *args, **kwargs)
 
         def _fake_get(url, *args, **kwargs):
             # Intercept task status polling and return finished immediately
             if "/biocentral_service/task_status/" in str(url):
                 dto = {"status": "FINISHED", "result": {}}
-                return type("R", (), {"status_code": 200, "json": lambda: {"dtos": [dto]}})()
+                return FakeResponse(200, {"dtos": [dto]})
             return original_get(url, *args, **kwargs)
 
         http_client.post = _fake_post
