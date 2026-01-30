@@ -96,13 +96,11 @@ jobs:
         run: | 
           sudo systemctl stop docker.service
           sudo systemctl stop docker.socket
-          sudo mkdir -p /home/runner/work/biocentral_server/biocentral_server/docker
-      
-          # If /var/lib/docker is empty, this is instant.
-          sudo rsync -aP /var/lib/docker/ /home/runner/work/biocentral_server/biocentral_server/docker/
+          sudo mkdir -p /home/runner/work/biocentral_server/docker_storage
           
+          sudo rsync -aP /var/lib/docker/ /home/runner/work/biocentral_server/docker_storage/
           sudo rm -rf /var/lib/docker
-          sudo ln -s /home/runner/work/biocentral_server/biocentral_server/docker /var/lib/docker
+          sudo ln -s /home/runner/work/biocentral_server/docker_storage /var/lib/docker
           sudo systemctl start docker.service
         
       - name: Checkout Repository
