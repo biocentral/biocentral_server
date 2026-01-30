@@ -80,6 +80,14 @@ jobs:
       CI_PRUNE_VOLUMES: 'false'     # set to 'true' to allow pruning volumes
 
     steps:
+      - name: Maximize build disk space
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 5120
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
       - name: Free disk space
         run: |
             echo "Disk before cleanup"
@@ -90,11 +98,6 @@ jobs:
             sudo rm -rf /home/runner/.cache /home/runner/.npm /home/runner/.npm/_cacache /home/runner/.cache/pip /home/runner/.cache/pypoetry /home/runner/.cargo /home/runner/.local/share/virtualenvs || true
             sudo rm -rf /tmp/* /var/cache/apt/archives/* /var/lib/apt/lists/* || true
             sudo apt-get clean || true
-
-            # Safer Docker cleanup: builder and old images/containers
-            docker builder prune -af || true
-            docker image prune -af 
-            docker container prune -f || true
  
             echo "Disk after cleanup"
             df -h
