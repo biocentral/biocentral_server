@@ -75,6 +75,9 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
             def json(self, *args, **kwargs):
                 return self._payload
 
+        # Track fake tasks created by this test client
+        _fake_tasks: Dict[str, Dict] = {}
+
         def _fake_post(url, *args, **kwargs):
             # Only intercept embed endpoint
             if "/embeddings_service/embed" in str(url):
@@ -101,16 +104,25 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 elif isinstance(seqs, list):
                     fe.embed_batch(seqs, pooled=pooled)
 
-                # Return a fake task_id
+                # Return a fake task_id and register a finished DTO for it
                 task_id = f"local-{uuid.uuid4().hex[:8]}"
+                _fake_tasks[task_id] = {"status": "FINISHED", "result": {}}
                 return FakeResponse(200, {"task_id": task_id})
             return original_post(url, *args, **kwargs)
 
         def _fake_get(url, *args, **kwargs):
             # Intercept task status polling and return finished immediately
             if "/biocentral_service/task_status/" in str(url):
-                dto = {"status": "FINISHED", "result": {}}
-                return FakeResponse(200, {"dtos": [dto]})
+                # extract task_id from url (last path component)
+                try:
+                    task_id = str(url).rstrip("/").split("/")[-1]
+                except Exception:
+                    task_id = None
+
+                if task_id and task_id in _fake_tasks:
+                    dto = _fake_tasks[task_id]
+                    return FakeResponse(200, {"dtos": [dto]})
+
             return original_get(url, *args, **kwargs)
 
         http_client.post = _fake_post
