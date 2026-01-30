@@ -53,6 +53,15 @@ from biocentral_server.server_management.triton_client import (
     create_triton_repository,
 )
 
+# In CI we usually don't run Triton. Skip these tests unless explicitly enabled.
+USE_TRITON = os.environ.get("USE_TRITON", "false").lower()
+CI_EMBEDDER = os.environ.get("CI_EMBEDDER", "").lower()
+if USE_TRITON not in ("1", "true", "yes") or CI_EMBEDDER == "fixed":
+    pytest.skip(
+        "Triton tests skipped (USE_TRITON not enabled or CI_EMBEDDER=fixed)",
+        allow_module_level=True,
+    )
+
 # Import model classes
 from biocentral_server.predict.models import (
     ProtT5SecondaryStructure,
