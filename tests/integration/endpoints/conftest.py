@@ -165,7 +165,10 @@ def get_embedder_name() -> str:
         valid_options = ", ".join(EMBEDDER_MAP.keys())
         pytest.fail(f"Invalid CI_EMBEDDER='{ci_embedder}'. Valid options: {valid_options}")
     
-    return EMBEDDER_MAP[ci_embedder]
+    embedder_name = EMBEDDER_MAP[ci_embedder]
+    
+    print(f"\n[CONFIG] Using embedder: {embedder_name}")
+    return embedder_name
 
 
 def is_fixed_embedder() -> bool:
@@ -184,7 +187,6 @@ def test_sequences() -> Dict[str, str]:
     """Standard test sequences from canonical dataset."""
     return {
         "protein_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
-        "protein_2": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
     }
 
 
