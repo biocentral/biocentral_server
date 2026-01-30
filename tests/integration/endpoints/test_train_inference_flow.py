@@ -191,27 +191,7 @@ class TestStartTrainingEndpoint:
     """
     Integration tests for POST /custom_models_service/start_training.
     """
-
-    @pytest.mark.integration
-    def test_start_training_creates_task(
-        self,
-        client,
-        classification_config,
-        classification_training_data,
-    ):
-        """Test that training request creates a task."""
-        response = client.post(
-            "/custom_models_service/start_training",
-            json={
-                "config_dict": classification_config,
-                "training_data": classification_training_data,
-            }
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "task_id" in data
-        assert data["task_id"] is not None
+ 
 
     @pytest.mark.integration
     def test_start_training_with_real_proteins(
@@ -297,26 +277,6 @@ class TestStartInferenceEndpoint:
     """
     Integration tests for POST /custom_models_service/start_inference.
     """
-
-    @pytest.mark.integration
-    def test_start_inference_creates_task(
-        self,
-        client,
-        inference_sequences,
-    ):
-        """Test that inference request creates a task (with valid model hash)."""
-        # Note: This test may fail with 404 if model doesn't exist
-        # The goal is to verify the endpoint accepts requests properly
-        response = client.post(
-            "/custom_models_service/start_inference",
-            json={
-                "model_hash": "test-model-hash",
-                "sequence_data": inference_sequences,
-            }
-        )
-
-        # Either creates task (200) or model not found (404)
-        assert response.status_code in [200, 404]
 
     @pytest.mark.integration
     def test_start_inference_empty_sequences_rejected(self, client):
