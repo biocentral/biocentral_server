@@ -101,6 +101,9 @@ jobs:
           sudo rsync -aP /var/lib/docker/ /home/runner/work/biocentral_server/docker_storage/
           sudo rm -rf /var/lib/docker
           sudo ln -s /home/runner/work/biocentral_server/docker_storage /var/lib/docker
+
+          sudo chown -R runner:docker /home/runner/work/biocentral_server/docker_storage
+          sudo chmod -R 775 /home/runner/work/biocentral_server/docker_storage
           sudo systemctl start docker.service
         
       - name: Checkout Repository
