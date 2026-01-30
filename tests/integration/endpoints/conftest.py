@@ -276,20 +276,10 @@ def structural_motif_sequences() -> Dict[str, str]:
 def real_world_sequences() -> Dict[str, str]:
     """Real-world representative protein sequences."""
     return {
-        "insulin_b": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+        "insulin_b": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
     }
 
-
-@pytest.fixture(scope="session")
-def diverse_test_sequences() -> Dict[str, str]:
-    """
-    Diverse collection of sequences covering multiple categories.
-    
-    Useful for projection tests that need more data points.
-    """
-    return {
-        "ubiquitin": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence, 
-    }
+ 
 
 
 CANONICAL_STANDARD_IDS = ["standard_001", "standard_002", "standard_003"]
