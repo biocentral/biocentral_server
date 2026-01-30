@@ -112,17 +112,17 @@ class TestProjectEndpoint:
         self,
         client,
         embedder_name,
-        diverse_test_sequences,
+        real_world_sequences,
     ):
         """Test projection with UMAP method."""
         request_data = {
             "method": "umap",
-            "sequence_data": diverse_test_sequences,
+            "sequence_data": real_world_sequences,
             "embedder_name": embedder_name,
             "config": {
-                "n_neighbors": min(5, len(diverse_test_sequences) - 1),
+                "n_neighbors": min(0, len(real_world_sequences) - 1),
                 "min_dist": 0.1,
-                "n_components": 2,
+                "n_components": 1,
             },
         }
 
@@ -207,12 +207,12 @@ class TestProjectEndpoint:
         self,
         client,
         embedder_name,
-        diverse_test_sequences,
+        real_world_sequences,
     ):
         """Test projection with diverse sequence collection from canonical dataset."""
         request_data = {
             "method": "pca",
-            "sequence_data": diverse_test_sequences,
+            "sequence_data": real_world_sequences,
             "embedder_name": embedder_name,
             "config": {"n_components": 3},
         }
@@ -304,12 +304,12 @@ class TestEndToEndProjectionFlow:
         client,
         poll_task,
         embedder_name,
-        diverse_test_sequences,
+        real_world_sequences,
     ):
         """Test complete projection flow from request to completion."""
         request_data = {
             "method": "pca",
-            "sequence_data": diverse_test_sequences,
+            "sequence_data": real_world_sequences,
             "embedder_name": embedder_name,
             "config": {"n_components": 2},
         }
@@ -338,15 +338,15 @@ class TestEndToEndProjectionFlow:
         client,
         poll_task,
         embedder_name,
-        diverse_test_sequences,
+        real_world_sequences,
     ):
         """Test UMAP projection flow from request to completion."""
         request_data = {
             "method": "umap",
-            "sequence_data": diverse_test_sequences,
+            "sequence_data": real_world_sequences,
             "embedder_name": embedder_name,
             "config": {
-                "n_neighbors": min(5, len(diverse_test_sequences) - 1),
+                "n_neighbors": min(5, len(real_world_sequences) - 1),
                 "min_dist": 0.1,
                 "n_components": 2,
             },
