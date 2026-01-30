@@ -80,9 +80,15 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
         _fake_tasks: Dict[str, Dict] = {}
 
         def _fake_post(url, *args, **kwargs):
-            # Only intercept embed endpoint
-            if "/embeddings_service/embed" in str(url):
-                data = kwargs.get("json", {}) if kwargs.get("json") is not None else args[1] if len(args) > 1 else {}
+            # Only intercept the embeddings endpoint (match path exactly)
+            try:
+                path = urlparse(str(url)).path
+            except Exception:
+                path = str(url)
+
+            if path.startswith("/embeddings_service/embed"):
+                # Prefer explicit JSON kwarg; otherwise fall back to empty dict
+                data = kwargs.get("json") or {}
                 # Basic validation: require embedder_name and non-empty sequence_data
                 if not data.get("embedder_name"):
                     return FakeResponse(422, {"detail": "embedder_name missing"})
