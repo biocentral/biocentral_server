@@ -6,6 +6,7 @@ import logging
 import sys
 import pytest
 import httpx
+from urllib.parse import urlparse
 from typing import Any, Dict, Generator, List, Optional
 
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
@@ -111,11 +112,16 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
             return original_post(url, *args, **kwargs)
 
         def _fake_get(url, *args, **kwargs):
-            # Intercept task status polling and return finished immediately
-            if "/biocentral_service/task_status/" in str(url):
-                # extract task_id from url (last path component)
+            # Intercept only exact task status polling paths and return finished immediately
+            try:
+                path = urlparse(str(url)).path
+            except Exception:
+                path = str(url)
+
+            if path.startswith("/biocentral_service/task_status/local-"):
+                # extract task_id from path (last path component)
                 try:
-                    task_id = str(url).rstrip("/").split("/")[-1]
+                    task_id = path.rstrip("/").split("/")[-1]
                 except Exception:
                     task_id = None
 
@@ -156,13 +162,6 @@ def _make_request_with_retry(client, method: str, url: str, max_retries: int = 3
 def poll_task(client):
     """
     Factory fixture to poll a task until completion.
-    
-    Usage:
-        def test_async_operation(client, poll_task):
-            response = client.post("/endpoint", json=data)
-            task_id = response.json()["task_id"]
-            result = poll_task(task_id)
-            assert result["status"].upper() in ("FINISHED", "FAILED")
     """
     def _poll(task_id: str, timeout: int = 120, poll_interval: float = 1.0) -> Dict[str, Any]:
         """
