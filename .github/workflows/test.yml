@@ -91,10 +91,15 @@ jobs:
           remove-codeql: 'true'
           remove-docker-images: 'true'
 
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
+      - name: Move Docker storage to large partition
+        run: |
+          sudo systemctl stop docker.service
+          sudo systemctl stop docker.socket
+          sudo mkdir -p /home/runner/work/docker
+          sudo mv /var/lib/docker /home/runner/work/docker
+          sudo ln -s /home/runner/work/docker /var/lib/docker
+          sudo systemctl start docker.service
+    
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
