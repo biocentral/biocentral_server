@@ -148,7 +148,7 @@ jobs:
           COMPOSE_DOCKER_CLI_BUILD: 1
           BUILDKIT_STEP_LOG_MAX_SIZE: 10000000
           CI_IMAGE: biocentral-server:ci
-          CI_EMBEDDER: fixed
+          #CI_EMBEDDER: fixed
         timeout-minutes: 10
 
       - name: Wait for server to be healthy
