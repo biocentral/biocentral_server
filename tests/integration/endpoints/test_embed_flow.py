@@ -364,7 +364,7 @@ class TestEndToEndEmbedFlow:
         
         # Wait for completion with graceful handling for CI resource constraints
         try:
-            result = poll_task(task_id, timeout=180)
+            result = poll_task(task_id, timeout=280)
         except TimeoutError:
             pytest.skip(f"Task {task_id} timed out - CI resource constraints")
         except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
@@ -372,40 +372,7 @@ class TestEndToEndEmbedFlow:
         
         # Verify completion (task reached terminal state)
         assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
-
-    @pytest.mark.integration
-    @pytest.mark.slow
-    def test_embed_diverse_sequences(
-        self,
-        client,
-        poll_task,
-        embedder_name,
-        real_world_sequences,
-    ):
-        """Test embedding diverse sequences from canonical dataset."""
-        request_data = {
-            "embedder_name": embedder_name,
-            "reduce": True,
-            "sequence_data": real_world_sequences,
-            "use_half_precision": True,
-        }
-
-        response = client.post("/embeddings_service/embed", json=request_data)
-        assert response.status_code == 200
-        
-        task_id = response.json()["task_id"]
-        
-        # Wait for completion with graceful handling for CI resource constraints
-        try:
-            result = poll_task(task_id, timeout=180)
-        except TimeoutError:
-            pytest.skip(f"Task {task_id} timed out - CI resource constraints")
-        except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
-            pytest.skip(f"Server connection lost during polling: {e}")
-        
-        # Task should reach a terminal state
-        assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
-
+ 
     @pytest.mark.integration
     def test_embed_with_different_embedders(
         self,

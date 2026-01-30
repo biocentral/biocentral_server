@@ -166,7 +166,7 @@ jobs:
         timeout-minutes: 5
 
       - name: Run integration tests
-        run: uv run pytest tests/integration/ -v -s -m "not triton" --durations=0 -W "ignore::DeprecationWarning"
+        run: uv run pytest tests/integration/ -v -m "not triton" --durations=0 -W "ignore::DeprecationWarning" -s
         env:
           CI_SERVER_URL: http://localhost:9540
           CI_EMBEDDER: fixed # Uncomment and set if specific embedder is needed
