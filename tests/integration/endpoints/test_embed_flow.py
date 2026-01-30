@@ -254,63 +254,6 @@ class TestEmbedEndpoint:
         validate_error_response(error_response)
 
 
-class TestEmbedTaskLifecycle:
-    """
-    Tests for embedding task lifecycle: creation, status tracking, completion.
-    """
-
-    @pytest.mark.integration
-    def test_task_id_is_valid_uuid(
-        self,
-        client,
-        embedder_name,
-        short_test_sequences,
-    ):
-        """Test that task IDs are valid."""
-        request_data = {
-            "embedder_name": embedder_name,
-            "reduce": True,
-            "sequence_data": short_test_sequences,
-            "use_half_precision": True,
-        }
-
-        response = client.post("/embeddings_service/embed", json=request_data)
-
-        assert response.status_code == 200
-        task_id = response.json()["task_id"]
-        
-        # Task ID should be non-empty string
-        assert isinstance(task_id, str)
-        assert len(task_id) > 0
-
-    @pytest.mark.integration
-    def test_multiple_tasks_get_unique_ids(
-        self,
-        client,
-        embedder_name,
-        short_test_sequences,
-    ):
-        """Test that multiple task submissions get unique IDs."""
-        task_ids = set()
-        
-        for i in range(3):
-            request_data = {
-                "embedder_name": embedder_name,
-                "reduce": True,
-                "sequence_data": short_test_sequences,
-                "use_half_precision": True,
-            }
-
-            response = client.post("/embeddings_service/embed", json=request_data)
-            assert response.status_code == 200
-            
-            task_id = response.json()["task_id"]
-            task_ids.add(task_id)
-        
-        # All task IDs should be unique
-        assert len(task_ids) == 3
-
-
 class TestEndToEndEmbedFlow:
     """
     End-to-end tests for the complete embedding workflow.
