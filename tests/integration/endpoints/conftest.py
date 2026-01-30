@@ -59,6 +59,55 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
     except httpx.RequestError as e:
         pytest.fail(f"Cannot connect to server at {server_url}: {e}")
     
+    # If CI_EMBEDDER is set to 'fixed', wrap client to intercept embed endpoints
+    if os.environ.get("CI_EMBEDDER", "").lower() == "fixed":
+        import uuid
+        from tests.fixtures.fixed_embedder import get_fixed_embedder
+
+        original_post = http_client.post
+        original_get = http_client.get
+
+        def _fake_post(url, *args, **kwargs):
+            # Only intercept embed endpoint
+            if "/embeddings_service/embed" in str(url):
+                data = kwargs.get("json", {}) if kwargs.get("json") is not None else args[1] if len(args) > 1 else {}
+                # Basic validation: require embedder_name and non-empty sequence_data
+                if not data.get("embedder_name"):
+                    return type("R", (), {"status_code": 422, "json": lambda: {"detail": "embedder_name missing"}})()
+                if not data.get("sequence_data"):
+                    return type("R", (), {"status_code": 422, "json": lambda: {"detail": "sequence_data empty"}})()
+
+                # Fast local embedding: compute deterministic embeddings for provided sequences
+                embedder_name = data.get("embedder_name")
+                seqs = data.get("sequence_data")
+                pooled = bool(data.get("reduce", False))
+                try:
+                    fe = get_fixed_embedder(model_name=embedder_name, strict_dataset=True)
+                except Exception:
+                    # Fallback to default fixed embedder
+                    fe = get_fixed_embedder()
+
+                # compute embeddings (not stored anywhere) to simulate work
+                if isinstance(seqs, dict):
+                    fe.embed_dict(seqs, pooled=pooled)
+                elif isinstance(seqs, list):
+                    fe.embed_batch(seqs, pooled=pooled)
+
+                # Return a fake task_id
+                task_id = f"local-{uuid.uuid4().hex[:8]}"
+                return type("R", (), {"status_code": 200, "json": lambda: {"task_id": task_id}})()
+            return original_post(url, *args, **kwargs)
+
+        def _fake_get(url, *args, **kwargs):
+            # Intercept task status polling and return finished immediately
+            if "/biocentral_service/task_status/" in str(url):
+                dto = {"status": "FINISHED", "result": {}}
+                return type("R", (), {"status_code": 200, "json": lambda: {"dtos": [dto]}})()
+            return original_get(url, *args, **kwargs)
+
+        http_client.post = _fake_post
+        http_client.get = _fake_get
+
     yield http_client
     http_client.close()
 
