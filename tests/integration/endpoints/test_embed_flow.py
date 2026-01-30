@@ -61,30 +61,6 @@ class TestEmbedEndpoint:
     
     Tests embedding task creation and completion against real server.
     """
-
-    @pytest.mark.integration
-    def test_embed_request_creates_task(
-        self,
-        client,
-        embedder_name,
-        short_test_sequences,
-    ):
-        """Test that embedding request creates a task and returns task ID."""
-        request_data = {
-            "embedder_name": embedder_name,
-            "reduce": False,
-            "sequence_data": short_test_sequences,
-            "use_half_precision": True,
-        }
-
-        response = client.post("/embeddings_service/embed", json=request_data)
-
-        assert response.status_code == 200
-        response_json = response.json()
-        task_id = validate_task_response(response_json)
-        assert isinstance(task_id, str)
-        assert len(task_id) > 0
-
     @pytest.mark.integration
     def test_embed_task_completes_successfully(
         self,

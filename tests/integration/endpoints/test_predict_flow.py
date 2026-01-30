@@ -82,32 +82,7 @@ class TestPredictEndpoint:
     """
     Integration tests for POST /prediction_service/predict.
     """
-
-    @pytest.mark.integration
-    def test_predict_creates_task(
-        self,
-        client,
-        prediction_sequences,
-    ):
-        """Test that prediction request creates a task."""
-        # Get available models first
-        meta_response = client.get("/prediction_service/model_metadata")
-        available_models = [m["name"] for m in meta_response.json()["metadata"]]
-
-        if not available_models:
-            pytest.skip("No prediction models available")
-
-        request_data = {
-            "model_names": [available_models[0]],
-            "sequence_input": prediction_sequences,
-        }
-
-        response = client.post("/prediction_service/predict", json=request_data)
-
-        assert response.status_code == 200
-        response_json = response.json()
-        validate_task_response(response_json)
-
+ 
     @pytest.mark.integration
     def test_predict_task_completes(
         self,

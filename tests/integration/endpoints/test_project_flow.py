@@ -38,28 +38,6 @@ class TestProjectEndpoint:
     """
 
     @pytest.mark.integration
-    def test_project_creates_task(
-        self,
-        client,
-        embedder_name,
-        short_test_sequences,
-    ):
-        request_data = {
-            "method": "pca",
-            "sequence_data": short_test_sequences,
-            "embedder_name": embedder_name,
-            "config": {
-                "n_components": 2,
-            },
-        }
-
-        response = client.post("/projection_service/project", json=request_data)
-
-        assert response.status_code == 200
-        response_json = response.json()
-        validate_task_response(response_json)
-
-    @pytest.mark.integration
     def test_project_task_completes(
         self,
         client,
