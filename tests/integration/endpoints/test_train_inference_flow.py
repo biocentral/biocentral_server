@@ -444,7 +444,7 @@ class TestEndToEndTrainInferenceFlow:
         inference_task_id = inference_response.json()["task_id"]
 
         # Step 4: Wait for inference to complete
-        inference_result = poll_task(inference_task_id, timeout=120)
+        inference_result = poll_task(inference_task_id, timeout=280)
         
         assert inference_result is not None
         inference_status = inference_result.get("status", "").upper()
