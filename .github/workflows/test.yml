@@ -100,7 +100,11 @@ jobs:
           sudo ln -s /home/runner/work/docker /var/lib/docker
           sudo systemctl start docker.service
     
-
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
