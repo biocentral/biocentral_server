@@ -92,15 +92,19 @@ jobs:
           remove-codeql: 'true'
           remove-docker-images: 'true'
 
-      - name: Move Docker storage to large partition
-        run: |
+      - name: Relocate Docker storage to large partition
+        run: | 
           sudo systemctl stop docker.service
           sudo systemctl stop docker.socket
-          sudo mkdir -p /home/runner/work/docker
-          sudo mv /var/lib/docker /home/runner/work/docker
-          sudo ln -s /home/runner/work/docker /var/lib/docker
+          sudo mkdir -p /home/runner/work/biocentral_server/biocentral_server/docker
+      
+          # If /var/lib/docker is empty, this is instant.
+          sudo rsync -aP /var/lib/docker/ /home/runner/work/biocentral_server/biocentral_server/docker/
+          
+          sudo rm -rf /var/lib/docker
+          sudo ln -s /home/runner/work/biocentral_server/biocentral_server/docker /var/lib/docker
           sudo systemctl start docker.service
-    
+        
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
