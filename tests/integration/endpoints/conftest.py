@@ -241,7 +241,7 @@ def get_embedder_name() -> str:
     
     embedder_name = EMBEDDER_MAP[ci_embedder]
     
-    print(f"\n[CONFIG] Using embedder: {embedder_name}")
+    #print(f"\n[CONFIG] Using embedder: {embedder_name}")
     return embedder_name
 
 
