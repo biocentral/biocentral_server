@@ -135,7 +135,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull Docker image
-        run: docker pull ghcr.io/${{ github.repository }}/biocentral-server:latest
+        run: docker pull ghcr.io/denizozturk95/biocentral-server:latest
 
       - name: Start services with Docker Compose
         run: |
@@ -144,7 +144,7 @@ jobs:
           DOCKER_BUILDKIT: 1
           COMPOSE_DOCKER_CLI_BUILD: 1
           BUILDKIT_STEP_LOG_MAX_SIZE: 10000000
-          CI_IMAGE: ghcr.io/${{ github.repository }}/biocentral-server:latest
+          CI_IMAGE: ghcr.io/denizozturk95/biocentral-server:latest
           #CI_EMBEDDER: fixed
         timeout-minutes: 10
 
