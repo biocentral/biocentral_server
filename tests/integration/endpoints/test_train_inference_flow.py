@@ -75,7 +75,7 @@ def regression_training_data() -> List[Dict]:
 def inference_sequences() -> Dict[str, str]:
     """Sequences for inference testing from canonical dataset."""
     return {
-        "infer_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+        "infer_1": CANONICAL_TEST_DATASET.get_by_id("length_min_1").sequence,
     }
 
 
