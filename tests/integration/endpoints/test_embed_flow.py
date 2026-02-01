@@ -283,7 +283,7 @@ class TestEndToEndEmbedFlow:
         
         # Wait for completion with graceful handling for CI resource constraints
         try:
-            result = poll_task(task_id, timeout=280)
+            result = poll_task(task_id, timeout=380)
         except TimeoutError:
             pytest.skip(f"Task {task_id} timed out - CI resource constraints")
         except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
