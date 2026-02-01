@@ -80,7 +80,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
         _fake_tasks: Dict[str, Dict] = {}
 
         def _fake_post(url, *args, **kwargs):
-            # Only intercept the embeddings endpoint (match path exactly)
+            # Intercept embedding and projection endpoints (match path exactly)
             try:
                 path = urlparse(str(url)).path
             except Exception:
@@ -115,6 +115,34 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 task_id = f"local-{uuid.uuid4().hex[:8]}"
                 _fake_tasks[task_id] = {"status": "FINISHED", "result": {}}
                 return FakeResponse(200, {"task_id": task_id})
+
+            if path.startswith("/projection_service/project"):
+                # Intercept projection endpoint when using fixed embedder
+                # This endpoint performs dimensionality reduction (PCA, UMAP, t-SNE)
+                # on protein embeddings for visualization purposes
+                data = kwargs.get("json") or {}
+                if not data.get("sequence_data"):
+                    return FakeResponse(422, {"detail": "sequence_data empty"})
+
+                seqs = data.get("sequence_data")
+                method = data.get("method", "pca")
+                n_components = data.get("config", {}).get("n_components", 2)
+
+                # Return a fake task_id with projection result
+                task_id = f"local-{uuid.uuid4().hex[:8]}"
+                # Create fake projection result with deterministic coordinates
+                # Real service returns reduced coordinates from ProtSpace
+                seq_ids = list(seqs.keys()) if isinstance(seqs, dict) else [f"seq_{i}" for i in range(len(seqs))]
+                projection_result = {
+                    method: {
+                        "identifier": seq_ids,
+                        **{f"D{d+1}": [float(i * 0.1 + d * 0.01) for i, _ in enumerate(seq_ids)] 
+                           for d in range(n_components)}
+                    }
+                }
+                _fake_tasks[task_id] = {"status": "FINISHED", "projection_result": projection_result}
+                return FakeResponse(200, {"task_id": task_id})
+
             return original_post(url, *args, **kwargs)
 
         def _fake_get(url, *args, **kwargs):
