@@ -9,12 +9,33 @@ on:
 jobs:
   build-and-push:
     name: Build and Push Docker Image
-    runs-on: ubuntu-large-disk
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write  # Needed for GitHub Container Registry
 
     steps:
+      - name: Maximize build disk space
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 24576
+          swap-size-mb: 1024
+          temp-reserve-mb: 16384
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'       
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+          overprovision-lvm: 'true'
+
+      - name: Move Docker storage to large partition
+        run: |
+          sudo systemctl stop docker.service
+          sudo systemctl stop docker.socket
+          sudo mkdir -p /home/runner/work/docker
+          sudo mv /var/lib/docker /home/runner/work/docker
+          sudo ln -s /home/runner/work/docker /var/lib/docker
+          sudo systemctl start docker.service
       - name: Checkout code
         uses: actions/checkout@v4
 
