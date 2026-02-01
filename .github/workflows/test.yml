@@ -153,8 +153,8 @@ jobs:
           CI_SERVER_URL: http://localhost:9540
           CI_EMBEDDER: fixed  # Uncomment and set if specific embedder is needed
 
-      - name: Show logs on failure
-        if: failure()
+      - name: Show logs 
+        if: always()
         run: |
           docker compose -f docker-compose.dev.yml logs
 
