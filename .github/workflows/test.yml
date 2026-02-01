@@ -144,14 +144,14 @@ jobs:
           DOCKER_BUILDKIT: 1
           COMPOSE_DOCKER_CLI_BUILD: 1
           BUILDKIT_STEP_LOG_MAX_SIZE: 10000000
-          CI_IMAGE: ghcr.io/denizozturk95/biocentral-server:ci
-          CI_EMBEDDER: fixed  # Uncomment and set if specific embedder is needed
+          CI_IMAGE: ghcr.io/denizozturk95/biocentral-server:ci 
         timeout-minutes: 10
 
       - name: Run integration tests
         run: uv run pytest tests/integration/ -v -m "not triton" --durations=0 -W "ignore::DeprecationWarning" 
         env:
           CI_SERVER_URL: http://localhost:9540
+          CI_EMBEDDER: fixed  # Uncomment and set if specific embedder is needed
 
       - name: Show logs on failure
         if: failure()
