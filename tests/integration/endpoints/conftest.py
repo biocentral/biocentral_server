@@ -128,6 +128,11 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 method = data.get("method", "pca")
                 n_components = data.get("config", {}).get("n_components", 2)
 
+                # Validate method - must be a known dimensionality reduction method
+                valid_methods = {"pca", "umap", "tsne", "pacmap", "trimap"}
+                if method.lower() not in valid_methods:
+                    return FakeResponse(400, {"detail": f"Unknown method: {method}"})
+
                 # Return a fake task_id with projection result
                 task_id = f"local-{uuid.uuid4().hex[:8]}"
                 # Create fake projection result with deterministic coordinates
