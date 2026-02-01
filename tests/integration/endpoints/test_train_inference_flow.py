@@ -130,7 +130,11 @@ class TestConfigOptionsEndpoint:
     @pytest.mark.integration
     def test_get_config_options_invalid_protocol(self, client):
         """Test getting config options for an invalid protocol returns error."""
-        response = client.get("/custom_models_service/config_options/invalid_protocol_xyz")
+        try:
+            response = client.get("/custom_models_service/config_options/invalid_protocol_xyz")
+        except Exception as e:
+            assert e.response.status_code in (400, 500)
+            return
 
         # Server returns 500 for unrecognized protocols (internal handling error)
         assert response.status_code in [400, 500]
