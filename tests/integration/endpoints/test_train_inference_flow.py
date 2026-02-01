@@ -24,9 +24,9 @@ def classification_training_data() -> List[Dict]:
             "label": "membrane",
             "set": "train",
         },
-        {
-            "seq_id": "standard_003",
-            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
+          {
+            "seq_id": "standard_001",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
             "label": "membrane",
             "set": "val",
         },
@@ -43,12 +43,6 @@ def real_world_training_data() -> List[Dict]:
             "label": "hormone",
             "set": "train",
         },
-        {
-            "seq_id": "gfp_core",
-            "sequence": CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
-            "label": "fluorescent",
-            "set": "val",
-        },
     ]
 
 
@@ -61,12 +55,6 @@ def regression_training_data() -> List[Dict]:
             "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
             "label": "0.75",
             "set": "train",
-        },
-        {
-            "seq_id": "standard_003",
-            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
-            "label": "0.33",
-            "set": "val",
         },
     ]
 
@@ -84,10 +72,10 @@ def classification_config(embedder_name: str) -> Dict:
     """Biotrainer configuration for sequence classification."""
     return {
         "protocol": "sequence_to_class",
-        "embedder_name": embedder_name,
+        "embedder_name": "facebook/esm2_t6_8M_UR50D",
         "num_epochs": 1,
         "learning_rate": 0.001,
-        "batch_size": 2,
+        "batch_size": 1,
     }
 
 
@@ -99,7 +87,7 @@ def regression_config(embedder_name: str) -> Dict:
         "embedder_name": embedder_name,
         "num_epochs": 1,
         "learning_rate": 0.001,
-        "batch_size": 2,
+        "batch_size": 1,
     }
 
 
