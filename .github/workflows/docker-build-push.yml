@@ -53,7 +53,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}/biocentral-server
+          images: ghcr.io/denizozturk95/biocentral-server
           tags: |
             type=sha,format=short
             type=raw,value=ci
