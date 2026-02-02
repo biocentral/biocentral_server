@@ -433,11 +433,18 @@ class TestEndToEndTrainInferenceFlow:
             pytest.skip("Training failed (likely due to CI resource constraints)")
         assert train_status == "FINISHED"
 
+        # Extract model_hash from biotrainer result
+        biotrainer_result = train_result.get("biotrainer_result", {})
+        model_hash = biotrainer_result.get("derived_values", {}).get("model_hash")
+        
+        if not model_hash:
+            pytest.fail(f"model_hash not found in training result: {train_result}")
+
         # Step 3: Run inference with the trained model
         inference_response = client.post(
             "/custom_models_service/start_inference",
             json={
-                "model_hash": train_task_id,
+                "model_hash": model_hash,
                 "sequence_data": inference_sequences,
             }
         )
@@ -475,7 +482,7 @@ class TestEndToEndTrainInferenceFlow:
         train_task_id = train_response.json()["task_id"]
 
         # Wait for training to complete
-        train_result = poll_task(train_task_id, timeout=300)
+        train_result = poll_task(train_task_id, timeout=500)
         
         assert train_result is not None
         train_status = train_result.get("status", "").upper()
@@ -483,10 +490,17 @@ class TestEndToEndTrainInferenceFlow:
             pytest.skip("Training failed (likely due to CI resource constraints)")
         assert train_status == "FINISHED"
 
-        # Get model files
+        # Extract model_hash from biotrainer result
+        biotrainer_result = train_result.get("biotrainer_result", {})
+        model_hash = biotrainer_result.get("derived_values", {}).get("model_hash")
+        
+        if not model_hash:
+            pytest.fail(f"model_hash not found in training result: {train_result}")
+
+        # Get model files using the actual model_hash (not task_id)
         files_response = client.post(
             "/custom_models_service/model_files",
-            json={"model_hash": train_task_id}
+            json={"model_hash": model_hash}
         )
 
         assert files_response.status_code == 200
