@@ -6,6 +6,7 @@ import logging
 import sys
 import pytest
 import httpx
+import redis
 from urllib.parse import urlparse
 from typing import Any, Dict, Generator, List, Optional
 
@@ -14,6 +15,27 @@ from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 # Suppress verbose httpx/httpcore logging
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+
+def get_redis_port() -> int:
+    """Get Redis port from environment, accounting for CI port mapping."""
+    # In CI, tests run on host, Redis is exposed on REDIS_JOBS_PORT
+    return int(os.environ.get("REDIS_JOBS_PORT", "6379"))
+
+
+@pytest.fixture(scope="session")
+def flush_redis():
+    """Factory fixture to flush Redis job queue on demand."""
+    def _flush():
+        redis_port = get_redis_port()
+        try:
+            r = redis.Redis(host="localhost", port=redis_port, db=0)
+            r.flushdb()
+            # Give worker time to notice queue is empty
+            time.sleep(0.5)
+        except redis.ConnectionError:
+            pass  # Redis not available, skip flush
+    return _flush
 
 
 def get_server_url() -> str:

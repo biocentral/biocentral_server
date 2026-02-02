@@ -14,9 +14,11 @@ from tests.integration.endpoints.conftest import (
 )
 
 
+@pytest.mark.order(1)
 class TestProjectionConfigEndpoint:
     """
     Integration tests for GET /projection_service/projection_config.
+    Lightweight: Config retrieval only.
     """
 
     @pytest.mark.integration
@@ -32,9 +34,11 @@ class TestProjectionConfigEndpoint:
         assert isinstance(config, dict)
         assert len(config) > 0
 
+@pytest.mark.order(2)
 class TestProjectEndpoint:
     """
     Integration tests for POST /projection_service/project.
+    Medium: Submits projection tasks (uses fixed embedder in CI).
     """
 
     @pytest.mark.integration
@@ -239,9 +243,11 @@ class TestProjectEndpoint:
         assert response.status_code in (400, 422)
 
 
+@pytest.mark.order(3)
 class TestEndToEndProjectionFlow:
     """
     End-to-end tests for the complete projection workflow.
+    Heavier: Waits for task completion.
     """
 
     @pytest.mark.integration

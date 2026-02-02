@@ -17,9 +17,11 @@ from tests.integration.endpoints.conftest import (
 )
 
 
+@pytest.mark.order(1)
 class TestCommonEmbeddersEndpoint:
     """
     Integration tests for GET /embeddings_service/common_embedders.
+    Lightweight: No embedding computation.
     """
 
     @pytest.mark.integration
@@ -55,9 +57,11 @@ class TestCommonEmbeddersEndpoint:
         assert response1.json() == response2.json()
 
 
+@pytest.mark.order(2)
 class TestEmbedEndpoint:
     """
     Integration tests for POST /embeddings_service/embed.
+    Medium: Submits embedding tasks (uses fixed embedder in CI).
     
     Tests embedding task creation and completion against real server.
     """
@@ -254,9 +258,11 @@ class TestEmbedEndpoint:
         validate_error_response(error_response)
 
 
+@pytest.mark.order(3)
 class TestEndToEndEmbedFlow:
     """
     End-to-end tests for the complete embedding workflow.
+    Heavier: Waits for task completion.
     """
 
     @pytest.mark.integration
