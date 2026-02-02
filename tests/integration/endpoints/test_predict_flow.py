@@ -40,9 +40,11 @@ def boundary_length_sequences() -> Dict[str, str]:
     }
 
 
+@pytest.mark.order(1)
 class TestModelMetadataEndpoint:
     """
     Integration tests for GET /prediction_service/model_metadata.
+    Lightweight: No model loading.
     """
 
     @pytest.mark.integration
@@ -78,9 +80,11 @@ class TestModelMetadataEndpoint:
         assert response1.json() == response2.json()
 
 
+@pytest.mark.order(2)
 class TestPredictEndpoint:
     """
     Integration tests for POST /prediction_service/predict.
+    Medium-heavy: Submits prediction tasks and waits for completion.
     """
 
 
