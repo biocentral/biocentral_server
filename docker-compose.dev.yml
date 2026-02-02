@@ -210,7 +210,11 @@ services:
 
   biocentral-worker:
     image: ${CI_IMAGE:-biocentral-server:ci}
-    command: rq worker-pool --url redis://redis-jobs:6379/0 high default low -n 3
+    command: rq worker-pool --url redis://redis-jobs:6379/0 high default low -n 1
+    deploy:
+      resources:
+        limits:
+          memory: 8G
     volumes:
       - huggingface_models_cache:/app/huggingface_models
       - autoeval_storage:/app/autoeval
