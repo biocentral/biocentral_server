@@ -30,6 +30,12 @@ def classification_training_data() -> List[Dict]:
             "label": "membrane",
             "set": "val",
         },
+        {
+            "seq_id": "standard_003",
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence, 
+            "label": "membrane",
+            "set": "test",
+        },
     ]
 
 
