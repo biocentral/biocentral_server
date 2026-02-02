@@ -45,7 +45,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
     This client connects to the real running server instance.
     """
     # Use transport with retries for connection resilience
-    transport = httpx.HTTPTransport(retries=3)
+    transport = httpx.HTTPTransport(retries=5)
     http_client = httpx.Client(
         base_url=f"{server_url}/api/v1",
         timeout=httpx.Timeout(500.0, connect=10.0),
