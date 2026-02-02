@@ -151,7 +151,7 @@ jobs:
         run: uv run pytest tests/integration/ -v -m "not triton" --durations=0 -W "ignore::DeprecationWarning" 
         env:
           CI_SERVER_URL: http://localhost:9540
-          CI_EMBEDDER: fixed  # Uncomment and set if specific embedder is needed
+          #CI_EMBEDDER: fixed  # Uncomment and set if specific embedder is needed
 
       - name: Show logs 
         if: always()
