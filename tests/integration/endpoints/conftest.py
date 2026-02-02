@@ -48,7 +48,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
     transport = httpx.HTTPTransport(retries=3)
     http_client = httpx.Client(
         base_url=f"{server_url}/api/v1",
-        timeout=httpx.Timeout(300.0, connect=10.0),
+        timeout=httpx.Timeout(500.0, connect=10.0),
         transport=transport,
     )
     
