@@ -7,9 +7,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class FixedEmbedderConfig:
-    """Configuration for FixedEmbedder."""
-
-    embedding_dim: int = 1024  # Default ProtT5 dimension
+    embedding_dim: int = 320  # Default ESM2_t6 dimension 
     seed_base: int = 42
     noise_scale: float = 0.1
     # Supported dimensions for different "models"
@@ -51,7 +49,7 @@ class FixedEmbedder:
 
     def __init__(
         self,
-        model_name: str = "prot_t5",
+        model_name: str = "esm2_t6",
         embedding_dim: Optional[int] = None,
         seed_base: int = 42,
         noise_scale: float = 0.1,
@@ -302,7 +300,7 @@ class FixedEmbedderRegistry:
     @classmethod
     def get_embedder(
         cls,
-        model_name: str = "prot_t5",
+        model_name: str = "esm2_t6",
         seed_base: int = 42,
         strict_dataset: bool = True,
     ) -> FixedEmbedder:
@@ -333,7 +331,7 @@ class FixedEmbedderRegistry:
 
 
 def get_fixed_embedder(
-    model_name: str = "prot_t5",
+    model_name: str = "esm2_t6",
     strict_dataset: bool = True,
 ) -> FixedEmbedder:
     """
@@ -353,7 +351,7 @@ def get_fixed_embedder(
 
 def generate_test_embeddings(
     sequences: List[str],
-    model_name: str = "prot_t5",
+    model_name: str = "esm2_t6",
     pooled: bool = False,
 ) -> List[np.ndarray]:
     """
@@ -372,7 +370,7 @@ def generate_test_embeddings(
 
 def generate_test_embeddings_dict(
     sequences: Dict[str, str],
-    model_name: str = "prot_t5",
+    model_name: str = "esm2_t6",
     pooled: bool = False,
 ) -> Dict[str, np.ndarray]:
     """
@@ -392,7 +390,7 @@ def generate_test_embeddings_dict(
 
 def convert_sequences_to_test_format(
     sequences: List[str],
-    model_name: str = "prot_t5",
+    model_name: str = "esm2_t6",
 ) -> Tuple[Dict[str, str], Dict[str, np.ndarray]]:
     """
     Convert sequences to the format expected by prediction models.
@@ -439,7 +437,7 @@ def get_expected_embedding_properties(model_name: str) -> Dict:
 def validate_embedding_shape(
     embedding: np.ndarray,
     expected_length: int,
-    model_name: str = "prot_t5",
+    model_name: str = "esm2_t6",
     pooled: bool = False,
 ) -> bool:
     """
@@ -467,7 +465,7 @@ def validate_embedding_shape(
 
 def validate_embedding_properties(
     embedding: np.ndarray,
-    model_name: str = "prot_t5",
+    model_name: str = "esm2_t6",
 ) -> Dict[str, bool]:
     """
     Validate various properties of an embedding.
@@ -494,7 +492,7 @@ def validate_embedding_properties(
 def assert_embedding_valid(
     embedding: np.ndarray,
     sequence_length: int,
-    model_name: str = "prot_t5",
+    model_name: str = "esm2_t6",
     pooled: bool = False,
 ) -> None:
     """
