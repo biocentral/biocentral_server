@@ -8,7 +8,7 @@ import pytest
 import httpx
 import redis
 from urllib.parse import urlparse
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator
 
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 
