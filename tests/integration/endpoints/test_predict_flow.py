@@ -21,7 +21,7 @@ from tests.integration.endpoints.conftest import (
 
 @pytest.fixture
 def prediction_sequences() -> Dict[str, str]:
-    """Sequences from canonical dataset suitable for prediction (minimum 7 residues)."""
+    """Sequences from canonical dataset suitable for prediction (minimum length of 7)."""
     return {
         "pred_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
     }
@@ -98,8 +98,7 @@ class TestPredictEndpoint:
 
         response = client.post("/prediction_service/predict", json=request_data)
 
-        # Pydantic validates model_names against BiocentralPredictionModel enum,
-        # returning 422 for invalid values
+        # should be returning 422 for invalid values
         assert response.status_code == 422
 
     @pytest.mark.integration

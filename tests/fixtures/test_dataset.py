@@ -1,5 +1,3 @@
-"""Canonical test dataset for biocentral_server testing."""
-
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -10,8 +8,6 @@ from tests.fixtures.fixed_embedder import get_fixed_embedder
 
 @dataclass
 class TestSequence:
-    """A single test sequence with metadata."""
-
     id: str
     sequence: str
     description: str
@@ -19,11 +15,6 @@ class TestSequence:
 
 @dataclass
 class TestDataset:
-    """Complete test dataset with sequences and metadata."""
-
-    name: str
-    version: str
-    description: str
     sequences: List[TestSequence]
 
     def get_by_id(self, seq_id: str) -> Optional[TestSequence]:
@@ -43,9 +34,6 @@ class TestDataset:
 
 
 CANONICAL_TEST_DATASET = TestDataset(
-    name="biocentral_canonical_test_set",
-    version="1.0.0",
-    description="Canonical test dataset for biocentral_server testing",
     sequences=[
         # Standard sequences
         TestSequence(
@@ -213,7 +201,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="GGGGGGGGGGGGGGG",
             description="Glycine-rich flexible loop (15 aa)",
         ),
-        # Real-world representative sequences
+        # real world sequences - probably unnecessary 
         TestSequence(
             id="real_insulin_b",
             sequence="FVNQHLCGSHLVEALYLVCGERGFFYTPKT",

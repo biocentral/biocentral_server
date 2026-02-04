@@ -1,8 +1,6 @@
 """Integration tests for custom models (training and inference) endpoints.
 
-Test file order: 4 (heavy - runs real training with ESM models).
 Test class ordering: Lightweight tests (order=1-4) run first, heavy training tests (order=5-7) run last.
-This prevents background jobs from earlier tests causing OOM during lightweight tests.
 """
 
 import httpx
