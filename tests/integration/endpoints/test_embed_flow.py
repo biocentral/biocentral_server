@@ -1,12 +1,9 @@
 """Integration tests for embeddings endpoints."""
 
 import pytest
-from typing import Dict
 import httpx
-
-from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
+ 
 from tests.integration.endpoints.conftest import (
-    CANONICAL_STANDARD_IDS,
     CANONICAL_LENGTH_EDGE_IDS,
     CANONICAL_UNKNOWN_TOKEN_IDS,
     CANONICAL_AMBIGUOUS_CODE_IDS,

@@ -2,15 +2,11 @@
 
 import httpx
 import pytest
-from typing import Dict
 
-from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 from tests.integration.endpoints.conftest import (
     CANONICAL_STANDARD_IDS,
-    CANONICAL_REAL_WORLD_IDS,
     get_sequence_by_id,
     validate_task_response,
-    validate_error_response,
 )
 
 
