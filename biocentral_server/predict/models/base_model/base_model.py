@@ -169,7 +169,9 @@ class BaseModel(ABC):
                     v = torch.tensor(v)
                 else:
                     raise ValueError(f"Unsupported type: {type(v)}")
-                result[k] = v.permute(0, 2, 1)
+                transposed = v.permute(0, 2, 1)
+                # Convert back to numpy for ONNX compatibility
+                result[k] = transposed.numpy() if self.backend == "onnx" else transposed
             else:
                 result[k] = v
         return result
