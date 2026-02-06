@@ -158,14 +158,10 @@ class TestPredictEndpoint:
         prediction_sequences,
     ):
         """Test that prediction task completes successfully."""
-        meta_response = client.get("/prediction_service/model_metadata")
-        available_models = [m["name"] for m in meta_response.json()["metadata"]]
-
-        if not available_models:
-            pytest.skip("No prediction models available")
+ 
 
         request_data = {
-            "model_names": [available_models[0]],
+            "model_names": ["BindEmbed"],   
             "sequence_input": prediction_sequences,
         }
 
@@ -173,15 +169,10 @@ class TestPredictEndpoint:
         assert response.status_code == 200
 
         task_id = response.json()["task_id"]
-        
-        # Wait for completion with graceful handling for CI resource constraints
-        try:
-            result = poll_task(task_id, timeout=280)
-        except TimeoutError:
-            pytest.skip(f"Task {task_id} timed out - CI resource constraints")
-        except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
-            pytest.skip(f"Server connection lost during polling: {e}")
-
-        # Task should reach a terminal state
-        assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
+        print(f"[PREDICT] Submitted task {task_id}, waiting for completion...")
+    
+        result = poll_task(task_id, timeout=280, max_consecutive_errors=15)
+       
+        assert result["status"].upper() == "FINISHED", f"Prediction failed: {result.get('error', 'unknown')}"
+        print(f"[PREDICT] Task {task_id} completed successfully")   
  

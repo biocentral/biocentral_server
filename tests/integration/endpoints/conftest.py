@@ -640,3 +640,88 @@ def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
         return status
     
     return _verify
+
+@pytest.fixture(scope="session")
+def precache_prott5_embeddings(shared_embedding_sequences):
+    """
+    Pre-populate the embedding cache with fake ProtT5 embeddings.
+    
+    This allows prediction tests to run without downloading the 
+    real ProtT5 model (~1.5GB). The server will find these in the
+    cache and skip model inference.
+    
+    The embeddings are random 1024-dim vectors - they won't produce
+    meaningful predictions, but will exercise the prediction pipeline.
+    """
+    import numpy as np
+    import psycopg2
+    import blosc2
+    from datetime import datetime
+    from biotrainer.utilities import calculate_sequence_hash
+    
+    # Get PostgreSQL connection info from environment (matching docker-compose)
+    db_host = os.environ.get("POSTGRES_HOST", "localhost")
+    db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
+    db_name = os.environ.get("POSTGRES_DB", "biocentral")
+    db_user = os.environ.get("POSTGRES_USER", "biocentral")
+    db_pass = os.environ.get("POSTGRES_PASSWORD", "biocentral")
+    
+    embedder_name = "Rostlab/prot_t5_xl_uniref50"
+    
+    try:
+        conn = psycopg2.connect(
+            host=db_host,
+            port=db_port,
+            dbname=db_name,
+            user=db_user,
+            password=db_pass,
+        )
+        
+        embeddings_data = []
+        for seq_id, sequence in shared_embedding_sequences.items():
+            seq_hash = calculate_sequence_hash(sequence)
+            seq_len = len(sequence)
+            
+            # Generate deterministic fake embeddings (seeded by hash)
+            seed = hash(seq_hash) % (2**32)
+            rng = np.random.default_rng(seed)
+            
+            # ProtT5 produces 1024-dim embeddings
+            per_residue = rng.standard_normal((seq_len, 1024)).astype(np.float32)
+            per_sequence = per_residue.mean(axis=0)  # Reduced embedding
+            
+            # Compress like the server does
+            per_seq_compressed = blosc2.pack_array(per_sequence)
+            per_res_compressed = blosc2.pack_array(per_residue)
+            
+            embeddings_data.append((
+                seq_hash,
+                seq_len,
+                datetime.now(),
+                embedder_name,
+                per_seq_compressed,
+                per_res_compressed,
+            ))
+        
+        with conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO embeddings
+                (sequence_hash, sequence_length, last_updated, embedder_name, per_sequence, per_residue)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (sequence_hash, embedder_name) DO UPDATE SET
+                last_updated = EXCLUDED.last_updated,
+                per_sequence = COALESCE(EXCLUDED.per_sequence, embeddings.per_sequence),
+                per_residue = COALESCE(EXCLUDED.per_residue, embeddings.per_residue)
+                """,
+                embeddings_data,
+            )
+        conn.commit()
+        conn.close()
+        
+        print(f"\n[PRECACHE] Inserted {len(embeddings_data)} fake ProtT5 embeddings")
+        return True
+        
+    except Exception as e:
+        print(f"\n[PRECACHE] Failed to insert fake ProtT5 embeddings: {e}")
+        return False
