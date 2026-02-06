@@ -11,7 +11,6 @@ from tests.integration.endpoints.conftest import (
     get_sequence_by_id,
     validate_task_response,
     validate_error_response,
-    verify_embedding_cache,
 )
 
 
@@ -270,13 +269,16 @@ class TestEndToEndEmbedFlow:
         poll_task,
         embedder_name,
         shared_embedding_sequences,
+        verify_embedding_cache,
     ):
         """
         Test complete embedding flow from request to completion.
         
+        IMPORTANT: This test pre-computes reduced embeddings for sequences
+        that will be reused by projection tests.
         """
-         # Check cache BEFORE embedding
-        print("\n[BEFORE EMBEDDING]")
+        # Check cache BEFORE embedding
+        print("\n[BEFORE EMBEDDING] Checking cache status...")
         before = verify_embedding_cache(expect_cached=False)
        
         request_data = {
@@ -288,24 +290,22 @@ class TestEndToEndEmbedFlow:
 
         # Submit embedding task
         response = client.post("/embeddings_service/embed", json=request_data)
-        assert response.status_code == 200
+        assert response.status_code == 200, f"Failed to submit embedding task: {response.text}"
         
         task_id = response.json()["task_id"]
+        print(f"[EMBEDDING] Submitted task {task_id}, waiting for completion...")
         
-        # Wait for completion with graceful handling for CI resource constraints
-        try:
-            result = poll_task(task_id, timeout=380)
-        except TimeoutError:
-            pytest.skip(f"Task {task_id} timed out - CI resource constraints")
-        except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
-            pytest.skip(f"Server connection lost during polling: {e}")
+        # Wait for completion - poll_task handles retries internally
+        result = poll_task(task_id, timeout=480, max_consecutive_errors=15)
         
-        print("\n[AFTER EMBEDDING]")
+        # Verify task succeeded (not just reached terminal state)
+        task_status = result["status"].upper()
+        assert task_status in ("FINISHED", "COMPLETED", "DONE"), \
+            f"Embedding task failed with status '{task_status}': {result.get('error', 'unknown error')}"
+        
+        print("\n[AFTER EMBEDDING] Checking cache status...")
         after = verify_embedding_cache(expect_cached=True)
-       
-        # Verify completion (task reached terminal state)
-        assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
-        print(f"\n[CACHE POPULATED] {after['cached']}/{after['total']} embeddings now cached")
+        print(f"[CACHE POPULATED] {after['cached']}/{after['total']} embeddings now cached")
  
     @pytest.mark.integration
     def test_embed_with_different_embedders(

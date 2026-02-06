@@ -199,7 +199,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
     http_client.close()
 
 
-def _make_request_with_retry(client, method: str, url: str, max_retries: int = 3, **kwargs) -> httpx.Response:
+def _make_request_with_retry(client, method: str, url: str, max_retries: int = 5, **kwargs) -> httpx.Response:
     """Make an HTTP request with retry logic for connection errors."""
     last_error = None
     for attempt in range(max_retries):
@@ -210,10 +210,12 @@ def _make_request_with_retry(client, method: str, url: str, max_retries: int = 3
                 return client.post(url, **kwargs)
             else:
                 raise ValueError(f"Unsupported method: {method}")
-        except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
+        except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadTimeout) as e:
             last_error = e
+            wait_time = min(2 ** attempt, 30)  # Cap at 30 seconds
+            logging.debug(f"Request failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {wait_time}s...")
             if attempt < max_retries - 1:
-                time.sleep(2 ** attempt)  # Exponential backoff
+                time.sleep(wait_time)
                 continue
             raise
     raise last_error
@@ -222,36 +224,78 @@ def _make_request_with_retry(client, method: str, url: str, max_retries: int = 3
 @pytest.fixture(scope="session")
 def poll_task(client):
     """
-    Factory fixture to poll a task until completion.
+    Factory fixture to poll a task until completion with robust error handling.
     """
-    def _poll(task_id: str, timeout: int = 120, poll_interval: float = 1.0) -> Dict[str, Any]:
+    def _poll(
+        task_id: str,
+        timeout: int = 120,
+        poll_interval: float = 2.0,
+        max_consecutive_errors: int = 10,
+    ) -> Dict[str, Any]:
         """
         Poll task status until completion or timeout.
         
+        Handles transient connection errors gracefully - only fails after
+        multiple consecutive errors, not on the first hiccup.
+        
         Args:
             task_id: The task ID to poll
-            timeout: Maximum seconds to wait
+            timeout: Maximum seconds to wait for task completion
             poll_interval: Seconds between polls
+            max_consecutive_errors: Number of consecutive errors before giving up
             
         Returns:
             The final task DTO with status and results
             
         Raises:
-            TimeoutError if task doesn't complete within timeout
+            TimeoutError: If task doesn't complete within timeout
+            RuntimeError: If too many consecutive connection errors occur
         """
         start = time.time()
+        consecutive_errors = 0
+        last_status = "UNKNOWN"
+        
         while time.time() - start < timeout:
+            elapsed = int(time.time() - start)
+            
             try:
                 response = _make_request_with_retry(
-                    client, "GET", f"/biocentral_service/task_status/{task_id}"
+                    client, "GET", f"/biocentral_service/task_status/{task_id}",
+                    max_retries=3,
                 )
-            except (httpx.RemoteProtocolError, httpx.ConnectError):
-                # Server may have restarted, wait and retry
+                # Reset error counter on successful request
+                consecutive_errors = 0
+                
+            except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadTimeout) as e:
+                consecutive_errors += 1
+                logging.warning(
+                    f"[POLL] Connection error ({consecutive_errors}/{max_consecutive_errors}): {e}"
+                )
+                
+                if consecutive_errors >= max_consecutive_errors:
+                    raise RuntimeError(
+                        f"Task {task_id} polling failed: {consecutive_errors} consecutive connection errors. "
+                        f"Last error: {e}. Last known status: {last_status}"
+                    )
+                
+                # Wait longer after errors
                 time.sleep(poll_interval * 2)
                 continue
                 
             if response.status_code != 200:
-                raise RuntimeError(f"Failed to get task status: {response.status_code}")
+                consecutive_errors += 1
+                logging.warning(
+                    f"[POLL] Bad status code {response.status_code} ({consecutive_errors}/{max_consecutive_errors})"
+                )
+                
+                if consecutive_errors >= max_consecutive_errors:
+                    raise RuntimeError(
+                        f"Task {task_id} polling failed: got status {response.status_code} "
+                        f"{consecutive_errors} times. Last known status: {last_status}"
+                    )
+                
+                time.sleep(poll_interval)
+                continue
             
             response_json = response.json()
             dtos = response_json.get("dtos", [])
@@ -263,16 +307,25 @@ def poll_task(client):
             # Get the latest DTO's status
             latest_dto = dtos[-1]
             task_status = latest_dto.get("status", "").upper()
+            last_status = task_status
+            
+            # Log progress periodically
+            if elapsed % 30 == 0 and elapsed > 0:
+                logging.info(f"[POLL] Task {task_id}: {task_status} ({elapsed}s elapsed)")
             
             # Check for terminal states
             if task_status in ("FINISHED", "COMPLETED", "DONE"):
+                logging.info(f"[POLL] Task {task_id} completed successfully in {elapsed}s")
                 return latest_dto
             elif task_status in ("FAILED", "ERROR"):
+                logging.warning(f"[POLL] Task {task_id} failed: {latest_dto.get('error', 'unknown')}")
                 return latest_dto
             
             time.sleep(poll_interval)
         
-        raise TimeoutError(f"Task {task_id} did not complete within {timeout}s")
+        raise TimeoutError(
+            f"Task {task_id} did not complete within {timeout}s. Last status: {last_status}"
+        )
     
     return _poll
 

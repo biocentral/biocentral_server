@@ -230,3 +230,26 @@ def reset_registry_for_isolated_tests(request):
     yield
     if request.node.get_closest_marker("modifies_registry"):
         FixedEmbedderRegistry.clear()
+
+
+def pytest_collection_modifyitems(session, config, items):
+    """
+    Ensure embed tests run before projection tests.
+    
+    This is critical for cache-sharing: test_embed_flow.py pre-caches
+    embeddings that test_project_flow.py depends on.
+    """
+    def get_test_priority(item):
+        # Get the test file name
+        test_file = item.fspath.basename if hasattr(item, 'fspath') else ""
+        
+        # Priority ordering: lower number = runs first
+        if "test_embed" in test_file:
+            return 0  # Embedding tests first
+        elif "test_project" in test_file:
+            return 1  # Projection tests second (depend on cached embeddings)
+        else:
+            return 2  # All other tests
+    
+    # Sort items by priority, maintaining relative order within same priority
+    items.sort(key=lambda item: (get_test_priority(item), items.index(item) if item in items else 0))
