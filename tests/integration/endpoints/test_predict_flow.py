@@ -20,11 +20,10 @@ from tests.integration.endpoints.conftest import (
 
 
 @pytest.fixture
-def prediction_sequences() -> Dict[str, str]:
-    """Sequences from canonical dataset suitable for prediction (minimum length of 7)."""
-    return {
-        "pred_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
-    }
+def prediction_sequences(shared_embedding_sequences) -> Dict[str, str]:
+    """Use the shared sequences that have pre-cached ProtT5 embeddings."""
+    return shared_embedding_sequences
+
 
 
 @pytest.fixture
@@ -156,6 +155,7 @@ class TestPredictEndpoint:
         client,
         poll_task,
         prediction_sequences,
+        precache_prott5_embeddings, 
     ):
         """Test that prediction task completes successfully."""
  
