@@ -127,13 +127,13 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                         seq_len = len(sequence)
                         
                         # Get embedding from fixed embedder
-                        emb = fe.embed_one(sequence, pooled=reduced)
-                        emb_array = np.array(emb, dtype=np.float32)
-                        
+                        # embed_pooled() for reduced, embed() for per-residue
                         if reduced:
+                            emb_array = fe.embed_pooled(sequence)
                             per_seq_compressed = blosc2.pack_array(emb_array)
                             per_res_compressed = None
                         else:
+                            emb_array = fe.embed(sequence)
                             per_seq_compressed = None
                             per_res_compressed = blosc2.pack_array(emb_array)
                         
