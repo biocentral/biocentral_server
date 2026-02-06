@@ -139,7 +139,7 @@ class BaseModel(ABC):
 
     def _infer_input_name(self):
         if self.backend == "onnx":
-            model = self.model if self.model is not None else self.models[0]
+            model = getattr(self, "model", None) or self.models[0]
             return model.get_inputs()[0].name
         return self.TRITON_INPUT_NAMES()[0]
 
