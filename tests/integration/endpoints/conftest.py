@@ -607,7 +607,7 @@ def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
             "reduced": True,  # Must match ProtSpaceTask's reduced=True
         }
         
-        response = client.get(
+        response = client.post(
             "/embeddings_service/get_missing_embeddings",
             params=request_data,
         )
