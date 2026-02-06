@@ -664,8 +664,8 @@ def precache_prott5_embeddings(shared_embedding_sequences):
     from datetime import datetime
     from biotrainer.utilities import calculate_sequence_hash
     
-    # Get PostgreSQL connection info from environment (matching docker-compose)
-    db_host = os.environ.get("POSTGRES_HOST", "localhost")
+    # Get PostgreSQL connection info from environment (matching .env.ci)
+    db_host = os.environ.get("POSTGRES_HOST", "embeddings-db")
     db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
     db_name = os.environ.get("POSTGRES_DB", "embeddings_db")
     db_user = os.environ.get("POSTGRES_USER", "embeddingsuser")
