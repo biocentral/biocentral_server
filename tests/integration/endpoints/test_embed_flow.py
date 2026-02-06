@@ -255,7 +255,7 @@ class TestEmbedEndpoint:
         validate_error_response(error_response)
 
 
-@pytest.mark.order(3)
+@pytest.mark.order(2)
 class TestEndToEndEmbedFlow:
     """
     End-to-end tests for the complete embedding workflow.
