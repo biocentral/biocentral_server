@@ -667,9 +667,9 @@ def precache_prott5_embeddings(shared_embedding_sequences):
     # Get PostgreSQL connection info from environment (matching docker-compose)
     db_host = os.environ.get("POSTGRES_HOST", "localhost")
     db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
-    db_name = os.environ.get("POSTGRES_DB", "biocentral")
-    db_user = os.environ.get("POSTGRES_USER", "biocentral")
-    db_pass = os.environ.get("POSTGRES_PASSWORD", "biocentral")
+    db_name = os.environ.get("POSTGRES_DB", "embeddings_db")
+    db_user = os.environ.get("POSTGRES_USER", "embeddingsuser")
+    db_pass = os.environ.get("POSTGRES_PASSWORD", "embeddingspwd")
     
     embedder_name = "Rostlab/prot_t5_xl_uniref50"
     
