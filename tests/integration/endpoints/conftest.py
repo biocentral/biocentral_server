@@ -600,9 +600,14 @@ def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
     def _verify(expect_cached: bool = True):
         # Use the server's missing embeddings endpoint to check cache
         import json
-        
+        from biotrainer.utilities import calculate_sequence_hash
+    
+        hashed_sequences = {
+            calculate_sequence_hash(seq): seq
+            for seq in shared_embedding_sequences.values()
+        }
         request_data = {
-            "sequences": json.dumps(shared_embedding_sequences),
+            "sequences": json.dumps(hashed_sequences),
             "embedder_name": embedder_name,
             "reduced": True,  # Must match ProtSpaceTask's reduced=True
         }
