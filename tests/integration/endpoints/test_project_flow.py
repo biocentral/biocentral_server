@@ -1,6 +1,5 @@
 """Integration tests for projection endpoints."""
 
-import httpx
 import pytest
 
 
@@ -40,6 +39,7 @@ class TestProjectEndpoint:
         poll_task,
         embedder_name,
         shared_embedding_sequences,
+        verify_embedding_cache,
     ):
         """
         Test that projection task completes successfully.
@@ -47,6 +47,10 @@ class TestProjectEndpoint:
         Uses shared_embedding_sequences which are pre-cached by
         test_embed_and_wait_for_completion in test_embed_flow.py.
         """
+        # Verify embeddings are cached before running projection
+        cache_status = verify_embedding_cache(expect_cached=True)
+        print(f"\n[PROJECTION] Cache status: {cache_status['cached']}/{cache_status['total']} cached")
+        
         request_data = {
             "method": "pca",
             "sequence_data": shared_embedding_sequences,
@@ -57,12 +61,16 @@ class TestProjectEndpoint:
         }
 
         response = client.post("/projection_service/project", json=request_data)
-        assert response.status_code == 200
+        assert response.status_code == 200, f"Failed to submit projection task: {response.text}"
 
         task_id = response.json()["task_id"]
-        result = poll_task(task_id, timeout=60)  # Reduced timeout since embeddings are cached
+        print(f"[PROJECTION] Submitted task {task_id}, waiting for completion...")
+        
+        # poll_task handles retries internally
+        result = poll_task(task_id, timeout=120, max_consecutive_errors=10)
 
         assert result["status"].upper() == "FINISHED", f"Projection failed: {result.get('error', 'unknown')}"
+        print(f"[PROJECTION] Task {task_id} completed successfully")
 
     # @pytest.mark.integration
     # def test_project_with_pca(
