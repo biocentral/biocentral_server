@@ -9,7 +9,6 @@ Usage:
     CI_SERVER_URL=http://localhost:9540 pytest tests/integration/endpoints/test_predict_flow.py -v
 """
 
-import httpx
 import pytest
 from typing import Dict
 
@@ -155,10 +154,10 @@ class TestPredictEndpoint:
         client,
         poll_task,
         prediction_sequences,
-        precache_prott5_embeddings, 
+        precache_prott5_embeddings,
+        load_bindembed_onnx,
     ):
         """Test that prediction task completes successfully."""
- 
 
         request_data = {
             "model_names": ["BindEmbed"],   
