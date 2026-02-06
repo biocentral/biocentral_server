@@ -101,6 +101,60 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
         # Track fake tasks created by this test client
         _fake_tasks: Dict[str, Dict] = {}
 
+        def _save_embeddings_to_db(sequences: Dict[str, str], embedder_name: str, reduced: bool, fe):
+            """Save fixed embedder results to PostgreSQL database."""
+            import numpy as np
+            import psycopg
+            import blosc2
+            from datetime import datetime
+            from biotrainer.utilities import calculate_sequence_hash
+            
+            db_host = os.environ.get("POSTGRES_HOST", "localhost")
+            db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
+            db_name = os.environ.get("POSTGRES_DB", "embeddings_db")
+            db_user = os.environ.get("POSTGRES_USER", "embeddingsuser")
+            db_pass = os.environ.get("POSTGRES_PASSWORD", "embeddingspwd")
+            
+            try:
+                conn = psycopg.connect(
+                    host=db_host, port=db_port, dbname=db_name,
+                    user=db_user, password=db_pass,
+                )
+                
+                with conn.cursor() as cur:
+                    for seq_id, sequence in sequences.items():
+                        seq_hash = calculate_sequence_hash(sequence)
+                        seq_len = len(sequence)
+                        
+                        # Get embedding from fixed embedder
+                        emb = fe.embed_one(sequence, pooled=reduced)
+                        emb_array = np.array(emb, dtype=np.float32)
+                        
+                        if reduced:
+                            per_seq_compressed = blosc2.pack_array(emb_array)
+                            per_res_compressed = None
+                        else:
+                            per_seq_compressed = None
+                            per_res_compressed = blosc2.pack_array(emb_array)
+                        
+                        cur.execute(
+                            """
+                            INSERT INTO embeddings
+                            (sequence_hash, sequence_length, last_updated, embedder_name, per_sequence, per_residue)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (sequence_hash, embedder_name) DO UPDATE SET
+                                last_updated = EXCLUDED.last_updated,
+                                per_sequence = COALESCE(EXCLUDED.per_sequence, embeddings.per_sequence),
+                                per_residue = COALESCE(EXCLUDED.per_residue, embeddings.per_residue)
+                            """,
+                            (seq_hash, seq_len, datetime.now(), embedder_name,
+                             per_seq_compressed, per_res_compressed),
+                        )
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print(f"[FIXED EMBEDDER] Warning: Failed to save to DB: {e}")
+
         def _fake_post(url, *args, **kwargs):
             # Intercept embedding and projection endpoints (match path exactly)
             try:
@@ -120,18 +174,19 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 # Fast local embedding: compute deterministic embeddings for provided sequences
                 embedder_name = data.get("embedder_name")
                 seqs = data.get("sequence_data")
-                pooled = bool(data.get("reduce", False))
+                reduced = bool(data.get("reduce", False))
                 try:
                     fe = get_fixed_embedder(model_name=embedder_name, strict_dataset=True)
                 except Exception:
                     # Fallback to default fixed embedder
                     fe = get_fixed_embedder()
 
-                # compute embeddings (not stored anywhere) to simulate work
-                if isinstance(seqs, dict):
-                    fe.embed_dict(seqs, pooled=pooled)
-                elif isinstance(seqs, list):
-                    fe.embed_batch(seqs, pooled=pooled)
+                # Convert list to dict if needed
+                if isinstance(seqs, list):
+                    seqs = {f"seq_{i}": seq for i, seq in enumerate(seqs)}
+                
+                # Save embeddings to database (like the real server does)
+                _save_embeddings_to_db(seqs, embedder_name, reduced, fe)
 
                 # Return a fake task_id and register a finished DTO for it
                 task_id = f"local-{uuid.uuid4().hex[:8]}"
