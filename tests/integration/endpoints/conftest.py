@@ -175,11 +175,9 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 embedder_name = data.get("embedder_name")
                 seqs = data.get("sequence_data")
                 reduced = bool(data.get("reduce", False))
-                try:
-                    fe = get_fixed_embedder(model_name=embedder_name, strict_dataset=True)
-                except Exception:
-                    # Fallback to default fixed embedder
-                    fe = get_fixed_embedder()
+                
+                # Use strict_dataset=False to allow any sequences (not just canonical test set)
+                fe = get_fixed_embedder(model_name=embedder_name, strict_dataset=False)
 
                 # Convert list to dict if needed
                 if isinstance(seqs, list):
