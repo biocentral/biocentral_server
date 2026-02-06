@@ -738,15 +738,15 @@ def load_bindembed_onnx():
     """
     Download and upload BindEmbed ONNX model to SeaweedFS storage.
     
-    This ensures the ONNX model is available for prediction tests
-    without requiring the full model download during server startup.
+    The server's PredictInitializer is disabled, so we need to manually
+    upload the ONNX models to SeaweedFS for prediction tests to work.
     """
     import tempfile
     import zipfile
     import requests
     from pathlib import Path
     
-    # SeaweedFS connection info from environment
+    # SeaweedFS connection info - use localhost since test runs outside Docker
     seaweedfs_host = os.environ.get("SEAWEEDFS_FILER_HOST", "localhost")
     seaweedfs_port = os.environ.get("SEAWEEDFS_FILER_PORT", "8888")
     seaweedfs_url = f"http://{seaweedfs_host}:{seaweedfs_port}"
@@ -755,23 +755,21 @@ def load_bindembed_onnx():
     model_url = "https://nextcloud.in.tum.de/index.php/s/kxJ64RcRi7g6p6r/download"
     
     # Target path in SeaweedFS - server expects models at /PREDICT/bindembed/
-    target_base = "/PREDICT"
+    target_base = "PREDICT"
     
     try:
-        # Check if models already exist in SeaweedFS
-        check_response = requests.get(f"{seaweedfs_url}{target_base}/bindembed/", timeout=5)
-        if check_response.status_code == 200:
-            print(f"\n[ONNX] BindEmbed model already exists in SeaweedFS")
-            return True
-    except Exception:
-        pass  # Model doesn't exist, need to download
+        # Check if bindembed model files already exist by checking for any .onnx file
+        check_response = requests.head(f"{seaweedfs_url}/{target_base}/bindembed/", timeout=5)
+        print(f"\n[ONNX] Check response: {check_response.status_code}")
+    except Exception as e:
+        print(f"\n[ONNX] Check failed: {e}")
     
     try:
         print(f"\n[ONNX] Downloading prediction models from {model_url}...")
         
         with tempfile.TemporaryDirectory() as tmpdir:
             # Download the zip file
-            response = requests.get(model_url, stream=True, timeout=120)
+            response = requests.get(model_url, stream=True, timeout=300)
             response.raise_for_status()
             
             zip_path = Path(tmpdir) / "models.zip"
@@ -786,54 +784,74 @@ def load_bindembed_onnx():
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_dir)
             
-            # Find the actual model root - zip might have a nested folder
-            # Look for a 'bindembed' folder to determine the structure
+            # Find the actual model root
             extracted_items = list(extract_dir.iterdir())
-            print(f"[ONNX] Extracted contents: {[item.name for item in extracted_items]}")
+            print(f"[ONNX] Top-level extracted: {[item.name for item in extracted_items]}")
             
-            # Determine the model root directory
-            # If there's a single folder containing the models, use it as root
+            # The zip typically extracts to a single folder, find the model root
             model_root = extract_dir
             if len(extracted_items) == 1 and extracted_items[0].is_dir():
-                # Single folder extracted - might be the root
-                potential_root = extracted_items[0]
-                # Check if this folder contains model subdirectories (like bindembed)
-                if any(d.name.lower() == "bindembed" for d in potential_root.iterdir() if d.is_dir()):
-                    model_root = potential_root
-                    print(f"[ONNX] Using nested folder as model root: {model_root.name}")
+                model_root = extracted_items[0]
+                print(f"[ONNX] Using nested root: {model_root.name}")
             
-            # List all model directories found
-            model_dirs = [d.name for d in model_root.iterdir() if d.is_dir()]
-            print(f"[ONNX] Found model directories: {model_dirs}")
+            # List contents to debug structure
+            for item in model_root.iterdir():
+                if item.is_dir():
+                    files = list(item.iterdir())[:3]
+                    print(f"[ONNX] Dir {item.name}/: {[f.name for f in files]}...")
             
-            # Upload files to SeaweedFS
+            # Upload each file to SeaweedFS using the correct API format
             uploaded_count = 0
-            uploaded_paths = []
+            failed_count = 0
+            
             for file_path in model_root.rglob("*"):
                 if file_path.is_file():
-                    # Calculate relative path from model_root for SeaweedFS
                     rel_path = file_path.relative_to(model_root)
-                    seaweed_path = f"{target_base}/{rel_path}"
+                    # SeaweedFS path format: /PREDICT/bindembed/model.onnx
+                    seaweed_path = f"/{target_base}/{rel_path}"
                     
-                    # Upload file to SeaweedFS
-                    with open(file_path, "rb") as f:
+                    try:
+                        with open(file_path, "rb") as f:
+                            file_data = f.read()
+                        
+                        # Use proper SeaweedFS upload format
+                        files = {"file": (file_path.name, file_data, "application/octet-stream")}
                         upload_response = requests.post(
                             f"{seaweedfs_url}{seaweed_path}",
-                            files={"file": f},
-                            timeout=30,
+                            files=files,
+                            timeout=60,
                         )
+                        
                         if upload_response.status_code in (200, 201):
                             uploaded_count += 1
-                            uploaded_paths.append(seaweed_path)
                         else:
-                            print(f"[ONNX] Failed to upload {seaweed_path}: {upload_response.status_code}")
+                            failed_count += 1
+                            if failed_count <= 3:
+                                print(f"[ONNX] Failed {seaweed_path}: {upload_response.status_code} - {upload_response.text[:100]}")
+                    except Exception as e:
+                        failed_count += 1
+                        if failed_count <= 3:
+                            print(f"[ONNX] Error uploading {seaweed_path}: {e}")
             
-            print(f"[ONNX] Uploaded {uploaded_count} model files to SeaweedFS")
-            print(f"[ONNX] Sample paths: {uploaded_paths[:3]}")
-            return True
+            print(f"[ONNX] Uploaded {uploaded_count} files, {failed_count} failed")
+            
+            # Verify upload by listing the bindembed directory
+            try:
+                verify_response = requests.get(
+                    f"{seaweedfs_url}/{target_base}/bindembed/?pretty=y",
+                    headers={"Accept": "application/json"},
+                    timeout=10
+                )
+                print(f"[ONNX] Verify bindembed dir: {verify_response.status_code}")
+                if verify_response.status_code == 200:
+                    print(f"[ONNX] Directory contents: {verify_response.text[:200]}")
+            except Exception as e:
+                print(f"[ONNX] Verify failed: {e}")
+            
+            return uploaded_count > 0
             
     except Exception as e:
-        print(f"\n[ONNX] Failed to load BindEmbed ONNX model: {e}")
+        print(f"\n[ONNX] Failed to load models: {e}")
         import traceback
         traceback.print_exc()
         return False
