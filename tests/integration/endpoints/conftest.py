@@ -609,7 +609,7 @@ def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
         
         response = client.post(
             "/embeddings_service/get_missing_embeddings",
-            params=request_data,
+            json=request_data,
         )
         
         if response.status_code != 200:
