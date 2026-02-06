@@ -13,14 +13,13 @@ Supports both FixedEmbedder (deterministic mock) and real ESM2-T6-8M model.
 import random
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Protocol
 
 import numpy as np
 import pytest
 
 from tests.fixtures.fixed_embedder import FixedEmbedder
 from tests.fixtures.test_dataset import (
-    CANONICAL_TEST_DATASET,
     get_test_sequences,
 )
 from tests.property.oracles.embedding_metrics import (
