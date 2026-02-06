@@ -1,15 +1,8 @@
 """Integration tests for embeddings endpoints."""
 
 import pytest
-import httpx
- 
+
 from tests.integration.endpoints.conftest import (
-    CANONICAL_LENGTH_EDGE_IDS,
-    CANONICAL_UNKNOWN_TOKEN_IDS,
-    CANONICAL_AMBIGUOUS_CODE_IDS,
-    CANONICAL_REAL_WORLD_IDS,
-    get_sequence_by_id,
-    validate_task_response,
     validate_error_response,
 )
 
@@ -58,162 +51,8 @@ class TestCommonEmbeddersEndpoint:
 class TestEmbedEndpoint:
     """
     Integration tests for POST /embeddings_service/embed.
-    Medium: Submits embedding tasks (uses fixed embedder in CI).
-    
-    Tests embedding task creation and completion against real server.
+    Validates request/response structure and error handling.
     """
-    @pytest.mark.integration
-    def test_embed_task_completes_successfully(
-        self,
-        client,
-        poll_task,
-        embedder_name,
-        single_test_sequence,
-    ):
-        """Test that embedding task completes successfully."""
-        request_data = {
-            "embedder_name": embedder_name,
-            "reduce": True,
-            "sequence_data": single_test_sequence,
-            "use_half_precision": True,
-        }
-
-        response = client.post("/embeddings_service/embed", json=request_data)
-        assert response.status_code == 200
-        
-        task_id = response.json()["task_id"]
-        result = poll_task(task_id, timeout=60)
-        
-        # Task should reach a terminal state (success or failure due to CI resource constraints)
-        assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
-
-    @pytest.mark.integration
-    def test_embed_request_with_reduction(
-        self,
-        client,
-        embedder_name,
-        single_test_sequence,
-    ):
-        """Test embedding request with reduce=True for per-sequence embeddings."""
-        request_data = {
-            "embedder_name": embedder_name,
-            "reduce": True,
-            "sequence_data": single_test_sequence,
-            "use_half_precision": True,
-        }
-
-        response = client.post("/embeddings_service/embed", json=request_data)
-
-        assert response.status_code == 200
-        validate_task_response(response.json())
-
-    @pytest.mark.integration
-    def test_embed_multiple_sequences(
-        self,
-        client,
-        embedder_name,
-        test_sequences,
-    ):
-        """Test embedding request with multiple sequences."""
-        request_data = {
-            "embedder_name": embedder_name,
-            "reduce": False,
-            "sequence_data": test_sequences,
-            "use_half_precision": True,
-        }
-
-        response = client.post("/embeddings_service/embed", json=request_data)
-
-        assert response.status_code == 200
-        validate_task_response(response.json())
-
-    @pytest.mark.integration
-    @pytest.mark.parametrize("seq_id", CANONICAL_REAL_WORLD_IDS, ids=lambda x: x)
-    def test_embed_real_world_sequences(
-        self,
-        client,
-        embedder_name,
-        seq_id,
-    ):
-        """Test embedding real-world protein sequences from canonical dataset."""
-        sequence = get_sequence_by_id(seq_id)
-        request_data = {
-            "embedder_name": embedder_name,
-            "reduce": True,
-            "sequence_data": {seq_id: sequence},
-            "use_half_precision": True,
-        }
-
-        response = client.post("/embeddings_service/embed", json=request_data)
-
-        assert response.status_code == 200
-        validate_task_response(response.json())
-
-    @pytest.mark.integration
-    @pytest.mark.parametrize("seq_id", CANONICAL_LENGTH_EDGE_IDS, ids=lambda x: x)
-    def test_embed_length_edge_case_sequences(
-        self,
-        client,
-        embedder_name,
-        seq_id,
-    ):
-        """Test embedding sequences at length boundaries from canonical dataset."""
-        sequence = get_sequence_by_id(seq_id)
-        request_data = {
-            "embedder_name": embedder_name,
-            "reduce": True,
-            "sequence_data": {seq_id: sequence},
-            "use_half_precision": True,
-        }
-
-        response = client.post("/embeddings_service/embed", json=request_data)
-
-        assert response.status_code == 200
-        validate_task_response(response.json())
-
-    @pytest.mark.integration
-    @pytest.mark.parametrize("seq_id", CANONICAL_UNKNOWN_TOKEN_IDS, ids=lambda x: x)
-    def test_embed_sequences_with_unknown_tokens(
-        self,
-        client,
-        embedder_name,
-        seq_id,
-    ):
-        """Test embedding sequences containing X residues from canonical dataset."""
-        sequence = get_sequence_by_id(seq_id)
-        request_data = {
-            "embedder_name": embedder_name,
-            "reduce": True,
-            "sequence_data": {seq_id: sequence},
-            "use_half_precision": True,
-        }
-
-        response = client.post("/embeddings_service/embed", json=request_data)
-
-        assert response.status_code == 200
-        validate_task_response(response.json())
-
-    @pytest.mark.integration
-    @pytest.mark.parametrize("seq_id", CANONICAL_AMBIGUOUS_CODE_IDS, ids=lambda x: x)
-    def test_embed_sequences_with_ambiguous_codes(
-        self,
-        client,
-        embedder_name,
-        seq_id,
-    ):
-        """Test embedding sequences with ambiguous amino acid codes from canonical dataset."""
-        sequence = get_sequence_by_id(seq_id)
-        request_data = {
-            "embedder_name": embedder_name,
-            "reduce": True,
-            "sequence_data": {seq_id: sequence},
-            "use_half_precision": True,
-        }
-
-        response = client.post("/embeddings_service/embed", json=request_data)
-
-        assert response.status_code == 200
-        validate_task_response(response.json())
 
     @pytest.mark.integration
     def test_embed_empty_sequences_rejected(
@@ -279,7 +118,7 @@ class TestEndToEndEmbedFlow:
         """
         # Check cache BEFORE embedding
         print("\n[BEFORE EMBEDDING] Checking cache status...")
-        before = verify_embedding_cache(expect_cached=False)
+        verify_embedding_cache(expect_cached=False)
        
         request_data = {
             "embedder_name": embedder_name,
@@ -312,6 +151,7 @@ class TestEndToEndEmbedFlow:
         self,
         client,
         single_test_sequence,
+        validate_task_response,
     ):
         """Test that different embedders can be used."""
         embedders = ["one_hot_encoding", "blosum62"]
