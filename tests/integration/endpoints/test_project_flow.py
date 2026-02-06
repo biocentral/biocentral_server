@@ -1,5 +1,6 @@
 """Integration tests for projection endpoints."""
 
+import httpx
 import pytest
 
 
