@@ -731,3 +731,86 @@ def precache_prott5_embeddings(shared_embedding_sequences):
     except Exception as e:
         print(f"\n[PRECACHE] Failed to insert fake ProtT5 embeddings: {e}")
         return False
+
+
+@pytest.fixture(scope="session")
+def load_bindembed_onnx():
+    """
+    Download and upload BindEmbed ONNX model to SeaweedFS storage.
+    
+    This ensures the ONNX model is available for prediction tests
+    without requiring the full model download during server startup.
+    """
+    import tempfile
+    import zipfile
+    import requests
+    from pathlib import Path
+    
+    # SeaweedFS connection info from environment
+    seaweedfs_host = os.environ.get("SEAWEEDFS_FILER_HOST", "localhost")
+    seaweedfs_port = os.environ.get("SEAWEEDFS_FILER_PORT", "8888")
+    seaweedfs_url = f"http://{seaweedfs_host}:{seaweedfs_port}"
+    
+    # Model download URL (same as PredictInitializer uses)
+    model_url = "https://nextcloud.in.tum.de/index.php/s/kxJ64RcRi7g6p6r/download"
+    
+    # Target path in SeaweedFS
+    target_path = "/PREDICT"
+    
+    try:
+        # Check if models already exist in SeaweedFS
+        check_response = requests.get(f"{seaweedfs_url}{target_path}/bindembed/", timeout=5)
+        if check_response.status_code == 200:
+            print(f"\n[ONNX] BindEmbed model already exists in SeaweedFS")
+            return True
+    except Exception:
+        pass  # Model doesn't exist, need to download
+    
+    try:
+        print(f"\n[ONNX] Downloading prediction models from {model_url}...")
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Download the zip file
+            response = requests.get(model_url, stream=True, timeout=120)
+            response.raise_for_status()
+            
+            zip_path = Path(tmpdir) / "models.zip"
+            with open(zip_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            print(f"[ONNX] Downloaded {zip_path.stat().st_size / 1024 / 1024:.1f} MB")
+            
+            # Extract the zip file
+            extract_dir = Path(tmpdir) / "extracted"
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_dir)
+            
+            print(f"[ONNX] Extracted models to {extract_dir}")
+            
+            # Upload files to SeaweedFS
+            uploaded_count = 0
+            for file_path in extract_dir.rglob("*"):
+                if file_path.is_file():
+                    # Calculate relative path for SeaweedFS
+                    rel_path = file_path.relative_to(extract_dir)
+                    seaweed_path = f"{target_path}/{rel_path}"
+                    
+                    # Upload file to SeaweedFS
+                    with open(file_path, "rb") as f:
+                        upload_response = requests.post(
+                            f"{seaweedfs_url}{seaweed_path}",
+                            files={"file": f},
+                            timeout=30,
+                        )
+                        if upload_response.status_code in (200, 201):
+                            uploaded_count += 1
+                        else:
+                            print(f"[ONNX] Failed to upload {seaweed_path}: {upload_response.status_code}")
+            
+            print(f"[ONNX] Uploaded {uploaded_count} model files to SeaweedFS")
+            return True
+            
+    except Exception as e:
+        print(f"\n[ONNX] Failed to load BindEmbed ONNX model: {e}")
+        return False
