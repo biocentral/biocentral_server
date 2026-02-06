@@ -287,7 +287,6 @@ EMBEDDER_MAP = {
 
 
 def get_embedder_name() -> str:
-    """Get embedder name from CI_EMBEDDER env var."""
     ci_embedder = os.environ.get("CI_EMBEDDER", "esm2_t6_8m").lower()
     
     if ci_embedder not in EMBEDDER_MAP:
@@ -536,3 +535,55 @@ def test_run_id() -> str:
     """
     import uuid
     return str(uuid.uuid4())[:8]
+
+@pytest.fixture(scope="session")
+def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
+    """
+    Fixture to verify embeddings are cached in the database.
+    
+    Call this after embedding test to confirm cache is populated,
+    or before projection test to confirm cache will be hit.
+    """
+    def _verify(expect_cached: bool = True):
+        # Use the server's missing embeddings endpoint to check cache
+        import json
+        
+        request_data = {
+            "sequences": json.dumps(shared_embedding_sequences),
+            "embedder_name": embedder_name,
+            "reduced": True,  # Must match ProtSpaceTask's reduced=True
+        }
+        
+        response = client.get(
+            "/embeddings_service/get_missing_embeddings",
+            params=request_data,
+        )
+        
+        if response.status_code != 200:
+            print(f"[CACHE CHECK] Failed to check cache: {response.status_code}")
+            return {"error": response.status_code}
+        
+        result = response.json()
+        missing = result.get("missing", [])
+        total = len(shared_embedding_sequences)
+        cached = total - len(missing)
+        
+        status = {
+            "total": total,
+            "cached": cached,
+            "missing": missing,
+            "embedder_name": embedder_name,
+            "all_cached": len(missing) == 0,
+        }
+        
+        print(f"\n[CACHE CHECK] Embedder: {embedder_name}")
+        print(f"[CACHE CHECK] Cached: {cached}/{total}")
+        if missing:
+            print(f"[CACHE CHECK] Missing IDs: {missing}")
+        
+        if expect_cached:
+            assert len(missing) == 0, f"Expected all embeddings cached, but missing: {missing}"
+        
+        return status
+    
+    return _verify

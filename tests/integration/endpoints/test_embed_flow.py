@@ -11,6 +11,7 @@ from tests.integration.endpoints.conftest import (
     get_sequence_by_id,
     validate_task_response,
     validate_error_response,
+    verify_embedding_cache,
 )
 
 
@@ -273,10 +274,11 @@ class TestEndToEndEmbedFlow:
         """
         Test complete embedding flow from request to completion.
         
-        IMPORTANT: This test pre-computes reduced embeddings for sequences
-        that will be reused by projection tests. Uses use_half_precision=False
-        to match ProtSpaceTask's cache lookup key.
         """
+         # Check cache BEFORE embedding
+        print("\n[BEFORE EMBEDDING]")
+        before = verify_embedding_cache(expect_cached=False)
+       
         request_data = {
             "embedder_name": embedder_name,
             "reduce": True,
@@ -298,8 +300,12 @@ class TestEndToEndEmbedFlow:
         except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
             pytest.skip(f"Server connection lost during polling: {e}")
         
+        print("\n[AFTER EMBEDDING]")
+        after = verify_embedding_cache(expect_cached=True)
+       
         # Verify completion (task reached terminal state)
         assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
+        print(f"\n[CACHE POPULATED] {after['cached']}/{after['total']} embeddings now cached")
  
     @pytest.mark.integration
     def test_embed_with_different_embedders(
