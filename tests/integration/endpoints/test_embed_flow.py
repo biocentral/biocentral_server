@@ -268,14 +268,20 @@ class TestEndToEndEmbedFlow:
         client,
         poll_task,
         embedder_name,
-        single_short_sequence,
+        shared_embedding_sequences,
     ):
-        """Test complete embedding flow from request to completion."""
+        """
+        Test complete embedding flow from request to completion.
+        
+        IMPORTANT: This test pre-computes reduced embeddings for sequences
+        that will be reused by projection tests. Uses use_half_precision=False
+        to match ProtSpaceTask's cache lookup key.
+        """
         request_data = {
             "embedder_name": embedder_name,
             "reduce": True,
-            "sequence_data": single_short_sequence,
-            "use_half_precision": True,
+            "sequence_data": shared_embedding_sequences,
+            "use_half_precision": False,
         }
 
         # Submit embedding task

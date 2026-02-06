@@ -329,10 +329,17 @@ def single_test_sequence() -> Dict[str, str]:
 
 
 @pytest.fixture(scope="session")
-def single_short_sequence() -> Dict[str, str]:
-    """Short sequences from canonical dataset."""
+def shared_embedding_sequences() -> Dict[str, str]:
+    """
+    Sequences shared between embedding and projection tests.
+    
+    These sequences are embedded with reduce=True in test_embed_flow.py
+    and then reused by projection tests, ensuring cache hits.
+    Must contain at least 2 sequences for PCA to work.
+    """
     return {
         "short_1": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
+        "short_2": CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
     }
 @pytest.fixture(scope="session")
 def short_test_sequences() -> Dict[str, str]:

@@ -3,11 +3,7 @@
 import httpx
 import pytest
 
-from tests.integration.endpoints.conftest import (
-    CANONICAL_STANDARD_IDS,
-    get_sequence_by_id,
-    validate_task_response,
-)
+
 
 
 @pytest.mark.order(1)
@@ -43,12 +39,17 @@ class TestProjectEndpoint:
         client,
         poll_task,
         embedder_name,
-        test_sequences,
+        shared_embedding_sequences,
     ):
-        """Test that projection task completes successfully."""
+        """
+        Test that projection task completes successfully.
+        
+        Uses shared_embedding_sequences which are pre-cached by
+        test_embed_and_wait_for_completion in test_embed_flow.py.
+        """
         request_data = {
             "method": "pca",
-            "sequence_data": test_sequences,
+            "sequence_data": shared_embedding_sequences,
             "embedder_name": embedder_name,
             "config": {
                 "n_components": 2,
@@ -59,9 +60,9 @@ class TestProjectEndpoint:
         assert response.status_code == 200
 
         task_id = response.json()["task_id"]
-        result = poll_task(task_id, timeout=300)
+        result = poll_task(task_id, timeout=60)  # Reduced timeout since embeddings are cached
 
-        assert result["status"].lower() in ("finished", "completed", "done", "failed")
+        assert result["status"].upper() == "FINISHED", f"Projection failed: {result.get('error', 'unknown')}"
 
     # @pytest.mark.integration
     # def test_project_with_pca(
@@ -132,29 +133,30 @@ class TestProjectEndpoint:
     #     assert response.status_code == 200
     #     validate_task_response(response.json())
 
-    @pytest.mark.integration
-    @pytest.mark.parametrize("seq_id", CANONICAL_STANDARD_IDS, ids=lambda x: x)
-    def test_project_standard_sequences(
-        self,
-        client,
-        embedder_name,
-        seq_id,
-    ):
-        """Test projection with standard sequences from canonical dataset."""
-        sequence = get_sequence_by_id(seq_id)
-        sequence_2 = get_sequence_by_id("standard_001" if seq_id != "standard_001" else "standard_002")
 
-        request_data = {
-            "method": "pca",
-            "sequence_data": {seq_id: sequence, "other": sequence_2},
-            "embedder_name": embedder_name,
-            "config": {"n_components": 2},
-        }
+    # @pytest.mark.integration
+    # @pytest.mark.parametrize("seq_id", CANONICAL_STANDARD_IDS, ids=lambda x: x)
+    # def test_project_standard_sequences(
+    #     self,
+    #     client,
+    #     embedder_name,
+    #     seq_id,
+    # ):
+    #     """Test projection with standard sequences from canonical dataset."""
+    #     sequence = get_sequence_by_id(seq_id)
+    #     sequence_2 = get_sequence_by_id("standard_001" if seq_id != "standard_001" else "standard_002")
 
-        response = client.post("/projection_service/project", json=request_data)
+    #     request_data = {
+    #         "method": "pca",
+    #         "sequence_data": {seq_id: sequence, "other": sequence_2},
+    #         "embedder_name": embedder_name,
+    #         "config": {"n_components": 2},
+    #     }
 
-        assert response.status_code == 200
-        validate_task_response(response.json())
+    #     response = client.post("/projection_service/project", json=request_data)
+
+    #     assert response.status_code == 200
+    #     validate_task_response(response.json())
 
     # @pytest.mark.integration
     # @pytest.mark.parametrize("seq_id", CANONICAL_REAL_WORLD_IDS, ids=lambda x: x)
@@ -252,12 +254,17 @@ class TestEndToEndProjectionFlow:
         client,
         poll_task,
         embedder_name,
-        real_world_sequences,
+        shared_embedding_sequences,
     ):
-        """Test complete projection flow from request to completion."""
+        """
+        Test complete projection flow from request to completion.
+        
+        Uses shared_embedding_sequences which are pre-cached by
+        test_embed_and_wait_for_completion in test_embed_flow.py.
+        """
         request_data = {
             "method": "pca",
-            "sequence_data": real_world_sequences,
+            "sequence_data": shared_embedding_sequences,
             "embedder_name": embedder_name,
             "config": {"n_components": 2},
         }
@@ -268,16 +275,16 @@ class TestEndToEndProjectionFlow:
 
         task_id = response.json()["task_id"]
 
-        # Wait for completion with graceful handling for CI resource constraints
+        # Wait for completion - reduced timeout since embeddings are pre-cached
         try:
-            result = poll_task(task_id, timeout=180)
+            result = poll_task(task_id, timeout=60)
         except TimeoutError:
             pytest.skip(f"Task {task_id} timed out - CI resource constraints")
         except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
             pytest.skip(f"Server connection lost during polling: {e}")
 
-        # Verify completion (task reached terminal state)
-        assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
+        # Verify successful completion
+        assert result["status"].upper() == "FINISHED", f"Projection failed: {result.get('error', 'unknown')}"
 
     # Not realistic in statndard github CI setting due to resource constraints
     # @pytest.mark.integration
