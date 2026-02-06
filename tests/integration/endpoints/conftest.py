@@ -659,7 +659,7 @@ def precache_prott5_embeddings(shared_embedding_sequences):
     meaningful predictions, but will exercise the prediction pipeline.
     """
     import numpy as np
-    import psycopg2
+    import psycopg
     import blosc2
     from datetime import datetime
     from biotrainer.utilities import calculate_sequence_hash
@@ -674,7 +674,7 @@ def precache_prott5_embeddings(shared_embedding_sequences):
     embedder_name = "Rostlab/prot_t5_xl_uniref50"
     
     try:
-        conn = psycopg2.connect(
+        conn = psycopg.connect(
             host=db_host,
             port=db_port,
             dbname=db_name,
@@ -709,18 +709,19 @@ def precache_prott5_embeddings(shared_embedding_sequences):
             ))
         
         with conn.cursor() as cur:
-            cur.executemany(
-                """
-                INSERT INTO embeddings
-                (sequence_hash, sequence_length, last_updated, embedder_name, per_sequence, per_residue)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                ON CONFLICT (sequence_hash, embedder_name) DO UPDATE SET
-                last_updated = EXCLUDED.last_updated,
-                per_sequence = COALESCE(EXCLUDED.per_sequence, embeddings.per_sequence),
-                per_residue = COALESCE(EXCLUDED.per_residue, embeddings.per_residue)
-                """,
-                embeddings_data,
-            )
+            for data in embeddings_data:
+                cur.execute(
+                    """
+                    INSERT INTO embeddings
+                    (sequence_hash, sequence_length, last_updated, embedder_name, per_sequence, per_residue)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (sequence_hash, embedder_name) DO UPDATE SET
+                    last_updated = EXCLUDED.last_updated,
+                    per_sequence = COALESCE(EXCLUDED.per_sequence, embeddings.per_sequence),
+                    per_residue = COALESCE(EXCLUDED.per_residue, embeddings.per_residue)
+                    """,
+                    data,
+                )
         conn.commit()
         conn.close()
         
