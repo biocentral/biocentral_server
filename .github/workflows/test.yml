@@ -148,7 +148,7 @@ jobs:
         timeout-minutes: 10
 
       - name: Run integration tests
-        run: uv run pytest tests/integration/ -v -m "not triton"  --reruns 2 --reruns-delay 10 --durations=0 -W "ignore::DeprecationWarning" 
+        run: uv run pytest tests/integration/ -v -m "not triton"  --reruns 2 --reruns-delay 10 --durations=0 -W "ignore::DeprecationWarning"  --capture=tee-sys
         env:
           CI_SERVER_URL: http://localhost:9540
           #CI_EMBEDDER: fixed  # Uncomment and set if specific embedder is needed
