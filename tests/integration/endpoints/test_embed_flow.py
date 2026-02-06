@@ -4,6 +4,7 @@ import pytest
 
 from tests.integration.endpoints.conftest import (
     validate_error_response,
+    validate_task_response,
 )
 
 
@@ -151,7 +152,6 @@ class TestEndToEndEmbedFlow:
         self,
         client,
         single_test_sequence,
-        validate_task_response,
     ):
         """Test that different embedders can be used."""
         embedders = ["one_hot_encoding", "blosum62"]
