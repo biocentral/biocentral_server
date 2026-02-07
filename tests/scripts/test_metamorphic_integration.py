@@ -116,15 +116,79 @@ def short_sequences(test_sequences):
     return [s for s in test_sequences if len(s) < 10]
 
 
+@pytest.fixture(scope="module")
+def ci_scale():
+    """
+    Get CI scale setting from environment.
+    
+    Returns 'half' when CI_METAMORPHIC_SCALE=half, 'full' otherwise.
+    """
+    return os.environ.get("CI_METAMORPHIC_SCALE", "full")
+
+
+@pytest.fixture(scope="module")
+def ci_config(ci_scale):
+    """
+    Get scaled test configuration based on CI environment.
+    
+    When CI_METAMORPHIC_SCALE=half, reduces all test parameters by ~50%
+    for faster CI execution without GPU.
+    """
+    if ci_scale == "half":
+        return {
+            # Idempotency
+            "num_repetitions": 2,
+            "idempotency_seq_count": 3,
+            "per_residue_seq_count": 2,
+            # Batch variance
+            "batch_sizes": [2, 5],
+            "num_permutations": 2,
+            "batch_seq_count": 5,
+            # Projection
+            "projection_seeds": [42, 123],
+            "projection_seq_count": 5,
+            # Masking
+            "masking_ratios": [0.0, 0.3, 0.5],
+            "masking_ratios_full": [0.0, 0.2, 0.5, 0.8],
+            # Integration
+            "integration_seq_count": 5,
+            # Reversal
+            "reversal_seq_count": 3,
+        }
+    else:
+        return {
+            # Idempotency
+            "num_repetitions": 3,
+            "idempotency_seq_count": 5,
+            "per_residue_seq_count": 3,
+            # Batch variance
+            "batch_sizes": [2, 5, 10],
+            "num_permutations": 3,
+            "batch_seq_count": 10,
+            # Projection
+            "projection_seeds": [42, 123, 999],
+            "projection_seq_count": 10,
+            # Masking
+            "masking_ratios": [0.0, 0.3, 0.5],
+            "masking_ratios_full": [0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9],
+            # Integration
+            "integration_seq_count": 10,
+            # Reversal
+            "reversal_seq_count": 5,
+        }
+
+
 class TestIdempotencyRelation:
     """Tests for idempotency: embed(seq) == embed(seq)."""
     
-    def test_single_sequence_idempotency(self, embedder, test_sequences):
+    def test_single_sequence_idempotency(self, embedder, test_sequences, ci_config):
         """Verify that embedding the same sequence twice yields identical results."""
-        relation = IdempotencyRelation(embedder, threshold=1e-6, num_repetitions=3)
+        relation = IdempotencyRelation(
+            embedder, threshold=1e-6, num_repetitions=ci_config["num_repetitions"]
+        )
         
-        # Test first 5 sequences for speed
-        for seq in test_sequences[:5]:
+        seq_count = ci_config["idempotency_seq_count"]
+        for seq in test_sequences[:seq_count]:
             results = relation.verify(seq, use_pooled=True)
             
             for result in results:
@@ -133,11 +197,12 @@ class TestIdempotencyRelation:
                     f"cosine_distance={result.metrics.cosine_distance}"
                 )
     
-    def test_per_residue_idempotency(self, embedder, test_sequences):
+    def test_per_residue_idempotency(self, embedder, test_sequences, ci_config):
         """Verify idempotency for per-residue (non-pooled) embeddings."""
         relation = IdempotencyRelation(embedder, threshold=1e-6, num_repetitions=2)
         
-        for seq in test_sequences[:3]:
+        seq_count = ci_config["per_residue_seq_count"]
+        for seq in test_sequences[:seq_count]:
             results = relation.verify(seq, use_pooled=False)
             
             for result in results:
@@ -174,9 +239,11 @@ class TestIdempotencyRelation:
 class TestBatchVarianceRelation:
     """Tests for batch invariance: embed([A,B])[i] == embed([A])[0]."""
     
-    def test_single_vs_batch_embedding(self, embedder, standard_sequences):
+    def test_single_vs_batch_embedding(self, embedder, standard_sequences, ci_config):
         """Verify embedding alone equals embedding in a batch."""
-        relation = BatchVarianceRelation(embedder, threshold=0.1, batch_sizes=[2, 5])
+        relation = BatchVarianceRelation(
+            embedder, threshold=0.1, batch_sizes=ci_config["batch_sizes"]
+        )
         
         target = standard_sequences[0]
         fillers = standard_sequences[1:6]
@@ -189,7 +256,7 @@ class TestBatchVarianceRelation:
                 f"cosine_distance={result.metrics.cosine_distance}"
             )
     
-    def test_batch_order_independence(self, embedder, standard_sequences):
+    def test_batch_order_independence(self, embedder, standard_sequences, ci_config):
         """Verify batch order doesn't affect individual embeddings."""
         relation = BatchVarianceRelation(embedder, threshold=0.1)
         
@@ -197,7 +264,7 @@ class TestBatchVarianceRelation:
             pytest.skip("Need at least 5 sequences for order test")
         
         results = relation.verify_order_independence(
-            standard_sequences[:5], num_permutations=3
+            standard_sequences[:5], num_permutations=ci_config["num_permutations"]
         )
         
         for result in results:
@@ -206,7 +273,7 @@ class TestBatchVarianceRelation:
                 f"cosine_distance={result.metrics.cosine_distance}"
             )
     
-    def test_batch_sizes(self, embedder, standard_sequences):
+    def test_batch_sizes(self, embedder, standard_sequences, ci_config):
         """Test with various batch sizes."""
         if len(standard_sequences) < 10:
             pytest.skip("Need at least 10 sequences")
@@ -214,7 +281,7 @@ class TestBatchVarianceRelation:
         relation = BatchVarianceRelation(
             embedder, 
             threshold=0.1, 
-            batch_sizes=[2, 5, 10]
+            batch_sizes=ci_config["batch_sizes"]
         )
         
         target = standard_sequences[0]
@@ -295,7 +362,7 @@ class TestProjectionDeterminismRelation:
                 f"UMAP determinism failed: frobenius_diff={result.details.get('frobenius_diff')}"
             )
     
-    def test_multiple_seeds(self, embedder, standard_sequences):
+    def test_multiple_seeds(self, embedder, standard_sequences, ci_config):
         """Verify different seeds produce same-seed determinism."""
         if len(standard_sequences) < 5:
             pytest.skip("Need at least 5 sequences")
@@ -304,7 +371,7 @@ class TestProjectionDeterminismRelation:
             embedder, threshold=1e-6, methods=["pca"]
         )
         
-        for seed in [42, 123, 999]:
+        for seed in ci_config["projection_seeds"]:
             results = relation.verify(standard_sequences[:5], seed=seed)
             
             for result in results:
@@ -313,14 +380,16 @@ class TestProjectionDeterminismRelation:
                 )
 
 
+@pytest.mark.slow
 class TestReversalRelation:
     """Exploratory tests for sequence reversal effects."""
     
-    def test_reversal_relationship(self, embedder, standard_sequences):
+    def test_reversal_relationship(self, embedder, standard_sequences, ci_config):
         """Explore relationship between sequence and its reverse."""
         relation = ReversalRelation(embedder, threshold=0.5)
         
-        results = relation.verify_batch(standard_sequences[:5])
+        seq_count = ci_config["reversal_seq_count"]
+        results = relation.verify_batch(standard_sequences[:seq_count])
         
         # Collect statistics
         distances = [r.metrics.cosine_distance for r in results if r.metrics]
@@ -348,15 +417,16 @@ class TestReversalRelation:
                     print(f"  Palindrome '{seq}': distance={result.metrics.cosine_distance:.4f}")
 
 
+@pytest.mark.slow
 class TestProgressiveMaskingRelation:
     """Exploratory tests for progressive X-masking effects."""
     
-    def test_masking_degradation_curve(self, embedder, standard_sequences):
+    def test_masking_degradation_curve(self, embedder, standard_sequences, ci_config):
         """Analyze embedding degradation as masking increases."""
         relation = ProgressiveMaskingRelation(
             embedder, 
             threshold=0.3,
-            masking_ratios=[0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9]
+            masking_ratios=ci_config["masking_ratios_full"]
         )
         
         seq = standard_sequences[0]
@@ -398,10 +468,10 @@ class TestProgressiveMaskingRelation:
         if threshold_info['threshold_ratio'] is not None:
             assert 0 < threshold_info['threshold_ratio'] <= 1.0
     
-    def test_masking_different_lengths(self, embedder, test_sequences):
+    def test_masking_different_lengths(self, embedder, test_sequences, ci_config):
         """Compare masking effects across different sequence lengths."""
         relation = ProgressiveMaskingRelation(
-            embedder, threshold=0.3, masking_ratios=[0.0, 0.3, 0.5]
+            embedder, threshold=0.3, masking_ratios=ci_config["masking_ratios"]
         )
         
         # Group by length
@@ -437,14 +507,15 @@ class TestProgressiveMaskingRelation:
 class TestMetamorphicIntegration:
     """Integration tests running multiple relations together."""
     
-    def test_run_all_fundamental_relations(self, embedder, standard_sequences):
+    def test_run_all_fundamental_relations(self, embedder, standard_sequences, ci_config):
         """Run all fundamental invariant relations."""
         if len(standard_sequences) < 5:
             pytest.skip("Need at least 5 sequences")
         
+        seq_count = ci_config["integration_seq_count"]
         results = run_all_relations(
             embedder,
-            standard_sequences[:5],
+            standard_sequences[:seq_count],
             relations=["idempotency", "batch_variance"],
             config={
                 "idempotency": {"threshold": 1e-6},
@@ -464,14 +535,15 @@ class TestMetamorphicIntegration:
             f"{summary['failed']} fundamental invariant tests failed"
         )
     
-    def test_run_all_relations(self, embedder, standard_sequences):
+    def test_run_all_relations(self, embedder, standard_sequences, ci_config):
         """Run all relations and collect results."""
-        if len(standard_sequences) < 10:
-            pytest.skip("Need at least 10 sequences")
+        seq_count = ci_config["integration_seq_count"]
+        if len(standard_sequences) < seq_count:
+            pytest.skip(f"Need at least {seq_count} sequences")
         
         results = run_all_relations(
             embedder,
-            standard_sequences[:10],
+            standard_sequences[:seq_count],
         )
         
         summary = summarize_results(results)
