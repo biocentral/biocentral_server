@@ -103,7 +103,6 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
 
         def _save_embeddings_to_db(sequences: Dict[str, str], embedder_name: str, reduced: bool, fe):
             """Save fixed embedder results to PostgreSQL database."""
-            import numpy as np
             import psycopg
             import blosc2
             from datetime import datetime
@@ -122,7 +121,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 )
                 
                 with conn.cursor() as cur:
-                    for seq_id, sequence in sequences.items():
+                    for sequence in sequences.items():
                         seq_hash = calculate_sequence_hash(sequence)
                         seq_len = len(sequence)
                         

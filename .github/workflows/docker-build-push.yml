@@ -67,6 +67,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
