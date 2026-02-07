@@ -2,7 +2,6 @@
 """Pytest integration tests for metamorphic relations."""
 
 import os
-from typing import Any, Dict, List
 
 import numpy as np
 import pytest
@@ -12,7 +11,6 @@ from tests.scripts.metamorphic_relations import (
     IdempotencyRelation,
     ProgressiveMaskingRelation,
     ProjectionDeterminismRelation,
-    RelationResult,
     RelationVerdict,
     ReversalRelation,
     compute_all_metrics,
@@ -30,28 +28,61 @@ def pytest_addoption(parser):
         default=False,
         help="Use real ESM2-T6-8M embedder instead of mock",
     )
+    parser.addoption(
+        "--use-server",
+        action="store_true",
+        default=True,
+        help="Test against running server (requires CI_SERVER_URL)",
+    )
 
 
 @pytest.fixture(scope="module")
 def use_real_embedder(request) -> bool:
     """Check if real embedder should be used."""
-    cli_flag = request.config.getoption("--use-real-embedder", default=False)
+    cli_flag = request.config.getoption("--use-real-embedder", default=True)
     env_flag = os.environ.get("USE_REAL_EMBEDDER", "0") == "1"
     return cli_flag or env_flag
 
 
 @pytest.fixture(scope="module")
-def embedder(use_real_embedder):
-    """Get appropriate embedder based on configuration."""
+def use_server(request) -> bool:
+    """Check if server should be tested."""
+    cli_flag = request.config.getoption("--use-server", default=True)
+    env_flag = os.environ.get("CI_SERVER_URL") is not None
+    return cli_flag or env_flag
+
+
+@pytest.fixture(scope="module")
+def embedder(use_server, use_real_embedder):
+    """
+    Get appropriate embedder based on configuration.
+    
+    Priority:
+    1. ServerEmbedder if CI_SERVER_URL is set (integration test mode)
+    2. Real ESM2 embedder if --use-real-embedder flag
+    3. FixedEmbedder (default, fast mock)
+    """
+    # Integration test mode: test the actual server
+    if use_server:
+        server_url = os.environ.get("CI_SERVER_URL")
+        if not server_url:
+            pytest.skip("CI_SERVER_URL not set, cannot test server")
+        
+        from tests.fixtures.server_embedder import ServerEmbedder
+        embedder_name = os.environ.get("CI_EMBEDDER_NAME", "facebook/esm2_t6_8M_UR50D")
+        return ServerEmbedder(base_url=server_url, embedder_name=embedder_name)
+    
+    # Real embedder mode: test actual model locally
     if use_real_embedder:
         try:
             from tests.scripts.run_metamorphic_experiments import get_real_embedder
             return get_real_embedder()
         except Exception as e:
             pytest.skip(f"Real embedder not available: {e}")
-    else:
-        from tests.fixtures.fixed_embedder import FixedEmbedder
-        return FixedEmbedder(model_name="esm2_t6", strict_dataset=False)
+    
+    # Default: use fast mock embedder
+    from tests.fixtures.fixed_embedder import FixedEmbedder
+    return FixedEmbedder(model_name="esm2_t6", strict_dataset=False)
 
 
 @pytest.fixture(scope="module")
