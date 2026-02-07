@@ -122,7 +122,7 @@ jobs:
           cache-local-path: "/tmp/.uv-cache"
 
       - name: Install dependencies (CPU-only PyTorch)
-        run: uv sync --no-install-project
+        run: uv sync --no-install-project --index-strategy unsafe-best-match
         env:
           UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
