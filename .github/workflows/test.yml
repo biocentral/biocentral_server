@@ -52,8 +52,8 @@ jobs:
         with:
           version: "0.9.26"
 
-      - name: Install dependencies (CPU-only PyTorch)
-        run: uv sync --no-install-project --group dev --index-strategy unsafe-best-match
+      - name: Install dependencies (CPU-only)
+        run: uv sync --constraint ci-constraints.txt --index-strategy unsafe-best-match
         env:
           UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
@@ -110,8 +110,8 @@ jobs:
           cache-dependency-glob: "uv.lock"
           cache-local-path: "/tmp/.uv-cache"
 
-      - name: Install dependencies (CPU-only PyTorch)
-        run: uv sync --no-install-project --index-strategy unsafe-best-match
+      - name: Install dependencies (CPU-only)
+        run: uv sync --no-install-project --constraint ci-constraints.txt --index-strategy unsafe-best-match
         env:
           UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
