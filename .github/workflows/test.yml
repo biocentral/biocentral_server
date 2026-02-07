@@ -52,8 +52,10 @@ jobs:
         with:
           version: "0.9.26"
 
-      - name: Install dependencies
-        run: uv sync --frozen
+      - name: Install dependencies (CPU-only PyTorch)
+        run: uv sync --frozen --index-strategy unsafe-best-match
+        env:
+          UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
       - name: Run pytest (unit tests)
         run: uv run pytest tests/unit/ -v -W "ignore::DeprecationWarning"
