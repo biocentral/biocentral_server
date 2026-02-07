@@ -119,10 +119,12 @@ jobs:
           version: "0.9.26"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
-          cache-local-path: "${{ github.workspace }}/.uv-cache"
+          cache-local-path: "/tmp/.uv-cache"
 
-      - name: Install dependencies
+      - name: Install dependencies (CPU-only PyTorch)
         run: uv sync --no-install-project
+        env:
+          UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
