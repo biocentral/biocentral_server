@@ -119,7 +119,7 @@ jobs:
           version: "0.9.26"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
-          cache-local-path: "tmp/.uv-cache"
+          cache-local-path: "/tmp/.uv-cache"
 
       - name: Install dependencies (CPU-only PyTorch)
         run: uv sync --no-install-project
