@@ -121,7 +121,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 )
                 
                 with conn.cursor() as cur:
-                    for sequence in sequences.items():
+                    for _, sequence in sequences.items(): # seq_id is unused, thus _ 
                         seq_hash = calculate_sequence_hash(sequence)
                         seq_len = len(sequence)
                         
