@@ -4,17 +4,10 @@
 import argparse
 import csv
 import json
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-import numpy as np
-
-# Add project root to path
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+from typing import Any, Dict, List
 
 from tests.scripts.metamorphic_relations import (
     BatchVarianceRelation,
@@ -25,9 +18,14 @@ from tests.scripts.metamorphic_relations import (
     RelationResult,
     RelationVerdict,
     ReversalRelation,
-    run_all_relations,
     summarize_results,
 )
+
+import numpy as np
+
+# Add project root to path
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def get_fixed_embedder(model_name: str = "esm2_t6", strict: bool = False):
