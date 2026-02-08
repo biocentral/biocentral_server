@@ -113,8 +113,8 @@ def test_sequences(ci_scale):
     
     # Limit sequences in half scale mode to reduce API calls
     if ci_scale == "half":
-        # Select diverse subset: short, medium, edge cases
-        return all_seqs[:7]  # First 7 sequences cover main categories
+        # Need at least 16 for UMAP (n_neighbors=15)
+        return all_seqs[:16]
     return all_seqs
 
 
@@ -160,7 +160,7 @@ def ci_config(ci_scale):
             "batch_seq_count": 3,
             # Projection - minimal
             "projection_seeds": [42],
-            "projection_seq_count": 3,
+            "projection_seq_count": 16,
             # Masking - minimal
             "masking_ratios": [0.0, 0.5],
             "masking_ratios_full": [0.0, 0.5],
@@ -373,8 +373,11 @@ class TestProjectionDeterminismRelation:
     def test_umap_determinism(self, embedder, standard_sequences, ci_config):
         """Verify UMAP projection is deterministic with fixed seed."""
         seq_count = ci_config["projection_seq_count"]
-        if len(standard_sequences) < seq_count:
-            pytest.skip(f"Need at least {seq_count} sequences")
+        
+        # UMAP requires at least n_neighbors + 1 samples (default n_neighbors=15)
+        min_umap_samples = 16
+        if len(standard_sequences) < min_umap_samples or seq_count < min_umap_samples:
+            pytest.skip(f"UMAP requires at least {min_umap_samples} sequences")
         
         try:
             import umap
