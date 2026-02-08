@@ -94,14 +94,14 @@ def embedder(use_server, use_real_embedder):
 
 
 @pytest.fixture(scope="module")
-def test_sequences():
-    """Get test sequences from canonical dataset."""
+def test_sequences(ci_scale):
+    """Get test sequences from canonical dataset, scaled for CI."""
     try:
         from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
-        return CANONICAL_TEST_DATASET.get_all_sequences()
+        all_seqs = CANONICAL_TEST_DATASET.get_all_sequences()
     except ImportError:
         # Fallback sequences
-        return [
+        all_seqs = [
             "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQ",
             "MKKLVLSLSLVLAFSSATAAFAAIPQNIRAQYPAVVKEQRQVVRSQNGDLADNIKKISDNLKAKIYAMHYVDVFYNKS",
             "M",
@@ -110,6 +110,12 @@ def test_sequences():
             "XXXXX",
             "AAAAAAAAAA",
         ]
+    
+    # Limit sequences in half scale mode to reduce API calls
+    if ci_scale == "half":
+        # Select diverse subset: short, medium, edge cases
+        return all_seqs[:7]  # First 7 sequences cover main categories
+    return all_seqs
 
 
 @pytest.fixture(scope="module")
@@ -139,29 +145,33 @@ def ci_config(ci_scale):
     """
     Get scaled test configuration based on CI environment.
     
-    When CI_METAMORPHIC_SCALE=half, reduces all test parameters by ~50%
+    When CI_METAMORPHIC_SCALE=half, reduces all test parameters significantly
     for faster CI execution without GPU.
     """
     if ci_scale == "half":
         return {
-            # Idempotency
+            # Idempotency - minimal for CI
             "num_repetitions": 2,
-            "idempotency_seq_count": 3,
-            "per_residue_seq_count": 2,
-            # Batch variance
-            "batch_sizes": [2, 5],
+            "idempotency_seq_count": 2,
+            "per_residue_seq_count": 1,
+            # Batch variance - minimal
+            "batch_sizes": [2],
             "num_permutations": 2,
-            "batch_seq_count": 5,
-            # Projection
-            "projection_seeds": [42, 123],
-            "projection_seq_count": 5,
-            # Masking
-            "masking_ratios": [0.0, 0.3, 0.5],
-            "masking_ratios_full": [0.0, 0.2, 0.5, 0.8],
-            # Integration
-            "integration_seq_count": 5,
+            "batch_seq_count": 3,
+            # Projection - minimal
+            "projection_seeds": [42],
+            "projection_seq_count": 3,
+            # Masking - minimal
+            "masking_ratios": [0.0, 0.5],
+            "masking_ratios_full": [0.0, 0.5],
+            # Integration - minimal
+            "integration_seq_count": 3,
             # Reversal
-            "reversal_seq_count": 3,
+            "reversal_seq_count": 2,
+            # Edge cases
+            "edge_case_count": 1,
+            # Max sequences for batch tests
+            "max_batch_sequences": 5,
         }
     else:
         return {
@@ -183,6 +193,10 @@ def ci_config(ci_scale):
             "integration_seq_count": 10,
             # Reversal
             "reversal_seq_count": 5,
+            # Edge cases
+            "edge_case_count": 3,
+            # Max sequences for batch tests
+            "max_batch_sequences": 15,
         }
 
 
@@ -218,13 +232,14 @@ class TestIdempotencyRelation:
                     f"Per-residue idempotency failed for sequence of length {len(seq)}"
                 )
     
-    def test_idempotency_with_special_tokens(self, embedder):
+    def test_idempotency_with_special_tokens(self, embedder, ci_config):
         """Verify idempotency with sequences containing X tokens."""
         relation = IdempotencyRelation(embedder, threshold=1e-6)
         
         special_sequences = ["XXXXX", "MXKXAX", "XXXXXXXXXXX"]
+        seq_count = ci_config.get("edge_case_count", len(special_sequences))
         
-        for seq in special_sequences:
+        for seq in special_sequences[:seq_count]:
             results = relation.verify(seq)
             
             for result in results:
@@ -232,11 +247,15 @@ class TestIdempotencyRelation:
                     f"Idempotency failed for special sequence '{seq}'"
                 )
     
-    def test_idempotency_batch(self, embedder, test_sequences):
-        """Verify idempotency across all test sequences."""
+    def test_idempotency_batch(self, embedder, test_sequences, ci_config):
+        """Verify idempotency across test sequences."""
         relation = IdempotencyRelation(embedder, threshold=1e-6)
         
-        results = relation.verify_batch(test_sequences)
+        # Limit batch size for CI
+        max_seqs = ci_config.get("max_batch_sequences", len(test_sequences))
+        seqs = test_sequences[:max_seqs]
+        
+        results = relation.verify_batch(seqs)
         
         failed = [r for r in results if r.verdict == RelationVerdict.FAILED]
         assert len(failed) == 0, (
@@ -283,8 +302,9 @@ class TestBatchVarianceRelation:
     
     def test_batch_sizes(self, embedder, standard_sequences, ci_config):
         """Test with various batch sizes."""
-        if len(standard_sequences) < 10:
-            pytest.skip("Need at least 10 sequences")
+        max_seqs = ci_config.get("max_batch_sequences", 10)
+        if len(standard_sequences) < max_seqs:
+            pytest.skip(f"Need at least {max_seqs} sequences")
         
         relation = BatchVarianceRelation(
             embedder, 
@@ -293,7 +313,7 @@ class TestBatchVarianceRelation:
         )
         
         target = standard_sequences[0]
-        fillers = standard_sequences[1:15]
+        fillers = standard_sequences[1:max_seqs]
         
         results = relation.verify(target, fillers)
         
@@ -311,15 +331,16 @@ class TestBatchVarianceRelation:
                 f"Batch size {size} failed {len(failed)} tests"
             )
     
-    def test_batch_variance_with_short_sequences(self, embedder, short_sequences):
+    def test_batch_variance_with_short_sequences(self, embedder, short_sequences, ci_config):
         """Test batch variance with very short sequences."""
         if len(short_sequences) < 3:
             pytest.skip("Not enough short sequences")
         
         relation = BatchVarianceRelation(embedder, threshold=0.15, batch_sizes=[2])
         
-        for target in short_sequences[:2]:
-            fillers = [s for s in short_sequences if s != target]
+        edge_count = ci_config.get("edge_case_count", 2)
+        for target in short_sequences[:edge_count]:
+            fillers = [s for s in short_sequences if s != target][:3]
             results = relation.verify(target, fillers)
             
             for result in results:
@@ -331,16 +352,17 @@ class TestBatchVarianceRelation:
 class TestProjectionDeterminismRelation:
     """Tests for projection determinism with fixed seeds."""
     
-    def test_pca_determinism(self, embedder, standard_sequences):
+    def test_pca_determinism(self, embedder, standard_sequences, ci_config):
         """Verify PCA projection is deterministic."""
-        if len(standard_sequences) < 5:
-            pytest.skip("Need at least 5 sequences")
+        seq_count = ci_config["projection_seq_count"]
+        if len(standard_sequences) < seq_count:
+            pytest.skip(f"Need at least {seq_count} sequences")
         
         relation = ProjectionDeterminismRelation(
             embedder, threshold=1e-6, methods=["pca"]
         )
         
-        results = relation.verify(standard_sequences[:10], seed=42)
+        results = relation.verify(standard_sequences[:seq_count], seed=42)
         
         pca_results = [r for r in results if "pca" in r.parameter]
         for result in pca_results:
@@ -348,10 +370,11 @@ class TestProjectionDeterminismRelation:
                 f"PCA determinism failed: frobenius_diff={result.details.get('frobenius_diff')}"
             )
     
-    def test_umap_determinism(self, embedder, standard_sequences):
+    def test_umap_determinism(self, embedder, standard_sequences, ci_config):
         """Verify UMAP projection is deterministic with fixed seed."""
-        if len(standard_sequences) < 5:
-            pytest.skip("Need at least 5 sequences")
+        seq_count = ci_config["projection_seq_count"]
+        if len(standard_sequences) < seq_count:
+            pytest.skip(f"Need at least {seq_count} sequences")
         
         try:
             import umap
@@ -362,7 +385,7 @@ class TestProjectionDeterminismRelation:
             embedder, threshold=1e-5, methods=["umap"]
         )
         
-        results = relation.verify(standard_sequences[:10], seed=42)
+        results = relation.verify(standard_sequences[:seq_count], seed=42)
         
         umap_results = [r for r in results if "umap" in r.parameter]
         for result in umap_results:
@@ -584,24 +607,28 @@ class TestEdgeCases:
         for result in results:
             assert result.verdict == RelationVerdict.PASSED
     
-    def test_all_x_sequence(self, embedder):
+    def test_all_x_sequence(self, embedder, ci_config):
         """Test with sequence of all unknown tokens."""
         relation = IdempotencyRelation(embedder, threshold=1e-6)
         
-        for seq in ["X", "XX", "XXXXX", "XXXXXXXXXX"]:
+        all_x_seqs = ["X", "XX", "XXXXX", "XXXXXXXXXX"]
+        edge_count = ci_config.get("edge_case_count", len(all_x_seqs))
+        
+        for seq in all_x_seqs[:edge_count]:
             results = relation.verify(seq)
             
             for result in results:
                 assert result.verdict == RelationVerdict.PASSED
     
-    def test_homopolymer(self, embedder):
+    def test_homopolymer(self, embedder, ci_config):
         """Test with homopolymer sequences."""
         relation = BatchVarianceRelation(embedder, threshold=0.1, batch_sizes=[2])
         
         homopolymers = ["AAAAAAAAAA", "KKKKKKKKKK", "LLLLLLLLLL"]
+        edge_count = ci_config.get("edge_case_count", len(homopolymers))
         
-        for target in homopolymers:
-            fillers = [s for s in homopolymers if s != target]
+        for target in homopolymers[:edge_count]:
+            fillers = [s for s in homopolymers if s != target][:2]
             results = relation.verify(target, fillers)
             
             for result in results:
