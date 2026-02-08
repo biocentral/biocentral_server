@@ -83,7 +83,7 @@ class ServerEmbedder:
             "embedder_name": self.embedder_name,
             "reduce": reduce,
             "sequence_data": sequences,
-            "use_half_precision": True,
+            "use_half_precision": False,
         }
         
         response = self.client.post("/embeddings_service/embed", json=request_data)

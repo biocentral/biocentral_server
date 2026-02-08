@@ -59,18 +59,19 @@ def embedder(use_server, use_real_embedder):
     
     Priority:
     1. FixedEmbedder if CI_EMBEDDER=fixed (fast mock, no server needed)
-    2. ServerEmbedder if CI_SERVER_URL is set (integration test mode)
+    2. ServerEmbedder if CI_SERVER_URL is set (integration test mode with esm2_t6_8M)
     3. Real ESM2 embedder if --use-real-embedder flag
-    4. FixedEmbedder (default, fast mock)
+    4. FixedEmbedder (default fallback)
     """
     from tests.fixtures.fixed_embedder import FixedEmbedder
     
-    # CI fixed embedder mode: use FixedEmbedder directly without server
     ci_embedder = os.environ.get("CI_EMBEDDER", "").lower()
+    
+    # CI fixed embedder mode: use FixedEmbedder directly without server
     if ci_embedder == "fixed":
         return FixedEmbedder(model_name="esm2_t6", strict_dataset=False)
     
-    # Integration test mode: test the actual server with real model
+    # Default: integration test mode - test the actual server with esm2_t6_8M
     if use_server:
         server_url = os.environ.get("CI_SERVER_URL")
         if not server_url:
@@ -88,7 +89,7 @@ def embedder(use_server, use_real_embedder):
         except Exception as e:
             pytest.skip(f"Real embedder not available: {e}")
     
-    # Default: use fast mock embedder
+    # Fallback: use fast mock embedder
     return FixedEmbedder(model_name="esm2_t6", strict_dataset=False)
 
 
