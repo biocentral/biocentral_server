@@ -148,6 +148,7 @@ jobs:
         run: uv run pytest tests/scripts/test_metamorphic_integration.py -v -m "not slow" --tb=short --durations=0 -W "ignore::DeprecationWarning" --capture=tee-sys
         env:
           CI_SERVER_URL: http://localhost:9540
+          CI_EMBEDDER: fixed
           CI_EMBEDDER_NAME: facebook/esm2_t6_8M_UR50D
           CI_METAMORPHIC_SCALE: half
 

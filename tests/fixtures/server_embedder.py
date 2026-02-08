@@ -21,6 +21,9 @@ class ServerEmbedder:
     
     After submitting an embedding task and waiting for completion,
     it retrieves the embeddings directly from the PostgreSQL database.
+    
+    When CI_EMBEDDER=fixed, uses FixedEmbedder locally and saves to DB
+    (same behavior as integration test interception in conftest.py).
     """
     
     def __init__(
@@ -45,6 +48,15 @@ class ServerEmbedder:
         self.model_name = embedder_name  # Alias for EmbedderProtocol compatibility
         self.timeout = timeout
         self.poll_interval = poll_interval
+        
+        # Check if we're in CI fixed embedder mode
+        self._use_fixed_embedder = os.environ.get("CI_EMBEDDER", "").lower() == "fixed"
+        self._fixed_embedder = None
+        
+        if self._use_fixed_embedder:
+            from tests.fixtures.fixed_embedder import FixedEmbedder
+            self._fixed_embedder = FixedEmbedder(model_name="esm2_t6", strict_dataset=False)
+            logging.info("ServerEmbedder: Using FixedEmbedder mode (CI_EMBEDDER=fixed)")
         
         # Database connection info
         self.db_host = os.environ.get("POSTGRES_HOST", "localhost")
@@ -141,6 +153,60 @@ class ServerEmbedder:
         
         return None
     
+    def _compute_and_save_fixed_embedding(
+        self,
+        sequence: str,
+        reduce: bool = False,
+    ) -> np.ndarray:
+        """
+        Compute embedding using FixedEmbedder and save to database.
+        
+        Used when CI_EMBEDDER=fixed to bypass the server's embedding endpoint.
+        """
+        from datetime import datetime
+        
+        # Compute embedding with FixedEmbedder
+        if reduce:
+            embedding = self._fixed_embedder.embed_pooled(sequence)
+        else:
+            embedding = self._fixed_embedder.embed(sequence)
+        
+        # Save to database
+        seq_hash = calculate_sequence_hash(sequence)
+        seq_len = len(sequence)
+        
+        if reduce:
+            per_seq_compressed = blosc2.pack_array(embedding)
+            per_res_compressed = None
+        else:
+            per_seq_compressed = None
+            per_res_compressed = blosc2.pack_array(embedding)
+        
+        with psycopg.connect(
+            host=self.db_host,
+            port=self.db_port,
+            dbname=self.db_name,
+            user=self.db_user,
+            password=self.db_pass,
+        ) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO embeddings
+                    (sequence_hash, sequence_length, last_updated, embedder_name, per_sequence, per_residue)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (sequence_hash, embedder_name) DO UPDATE SET
+                        last_updated = EXCLUDED.last_updated,
+                        per_sequence = COALESCE(EXCLUDED.per_sequence, embeddings.per_sequence),
+                        per_residue = COALESCE(EXCLUDED.per_residue, embeddings.per_residue)
+                    """,
+                    (seq_hash, seq_len, datetime.now(), self.embedder_name,
+                     per_seq_compressed, per_res_compressed),
+                )
+            conn.commit()
+        
+        return embedding
+
     def embed(self, sequence: str) -> np.ndarray:
         """
         Embed a single sequence, returning per-residue embeddings.
@@ -151,6 +217,10 @@ class ServerEmbedder:
         Returns:
             Per-residue embeddings as numpy array of shape (seq_len, embedding_dim)
         """
+        # Use FixedEmbedder in CI fixed mode
+        if self._use_fixed_embedder:
+            return self._compute_and_save_fixed_embedding(sequence, reduce=False)
+        
         sequences = {"seq_0": sequence}
         
         # Submit embedding task
@@ -177,6 +247,10 @@ class ServerEmbedder:
         Returns:
             Pooled embedding as numpy array of shape (embedding_dim,)
         """
+        # Use FixedEmbedder in CI fixed mode
+        if self._use_fixed_embedder:
+            return self._compute_and_save_fixed_embedding(sequence, reduce=True)
+        
         sequences = {"seq_0": sequence}
         
         # Submit embedding task with reduce=True
@@ -208,6 +282,13 @@ class ServerEmbedder:
         Returns:
             List of numpy arrays with embeddings for each sequence
         """
+        # Use FixedEmbedder in CI fixed mode
+        if self._use_fixed_embedder:
+            return [
+                self._compute_and_save_fixed_embedding(seq, reduce=pooled)
+                for seq in sequences
+            ]
+        
         seq_dict = {f"seq_{i}": seq for i, seq in enumerate(sequences)}
         
         # Submit embedding task
