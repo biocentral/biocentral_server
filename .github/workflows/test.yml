@@ -65,6 +65,10 @@ jobs:
     needs: unit-test
     if: ${{ always() && (needs.unit-test.result == 'success' || needs.unit-test.result == 'skipped') }}
 
+    env:
+      CI_SERVER_URL: http://localhost:9540
+      #CI_EMBEDDER: fixed
+
     steps:
       - name: Maximize build disk space
         uses: easimon/maximize-build-space@v10
@@ -140,15 +144,10 @@ jobs:
 
       - name: Run integration tests
         run: uv run pytest tests/integration/ -v -m "not triton"  --reruns 2 --reruns-delay 10 --durations=0 -W "ignore::DeprecationWarning"  --capture=tee-sys
-        env:
-          CI_SERVER_URL: http://localhost:9540
-          CI_EMBEDDER: fixed  # Uncomment and set if specific embedder is needed
 
       - name: Run metamorphic integration tests (scaled-down)
         run: uv run pytest tests/scripts/test_metamorphic_integration.py -v -m "not slow" --tb=short --durations=0 -W "ignore::DeprecationWarning" --capture=tee-sys
         env:
-          CI_SERVER_URL: http://localhost:9540
-          CI_EMBEDDER: fixed
           CI_EMBEDDER_NAME: facebook/esm2_t6_8M_UR50D
           CI_METAMORPHIC_SCALE: half
 
