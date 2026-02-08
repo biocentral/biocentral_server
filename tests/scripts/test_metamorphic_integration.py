@@ -39,7 +39,7 @@ def pytest_addoption(parser):
 @pytest.fixture(scope="module")
 def use_real_embedder(request) -> bool:
     """Check if real embedder should be used."""
-    cli_flag = request.config.getoption("--use-real-embedder", default=True)
+    cli_flag = request.config.getoption("--use-real-embedder", default=False)
     env_flag = os.environ.get("USE_REAL_EMBEDDER", "0") == "1"
     return cli_flag or env_flag
 
@@ -61,6 +61,9 @@ def embedder(use_server, use_real_embedder):
     1. ServerEmbedder if CI_SERVER_URL is set (integration test mode)
     2. Real ESM2 embedder if --use-real-embedder flag
     3. FixedEmbedder (default, fast mock)
+    
+    Note: When CI_EMBEDDER=fixed, ServerEmbedder automatically uses
+    FixedEmbedder internally to compute embeddings.
     """
     # Integration test mode: test the actual server
     if use_server:
