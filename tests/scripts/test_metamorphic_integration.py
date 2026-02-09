@@ -660,8 +660,9 @@ class TestMetrics:
         
         metrics = compute_all_metrics(emb, emb.copy())
         
-        assert metrics.cosine_distance < 1e-10
-        assert metrics.l2_distance < 1e-10
+        # Use float32-appropriate tolerance (machine epsilon is ~1.19e-07)
+        assert metrics.cosine_distance < 1e-6
+        assert metrics.l2_distance < 1e-6
     
     def test_opposite_embeddings(self):
         """Opposite embeddings should have maximum cosine distance."""
