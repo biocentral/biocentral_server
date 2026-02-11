@@ -700,23 +700,12 @@ def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
 
 @pytest.fixture(scope="session")
 def precache_prott5_embeddings(shared_embedding_sequences):
-    """
-    Pre-populate the embedding cache with fake ProtT5 embeddings.
-    
-    This allows prediction tests to run without downloading the 
-    real ProtT5 model (~1.5GB). The server will find these in the
-    cache and skip model inference.
-    
-    The embeddings are random 1024-dim vectors - they won't produce
-    meaningful predictions, but will exercise the prediction pipeline.
-    """
     import numpy as np
     import psycopg
     import blosc2
     from datetime import datetime
     from biotrainer.utilities import calculate_sequence_hash
     
-    # Get PostgreSQL connection info from environment (matching .env.ci)
     db_host = os.environ.get("POSTGRES_HOST", "localhost")
     db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
     db_name = os.environ.get("POSTGRES_DB", "embeddings_db")
