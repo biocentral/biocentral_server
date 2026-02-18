@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-"""Pytest integration tests for metamorphic relations."""
-
 import os
 
 import numpy as np
@@ -200,24 +197,42 @@ def ci_config(ci_scale):
         }
 
 
+@pytest.mark.exploration
 class TestIdempotencyRelation:
-    """Tests for idempotency: embed(seq) == embed(seq)."""
+    """Explores idempotency: embed(seq) == embed(seq).
+    
+    This is a STRICT INVARIANT - it should always hold.
+    "Failures" here indicate non-determinism in the embedder.
+    """
     
     def test_single_sequence_idempotency(self, embedder, test_sequences, ci_config):
-        """Verify that embedding the same sequence twice yields identical results."""
+        """Explore whether embedding the same sequence twice yields identical results."""
         relation = IdempotencyRelation(
             embedder, threshold=1e-6, num_repetitions=ci_config["num_repetitions"]
         )
         
         seq_count = ci_config["idempotency_seq_count"]
+        violations = []
+        
         for seq in test_sequences[:seq_count]:
             results = relation.verify(seq, use_pooled=True)
             
             for result in results:
-                assert result.verdict == RelationVerdict.PASSED, (
-                    f"Idempotency failed for sequence of length {len(seq)}: "
-                    f"cosine_distance={result.metrics.cosine_distance}"
-                )
+                if result.verdict != RelationVerdict.PASSED:
+                    violations.append({
+                        "length": len(seq),
+                        "distance": result.metrics.cosine_distance if result.metrics else None
+                    })
+        
+        # Report findings rather than asserting
+        if violations:
+            print(f"\n  FINDING: Idempotency violated in {len(violations)} cases!")
+            for v in violations[:3]:
+                print(f"    - {v['length']}aa sequence: distance={v['distance']}")
+        
+        assert len(violations) == 0, (
+            f"Idempotency violated in {len(violations)} cases - see output for details"
+        )
     
     def test_per_residue_idempotency(self, embedder, test_sequences, ci_config):
         """Verify idempotency for per-residue (non-pooled) embeddings."""
@@ -263,8 +278,13 @@ class TestIdempotencyRelation:
         )
 
 
+@pytest.mark.exploration
 class TestBatchVarianceRelation:
-    """Tests for batch invariance: embed([A,B])[i] == embed([A])[0]."""
+    """Explores batch invariance: embed([A,B])[i] == embed([A])[0].
+    
+    This is a STRICT INVARIANT - it should always hold.
+    "Failures" here indicate batch context affecting embeddings.
+    """
     
     def test_single_vs_batch_embedding(self, embedder, standard_sequences, ci_config):
         """Verify embedding alone equals embedding in a batch."""
@@ -349,8 +369,13 @@ class TestBatchVarianceRelation:
                 )
 
 
+@pytest.mark.exploration
 class TestProjectionDeterminismRelation:
-    """Tests for projection determinism with fixed seeds."""
+    """Explores projection determinism with fixed seeds.
+    
+    This is a STRICT INVARIANT when seeds are fixed.
+    "Failures" indicate improper random state management.
+    """
     
     def test_pca_determinism(self, embedder, standard_sequences, ci_config):
         """Verify PCA projection is deterministic."""
@@ -414,9 +439,14 @@ class TestProjectionDeterminismRelation:
                 )
 
 
+@pytest.mark.exploration
 @pytest.mark.slow
 class TestReversalRelation:
-    """Exploratory tests for sequence reversal effects."""
+    """Explores sequence reversal effects (EXPLORATORY).
+    
+    This is NOT an invariant - we're discovering what happens.
+    There are no "failures", only findings about model behavior.
+    """
     
     def test_reversal_relationship(self, embedder, standard_sequences, ci_config):
         """Explore relationship between sequence and its reverse."""
@@ -451,9 +481,15 @@ class TestReversalRelation:
                     print(f"  Palindrome '{seq}': distance={result.metrics.cosine_distance:.4f}")
 
 
+@pytest.mark.exploration
 @pytest.mark.slow
 class TestProgressiveMaskingRelation:
-    """Exploratory tests for progressive X-masking effects."""
+    """Explores progressive X-masking effects (EXPLORATORY).
+    
+    This is NOT an invariant - we're discovering the degradation curve.
+    The goal is to understand at what masking ratio embeddings diverge
+    significantly from the original.
+    """
     
     def test_masking_degradation_curve(self, embedder, standard_sequences, ci_config):
         """Analyze embedding degradation as masking increases."""
@@ -538,8 +574,9 @@ class TestProgressiveMaskingRelation:
                 print(f"  {length_cat}: avg 50% mask distance = {avg:.4f}")
 
 
+@pytest.mark.exploration
 class TestMetamorphicIntegration:
-    """Integration tests running multiple relations together."""
+    """Integration explorations running multiple relations together."""
     
     def test_run_all_fundamental_relations(self, embedder, standard_sequences, ci_config):
         """Run all fundamental invariant relations."""
@@ -598,8 +635,9 @@ class TestMetamorphicIntegration:
         )
 
 
+@pytest.mark.exploration
 class TestEdgeCases:
-    """Edge case tests for metamorphic relations."""
+    """Edge case explorations for metamorphic relations."""
     
     def test_single_residue_sequence(self, embedder):
         """Test with minimum-length sequence."""

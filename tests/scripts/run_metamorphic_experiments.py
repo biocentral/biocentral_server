@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-"""Metamorphic testing experiment runner for embedding services."""
-
 import argparse
 import csv
 import json
@@ -329,27 +326,44 @@ def run_masking_experiments(
 
 
 def print_relation_summary(rel_name: str, results: List[RelationResult]) -> None:
-    """Print summary for a single relation."""
+    """Print exploration summary for a single relation."""
     if not results:
         print(f"  No results for {rel_name}")
         return
     
-    passed = sum(1 for r in results if r.verdict == RelationVerdict.PASSED)
-    failed = sum(1 for r in results if r.verdict == RelationVerdict.FAILED)
-    inconclusive = sum(1 for r in results if r.verdict == RelationVerdict.INCONCLUSIVE)
+    confirmed = sum(1 for r in results if r.verdict == RelationVerdict.PASSED)
+    violated = sum(1 for r in results if r.verdict == RelationVerdict.FAILED)
+    exploratory = sum(1 for r in results if r.verdict == RelationVerdict.INCONCLUSIVE)
     total = len(results)
     
-    print(f"\n  Summary for {rel_name}:")
-    print(f"    Total tests: {total}")
-    print(f"    Passed: {passed} ({passed/total*100:.1f}%)")
-    print(f"    Failed: {failed} ({failed/total*100:.1f}%)")
-    print(f"    Inconclusive: {inconclusive} ({inconclusive/total*100:.1f}%)")
+    print(f"\n  Exploration Summary for {rel_name}:")
+    print(f"    Total experiments: {total}")
+    print(f"    Invariant confirmed: {confirmed} ({confirmed/total*100:.1f}%)")
+    print(f"    Invariant violated: {violated} ({violated/total*100:.1f}%)")
+    print(f"    Exploratory (no strict expectation): {exploratory} ({exploratory/total*100:.1f}%)")
     
-    # Show metrics for failed tests
-    failed_results = [r for r in results if r.verdict == RelationVerdict.FAILED]
-    if failed_results:
-        print(f"\n  Failed test details:")
-        for r in failed_results[:5]:  # Show first 5
+    # Compute and show statistics across all results with metrics
+    all_distances = [r.metrics.cosine_distance for r in results if r.metrics]
+    if all_distances:
+        print(f"\n  Distance Statistics:")
+        print(f"    Mean cosine distance: {np.mean(all_distances):.6f}")
+        print(f"    Std cosine distance:  {np.std(all_distances):.6f}")
+        print(f"    Min:  {np.min(all_distances):.6f}")
+        print(f"    Max:  {np.max(all_distances):.6f}")
+    
+    # Show interesting findings (violations or high distances)
+    interesting_results = [r for r in results if r.verdict == RelationVerdict.FAILED]
+    if not interesting_results:
+        # For exploratory relations, show highest distance results
+        interesting_results = sorted(
+            [r for r in results if r.metrics],
+            key=lambda r: r.metrics.cosine_distance,
+            reverse=True
+        )[:5]
+    
+    if interesting_results:
+        print(f"\n  Notable Findings:")
+        for r in interesting_results[:5]:
             if r.metrics:
                 print(f"    - {r.test_case}/{r.parameter}: cosine={r.metrics.cosine_distance:.6f}")
 
@@ -448,21 +462,54 @@ def write_masking_analysis(
 
 
 def print_final_summary(summary: Dict[str, Any]) -> None:
-    """Print final summary to console."""
+    """Print final exploration summary to console."""
     print("\n" + "=" * 60)
-    print("FINAL SUMMARY")
+    print("EXPLORATION SUMMARY")
     print("=" * 60)
     
-    print(f"\nTotal tests: {summary['total_tests']}")
-    print(f"Passed: {summary['passed']}")
-    print(f"Failed: {summary['failed']}")
-    print(f"Inconclusive: {summary['inconclusive']}")
-    print(f"Pass rate (excluding inconclusive): {summary['pass_rate']:.1f}%")
+    print(f"\nTotal experiments: {summary['total_tests']}")
+    print(f"Invariants confirmed: {summary['passed']}")
+    print(f"Invariants violated: {summary['failed']}")
+    print(f"Exploratory (no strict expectation): {summary['inconclusive']}")
     
-    print("\nBy relation:")
+    print("\n" + "-" * 60)
+    print("KEY FINDINGS BY RELATION:")
+    print("-" * 60)
+    
     for rel_name, rel_summary in summary["by_relation"].items():
-        status = "✓" if rel_summary["failed"] == 0 else "✗"
-        print(f"  {status} {rel_name}: {rel_summary['passed']}/{rel_summary['total']} passed")
+        if rel_name in ["idempotency", "batch_variance", "projection_determinism"]:
+            # Strict invariants
+            if rel_summary["failed"] == 0:
+                status = "✓ CONFIRMED"
+            else:
+                status = f"✗ VIOLATED ({rel_summary['failed']} cases)"
+            print(f"\n  {rel_name}:")
+            print(f"    Status: {status}")
+            print(f"    {rel_summary['passed']}/{rel_summary['total']} confirmed")
+        else:
+            # Exploratory relations
+            print(f"\n  {rel_name} (exploratory):")
+            print(f"    Experiments run: {rel_summary['total']}")
+    
+    print("\n" + "=" * 60)
+    print("CONCLUSIONS:")
+    print("=" * 60)
+    
+    # Provide interpretation
+    if summary.get("by_relation", {}).get("idempotency", {}).get("failed", 0) == 0:
+        print("  ✓ Idempotency holds: Same sequence produces identical embeddings")
+    else:
+        print("  ✗ Idempotency violated: Embedding results are non-deterministic!")
+    
+    if summary.get("by_relation", {}).get("batch_variance", {}).get("failed", 0) == 0:
+        print("  ✓ Batch invariance holds: Batch context doesn't affect individual embeddings")
+    else:
+        print("  ✗ Batch invariance violated: Batch context affects embeddings!")
+    
+    if summary.get("by_relation", {}).get("projection_determinism", {}).get("failed", 0) == 0:
+        print("  ✓ Projection determinism holds: Fixed seeds produce identical projections")
+    else:
+        print("  ✗ Projection determinism violated: Random state not properly controlled")
 
 
 def parse_args() -> argparse.Namespace:
@@ -533,7 +580,8 @@ def main() -> int:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
     print("=" * 60)
-    print("METAMORPHIC TESTING EXPERIMENTS")
+    print("METAMORPHIC RELATIONS EXPLORATION")
+    print("Discovering invariants and properties of embedding services")
     print("=" * 60)
     
     # Setup embedder
@@ -595,9 +643,9 @@ def main() -> int:
     # Print final summary
     print_final_summary(summary)
     
-    # Return non-zero if any tests failed
-    if summary["failed"] > 0:
-        return 1
+    # Always return 0 - this is exploration, not CI testing
+    # Violations are findings, not failures
+    print("\n[Note: This is an exploration script, not a CI test suite]")
     return 0
 
 

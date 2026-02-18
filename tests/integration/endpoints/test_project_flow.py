@@ -7,12 +7,7 @@ import pytest
 
 
 @pytest.mark.order(1)
-class TestProjectionConfigEndpoint:
-    """
-    Integration tests for GET /projection_service/projection_config.
-    Lightweight: Config retrieval only.
-    """
-
+class TestProjectionConfigEndpoint: 
     @pytest.mark.integration
     def test_get_projection_config(self, client):
         response = client.get("/projection_service/projection_config")
@@ -27,11 +22,7 @@ class TestProjectionConfigEndpoint:
         assert len(config) > 0
 
 @pytest.mark.order(2)
-class TestProjectEndpoint:
-    """
-    Integration tests for POST /projection_service/project.
-    Medium: Submits projection tasks (uses fixed embedder in CI).
-    """
+class TestProjectEndpoint: 
 
     @pytest.mark.integration
     def test_project_task_completes(
@@ -295,57 +286,55 @@ class TestEndToEndProjectionFlow:
         # Verify successful completion
         assert result["status"].upper() == "FINISHED", f"Projection failed: {result.get('error', 'unknown')}"
 
-    # Not realistic in statndard github CI setting due to resource constraints
-    # @pytest.mark.integration
-    # @pytest.mark.slow
-    # def test_umap_projection_flow(
-    #     self,
-    #     client,
-    #     poll_task,
-    #     embedder_name,
-    #     real_world_sequences,
-    # ):
-    #     """Test UMAP projection flow from request to completion."""
-    #     request_data = {
-    #         "method": "umap",
-    #         "sequence_data": real_world_sequences,
-    #         "embedder_name": embedder_name,
-    #         "config": {
-    #             "n_neighbors": min(5, len(real_world_sequences) - 1),
-    #             "min_dist": 0.1,
-    #             "n_components": 2,
-    #         },
-    #     }
+     
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_umap_projection_flow(
+         self,
+         client,
+         poll_task,
+         embedder_name,
+         shared_embedding_sequences,
+     ):
+         """Test UMAP projection flow from request to completion."""
+         request_data = {
+             "method": "umap",
+             "sequence_data": shared_embedding_sequences,
+             "embedder_name": embedder_name,
+             "config": {
+                 "n_neighbors": min(5, len(shared_embedding_sequences) - 1),
+                 "min_dist": 0.1,
+                 "n_components": 2,
+             },
+         }
 
-    #     response = client.post("/projection_service/project", json=request_data)
-    #     assert response.status_code == 200
+         response = client.post("/projection_service/project", json=request_data)
+         assert response.status_code == 200
 
-    #     task_id = response.json()["task_id"]
-    #     result = poll_task(task_id, timeout=300)
+         task_id = response.json()["task_id"]
+         result = poll_task(task_id, timeout=300)
 
-    #     # Task should reach a terminal state
-    #     assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
+         assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
 
-    # @pytest.mark.integration
-    # def test_projection_with_real_world_collection(
-    #     self,
-    #     client,
-    #     poll_task,
-    #     embedder_name,
-    #     real_world_sequences,
-    # ):
-    #     """Test projection with collection of real-world sequences."""
-    #     request_data = {
-    #         "method": "pca",
-    #         "sequence_data": real_world_sequences,
-    #         "embedder_name": embedder_name,
-    #         "config": {"n_components": 2},
-    #     }
+    @pytest.mark.integration
+    def test_projection_with_real_world_collection(
+         self,
+         client,
+         poll_task,
+         embedder_name,
+         shared_embedding_sequences,
+     ):
+         request_data = {
+             "method": "pca",
+             "sequence_data": shared_embedding_sequences,
+             "embedder_name": embedder_name,
+             "config": {"n_components": 2},
+         }
 
-    #     response = client.post("/projection_service/project", json=request_data)
-    #     assert response.status_code == 200
+         response = client.post("/projection_service/project", json=request_data)
+         assert response.status_code == 200
 
-    #     task_id = response.json()["task_id"]
-    #     result = poll_task(task_id, timeout=120)
+         task_id = response.json()["task_id"]
+         result = poll_task(task_id, timeout=120)
 
-    #     assert result["status"].lower() in ("finished", "completed", "done", "failed")
+         assert result["status"].lower() in ("finished", "completed", "done", "failed")

@@ -1,13 +1,9 @@
-#!/usr/bin/env python3
-"""Metamorphic relations for embedding service testing."""
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Union
-import random
-import itertools
+from typing import Any, Dict, List, Optional, Protocol
+import random 
 
 import numpy as np
 
@@ -33,17 +29,13 @@ class EmbedderProtocol(Protocol):
 
 
 class RelationVerdict(str, Enum):
-    """Verdict for a metamorphic relation test."""
-    
-    PASSED = "passed"
-    FAILED = "failed"
-    INCONCLUSIVE = "inconclusive"
+    PASSED = "confirmed"      # Invariant/expectation confirmed
+    FAILED = "violated"       # Invariant/expectation violated (interesting finding!)
+    INCONCLUSIVE = "exploratory"  # No strict expectation - just gathering data
 
 
 @dataclass
 class MetricResult:
-    """Result containing distance/similarity metrics."""
-    
     cosine_distance: float
     l2_distance: float
     kl_divergence: float
@@ -58,8 +50,6 @@ class MetricResult:
 
 @dataclass
 class RelationResult:
-    """Result of a single metamorphic relation verification."""
-    
     relation_name: str
     test_case: str
     parameter: str
@@ -72,7 +62,7 @@ class RelationResult:
     def to_dict(self) -> Dict[str, Any]:
         result = {
             "relation_name": self.relation_name,
-            "test_case": self.test_case,
+            "experiment": self.test_case,
             "parameter": self.parameter,
             "verdict": self.verdict.value,
             "threshold": self.threshold,
@@ -85,7 +75,6 @@ class RelationResult:
 
 
 def _ensure_1d(arr: np.ndarray) -> np.ndarray:
-    """Ensure array is 1D by pooling if necessary."""
     if arr.ndim == 1:
         return arr
     elif arr.ndim == 2:
@@ -95,7 +84,6 @@ def _ensure_1d(arr: np.ndarray) -> np.ndarray:
 
 
 def compute_cosine_distance(a: np.ndarray, b: np.ndarray) -> float:
-    """Compute cosine distance between two embeddings."""
     a_flat = _ensure_1d(a)
     b_flat = _ensure_1d(b)
     
@@ -111,14 +99,12 @@ def compute_cosine_distance(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def compute_l2_distance(a: np.ndarray, b: np.ndarray) -> float:
-    """Compute L2 (Euclidean) distance between two embeddings."""
     a_flat = _ensure_1d(a)
     b_flat = _ensure_1d(b)
     return float(np.linalg.norm(a_flat - b_flat))
 
 
 def compute_kl_divergence(a: np.ndarray, b: np.ndarray, epsilon: float = 1e-10) -> float:
-    """Compute KL divergence after softmax normalization."""
     from scipy.special import softmax
     
     a_flat = _ensure_1d(a)
@@ -151,8 +137,12 @@ class MetamorphicRelation(ABC):
     Abstract base class for metamorphic relations.
     
     A metamorphic relation defines a relationship between inputs and their
-    corresponding outputs that should always hold, regardless of the
-    specific input values.
+    corresponding outputs. We use these to explore and understand embedding
+    behavior, discovering properties that could inform testing strategies.
+    
+    Types of relations:
+    - Strict invariants: embed(seq) == embed(seq), batch independence, etc.
+    - Exploratory: How does reversal/masking affect embeddings?
     """
     
     def __init__(
@@ -161,26 +151,12 @@ class MetamorphicRelation(ABC):
         threshold: float = 0.1,
         name: Optional[str] = None,
     ):
-        """
-        Initialize the metamorphic relation.
-        
-        Args:
-            embedder: Embedder instance implementing EmbedderProtocol
-            threshold: Threshold for pass/fail determination (cosine distance)
-            name: Optional custom name for this relation
-        """
         self.embedder = embedder
         self.threshold = threshold
         self.name = name or self.__class__.__name__
     
     @abstractmethod
     def verify(self, *args, **kwargs) -> List[RelationResult]:
-        """
-        Verify the metamorphic relation.
-        
-        Returns:
-            List of RelationResult objects for each test case
-        """
         pass
     
     def _create_result(
@@ -205,14 +181,14 @@ class MetamorphicRelation(ABC):
 
 class IdempotencyRelation(MetamorphicRelation):
     """
-    Metamorphic relation verifying idempotency of embeddings.
+    Explores idempotency of embeddings (STRICT INVARIANT).
     
     Property: embed(seq) == embed(seq) for any sequence seq
     
-    This relation tests that:
-    1. Multiple calls with the same sequence produce identical embeddings
-    2. The embedder maintains no state that affects subsequent calls
-    3. Results are reproducible within a session
+    This SHOULD always hold (for the FixedEmbedder). If violated, it indicates:
+    - Non-deterministic model behavior
+    - Numerical instability
+    - Hardware/floating-point issues
     """
     
     def __init__(
@@ -221,14 +197,6 @@ class IdempotencyRelation(MetamorphicRelation):
         threshold: float = 1e-6,  # Very strict for idempotency
         num_repetitions: int = 3,
     ):
-        """
-        Initialize IdempotencyRelation.
-        
-        Args:
-            embedder: Embedder to test
-            threshold: Maximum allowed cosine distance (default: 1e-6)
-            num_repetitions: Number of times to repeat embedding (default: 3)
-        """
         super().__init__(embedder, threshold, name="Idempotency")
         self.num_repetitions = num_repetitions
     
@@ -237,16 +205,7 @@ class IdempotencyRelation(MetamorphicRelation):
         sequence: str,
         use_pooled: bool = True,
     ) -> List[RelationResult]:
-        """
-        Verify idempotency for a single sequence.
-        
-        Args:
-            sequence: Sequence to test
-            use_pooled: Whether to use pooled embeddings (default: True)
-        
-        Returns:
-            List of RelationResult objects comparing consecutive calls
-        """
+       
         results = []
         embeddings = []
         
@@ -287,14 +246,14 @@ class IdempotencyRelation(MetamorphicRelation):
 
 class BatchVarianceRelation(MetamorphicRelation):
     """
-    Metamorphic relation verifying batch invariance of embeddings.
+    Explores batch invariance of embeddings (STRICT INVARIANT).
     
     Property: embed([A, B])[i] == embed([A])[0] for any batch containing A at index i
     
-    This relation tests that:
-    1. Embedding a sequence alone yields the same result as in a batch
-    2. Batch order does not affect individual embeddings
-    3. Batch size does not affect individual embeddings
+    If violated, it indicates:
+    - Batch normalization affecting individual embeddings
+    - Attention mechanisms bleeding across sequences
+    - Batch size or order dependencies
     """
     
     def __init__(
@@ -303,14 +262,6 @@ class BatchVarianceRelation(MetamorphicRelation):
         threshold: float = 0.1,
         batch_sizes: Optional[List[int]] = None,
     ):
-        """
-        Initialize BatchVarianceRelation.
-        
-        Args:
-            embedder: Embedder to test
-            threshold: Maximum allowed cosine distance
-            batch_sizes: List of batch sizes to test (default: [2, 5, 10, 20])
-        """
         super().__init__(embedder, threshold, name="BatchVariance")
         self.batch_sizes = batch_sizes or [2, 5, 10, 20]
     
@@ -320,17 +271,6 @@ class BatchVarianceRelation(MetamorphicRelation):
         filler_sequences: List[str],
         seed: int = 42,
     ) -> List[RelationResult]:
-        """
-        Verify batch invariance for a target sequence.
-        
-        Args:
-            target_sequence: The sequence to test
-            filler_sequences: Additional sequences to form batches
-            seed: Random seed for batch construction
-        
-        Returns:
-            List of RelationResult objects for each batch configuration
-        """
         results = []
         random.seed(seed)
         
@@ -380,17 +320,6 @@ class BatchVarianceRelation(MetamorphicRelation):
         num_permutations: int = 5,
         seed: int = 42,
     ) -> List[RelationResult]:
-        """
-        Verify that batch order doesn't affect embeddings.
-        
-        Args:
-            sequences: List of sequences to permute
-            num_permutations: Number of random permutations to test
-            seed: Random seed
-        
-        Returns:
-            List of RelationResult objects
-        """
         results = []
         random.seed(seed)
         
@@ -463,12 +392,13 @@ class BatchVarianceRelation(MetamorphicRelation):
 
 class ProjectionDeterminismRelation(MetamorphicRelation):
     """
-    Metamorphic relation verifying determinism of projection methods.
+    Explores determinism of projection methods
     
     Property: project(embeddings, seed=S) == project(embeddings, seed=S)
     
-    This relation tests that dimensionality reduction methods (UMAP, PCA, t-SNE)
-    produce identical results when using the same random seed.
+    This explores whether dimensionality reduction methods (UMAP, PCA, t-SNE)
+    produce identical results when using the same random seed. Should hold
+    for proper implementations.
     """
     
     SUPPORTED_METHODS = ["umap", "pca", "tsne"]
@@ -479,14 +409,7 @@ class ProjectionDeterminismRelation(MetamorphicRelation):
         threshold: float = 1e-6,
         methods: Optional[List[str]] = None,
     ):
-        """
-        Initialize ProjectionDeterminismRelation.
         
-        Args:
-            embedder: Embedder to generate embeddings for projection
-            threshold: Maximum allowed distance (default: 1e-6)
-            methods: Projection methods to test (default: ["pca", "umap"])
-        """
         super().__init__(embedder, threshold, name="ProjectionDeterminism")
         self.methods = methods or ["pca", "umap"]
     
@@ -497,18 +420,7 @@ class ProjectionDeterminismRelation(MetamorphicRelation):
         seed: int = 42,
         num_repetitions: int = 3,
     ) -> List[RelationResult]:
-        """
-        Verify projection determinism for given sequences.
-        
-        Args:
-            sequences: Sequences to embed and project
-            n_components: Number of projection dimensions
-            seed: Random seed for projection
-            num_repetitions: Number of times to repeat projection
-        
-        Returns:
-            List of RelationResult objects
-        """
+
         results = []
         
         # Generate embeddings
@@ -585,13 +497,18 @@ class ProjectionDeterminismRelation(MetamorphicRelation):
 
 class ReversalRelation(MetamorphicRelation):
     """
-    Experimental metamorphic relation analyzing sequence reversal effects.
+    Explores sequence reversal effects (EXPLORATORY).
     
     Property: Analyze relationship between embed(seq) and embed(reverse(seq))
     
     This is an exploratory relation to understand how PLMs handle reversed
-    sequences. Unlike other relations, this doesn't have a strict pass/fail
-    criterion but provides insights into model behavior.
+    sequences. Unlike strict invariants, there's no expected behavior - we're
+    discovering what the model does.
+    
+    Questions we're exploring:
+    - Do reversed sequences produce similar or different embeddings?
+    - Does sequence length affect the reversal relationship?
+    - Are certain sequences more "reversible" than others?
     """
     
     def __init__(
@@ -665,15 +582,20 @@ class ReversalRelation(MetamorphicRelation):
 
 class ProgressiveMaskingRelation(MetamorphicRelation):
     """
-    Experimental metamorphic relation analyzing progressive token masking.
+    Explores progressive token masking effects (EXPLORATORY).
     
     Property: Analyze how embed(seq) changes as more tokens are replaced with 'X'
     
-    This relation explores the degradation curve of embeddings as the
-    sequence becomes increasingly corrupted. It helps identify:
-    1. At what masking ratio embeddings diverge significantly
-    2. Whether the degradation is linear or follows another pattern
-    3. Model robustness to unknown/unresolved amino acids
+    'X' is the common placeholder token for "not resolved/unknown" amino acids.
+    This relation explores:
+    
+    1. At what masking ratio do embeddings diverge significantly from original?
+    2. Is the degradation linear or does it follow another pattern?
+    3. Are some sequences more robust to masking than others?
+    4. What is the "information threshold" where embeddings become meaningless?
+    
+    This helps understand model robustness and could inform quality thresholds
+    for sequences with missing residues.
     """
     
     MASK_TOKEN = "X"
