@@ -334,8 +334,8 @@ class BatchVarianceRelation(MetamorphicRelation):
             permuted = sequences.copy()
             random.shuffle(permuted)
             
-            # Create mapping from permuted back to original order
-            perm_to_orig = {
+            # Create mapping from permuted back to original order, potentially used later
+            _ = {
                 permuted.index(seq): i for i, seq in enumerate(sequences)
             }
             
