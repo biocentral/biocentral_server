@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-"""Calculate and display mutation score from mutmut results."""
-
 import subprocess
 import sys
 import re

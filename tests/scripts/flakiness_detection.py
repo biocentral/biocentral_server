@@ -1,8 +1,4 @@
-#!/usr/bin/env python3
-"""Flakiness detection script - runs tests multiple times to detect flaky tests."""
-
 import argparse
-import os
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
