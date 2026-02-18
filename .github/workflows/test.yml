@@ -67,7 +67,7 @@ jobs:
 
     env:
       CI_SERVER_URL: http://localhost:9540
-      #CI_EMBEDDER: fixed
+      CI_EMBEDDER: fixed
 
     steps:
       - name: Maximize build disk space
