@@ -13,14 +13,14 @@ def get_memory_mb() -> float:
     try:
         import resource
 
-        # macOS returns bytes, Linux returns KB
+
         usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         import sys
 
         if sys.platform == "darwin":
-            return usage / (1024 * 1024)  # bytes to MB
+            return usage / (1024 * 1024)
         else:
-            return usage / 1024  # KB to MB
+            return usage / 1024
     except ImportError:
         return 0.0
 
@@ -31,17 +31,17 @@ class TestMemoryLeaks:
 
     def test_no_leak_repeated_single_embedding(self, perf_embedder, very_long_sequence):
         """Memory should not grow with repeated single embeddings."""
-        # Use canonical 400-residue sequence
+
         sequence = very_long_sequence
 
-        # Warm up
+
         for _ in range(10):
             _ = perf_embedder.embed(sequence)
         gc.collect()
 
         baseline = get_memory_mb()
 
-        # Run many iterations
+
         for _ in range(1000):
             _ = perf_embedder.embed(sequence)
 
@@ -49,22 +49,22 @@ class TestMemoryLeaks:
         final = get_memory_mb()
 
         growth = final - baseline
-        # Allow some tolerance for GC timing
+
         assert growth < 100, f"Memory grew by {growth:.1f} MB (possible leak)"
 
     def test_no_leak_repeated_batch_embedding(self, perf_embedder, large_batch):
         """Memory should not grow with repeated batch embeddings."""
-        # Use all canonical sequences
+
         sequences = large_batch
 
-        # Warm up
+
         for _ in range(5):
             _ = perf_embedder.embed_batch(sequences)
         gc.collect()
 
         baseline = get_memory_mb()
 
-        # Run iterations
+
         for _ in range(100):
             _ = perf_embedder.embed_batch(sequences)
 
@@ -79,7 +79,7 @@ class TestMemoryLeaks:
         gc.collect()
         baseline = get_memory_mb()
 
-        # Create large embeddings by repeating the long sequence
+
         embeddings = []
         for _ in range(100):
             emb = perf_embedder.embed(very_long_sequence)
@@ -88,7 +88,7 @@ class TestMemoryLeaks:
         peak = get_memory_mb()
         print(f"\nPeak memory after 100 x {len(very_long_sequence)}-residue embeddings: {peak:.1f} MB")
 
-        # Release references
+
         del embeddings
         gc.collect()
 
@@ -103,11 +103,11 @@ class TestMemoryFootprint:
 
     def test_embedding_memory_size(self, perf_embedder, medium_sequence):
         """Verify embedding memory matches expected size."""
-        # Use canonical medium-length sequence
+
         embedding = perf_embedder.embed(medium_sequence)
         seq_len = len(medium_sequence)
 
-        expected_bytes = seq_len * 1024 * 4  # seq_len * dim * float32
+        expected_bytes = seq_len * 1024 * 4
         actual_bytes = embedding.nbytes
 
         assert actual_bytes == expected_bytes
@@ -143,7 +143,7 @@ class TestMemoryFootprint:
         print(f"  Pooled:      {pooled_mb:.4f} MB")
         print(f"  Reduction:   {(1 - pooled_bytes/per_residue_bytes) * 100:.1f}%")
 
-        # Pooled should use much less memory
+
         assert pooled_bytes < per_residue_bytes / 10
 
     def test_memory_per_dimension(self, perf_embedder, medium_sequence):

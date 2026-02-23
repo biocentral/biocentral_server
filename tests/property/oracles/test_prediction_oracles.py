@@ -41,34 +41,34 @@ class PredictionOracleConfig:
     output_type: str  # "per_residue" or "per_sequence"
     is_classification: bool = True
     num_classes: Optional[int] = None
-    value_range: Optional[tuple] = None  # For regression outputs
+    value_range: Optional[tuple] = None
 
 
-# Pre-defined configurations for common prediction models
+
 PREDICTION_ORACLE_CONFIGS = {
     "ProtT5SecondaryStructure": PredictionOracleConfig(
         model_name="ProtT5SecondaryStructure",
         output_type="per_residue",
         is_classification=True,
-        num_classes=3,  # Helix, Sheet, Coil
+        num_classes=3,
     ),
     "BindEmbed": PredictionOracleConfig(
         model_name="BindEmbed",
         output_type="per_residue",
         is_classification=True,
-        num_classes=2,  # Binding, Non-binding
+        num_classes=2,
     ),
     "TMbed": PredictionOracleConfig(
         model_name="TMbed",
         output_type="per_residue",
         is_classification=True,
-        num_classes=4,  # Membrane topology classes
+        num_classes=4,
     ),
     "Seth": PredictionOracleConfig(
         model_name="Seth",
         output_type="per_residue",
         is_classification=False,
-        value_range=(0.0, 1.0),  # Disorder probability
+        value_range=(0.0, 1.0),
     ),
 }
 
@@ -108,9 +108,9 @@ class MockPredictor:
 
         if self.config.output_type == "per_residue":
             if self.config.is_classification:
-                # Generate class probabilities for each residue
+
                 raw = rng.random((len(sequence), self.config.num_classes))
-                probs = raw / raw.sum(axis=1, keepdims=True)  # Normalize to sum to 1
+                probs = raw / raw.sum(axis=1, keepdims=True)
                 predictions = probs.argmax(axis=1)
                 return {
                     "predictions": predictions.tolist(),
@@ -118,14 +118,14 @@ class MockPredictor:
                     "sequence_length": len(sequence),
                 }
             else:
-                # Generate continuous values in range
+
                 low, high = self.config.value_range or (0.0, 1.0)
                 values = rng.uniform(low, high, len(sequence))
                 return {
                     "predictions": values.tolist(),
                     "sequence_length": len(sequence),
                 }
-        else:  # per_sequence
+        else:
             if self.config.is_classification:
                 raw = rng.random(self.config.num_classes)
                 probs = raw / raw.sum()
@@ -177,7 +177,7 @@ class PredictionDeterminismOracle:
             pred = self.predictor.predict(sequence)
             predictions.append(pred)
 
-        # Check all predictions are identical
+
         first = predictions[0]
         all_identical = all(
             self._predictions_equal(first, p) for p in predictions[1:]
@@ -241,7 +241,7 @@ class OutputValidityOracle:
         pred = self.predictor.predict(sequence)
         issues = []
 
-        # Check per-residue length
+
         if self.config.output_type == "per_residue":
             if "predictions" in pred:
                 if len(pred["predictions"]) != len(sequence):
@@ -250,15 +250,15 @@ class OutputValidityOracle:
                         f"sequence length {len(sequence)}"
                     )
 
-        # Check classification probabilities
+
         if self.config.is_classification and "probabilities" in pred:
             probs = np.array(pred["probabilities"])
             
-            # Check range [0, 1]
+
             if np.any(probs < 0) or np.any(probs > 1):
                 issues.append("probabilities outside [0, 1] range")
             
-            # Check sum to 1 (per position for per-residue)
+
             if self.config.output_type == "per_residue":
                 sums = probs.sum(axis=1)
                 if not np.allclose(sums, 1.0, atol=1e-5):
@@ -267,7 +267,7 @@ class OutputValidityOracle:
                 if not np.isclose(probs.sum(), 1.0, atol=1e-5):
                     issues.append("sequence probabilities don't sum to 1")
 
-        # Check continuous value range
+
         if not self.config.is_classification and self.config.value_range:
             low, high = self.config.value_range
             values = np.array(pred.get("predictions", [pred.get("prediction", 0)]))
@@ -321,7 +321,7 @@ class ShapeInvarianceOracle:
             pred = self.predictor.predict(seq)
 
             if self.config.output_type == "per_residue":
-                # Check predictions length
+
                 if "predictions" in pred:
                     pred_len = len(pred["predictions"])
                     if pred_len != len(seq):
@@ -329,7 +329,7 @@ class ShapeInvarianceOracle:
                             f"seq len {len(seq)}: pred len {pred_len} mismatch"
                         )
 
-                # Check probability shape
+
                 if "probabilities" in pred and self.config.num_classes:
                     probs = np.array(pred["probabilities"])
                     expected_shape = (len(seq), self.config.num_classes)

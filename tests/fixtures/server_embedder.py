@@ -45,11 +45,11 @@ class ServerEmbedder:
         self.base_url = base_url or os.environ.get("CI_SERVER_URL", "http://localhost:9540")
         self.api_url = f"{self.base_url}/api/v1"
         self.embedder_name = embedder_name
-        self.model_name = embedder_name  # Alias for EmbedderProtocol compatibility
+        self.model_name = embedder_name
         self.timeout = timeout
         self.poll_interval = poll_interval
         
-        # Check if we're in CI fixed embedder mode
+
         self._use_fixed_embedder = os.environ.get("CI_EMBEDDER", "").lower() == "fixed"
         self._fixed_embedder = None
         
@@ -58,14 +58,14 @@ class ServerEmbedder:
             self._fixed_embedder = FixedEmbedder(model_name="esm2_t6", strict_dataset=False)
             logging.info("ServerEmbedder: Using FixedEmbedder mode (CI_EMBEDDER=fixed)")
         
-        # Database connection info
+
         self.db_host = os.environ.get("POSTGRES_HOST", "localhost")
         self.db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
         self.db_name = os.environ.get("POSTGRES_DB", "embeddings_db")
         self.db_user = os.environ.get("POSTGRES_USER", "embeddingsuser")
         self.db_pass = os.environ.get("POSTGRES_PASSWORD", "embeddingspwd")
         
-        # Create HTTP client with retries
+
         transport = httpx.HTTPTransport(retries=3)
         self.client = httpx.Client(
             base_url=self.api_url,
@@ -165,13 +165,13 @@ class ServerEmbedder:
         """
         from datetime import datetime
         
-        # Compute embedding with FixedEmbedder
+
         if reduce:
             embedding = self._fixed_embedder.embed_pooled(sequence)
         else:
             embedding = self._fixed_embedder.embed(sequence)
         
-        # Save to database
+
         seq_hash = calculate_sequence_hash(sequence)
         seq_len = len(sequence)
         
@@ -217,19 +217,19 @@ class ServerEmbedder:
         Returns:
             Per-residue embeddings as numpy array of shape (seq_len, embedding_dim)
         """
-        # Use FixedEmbedder in CI fixed mode
+
         if self._use_fixed_embedder:
             return self._compute_and_save_fixed_embedding(sequence, reduce=False)
         
         sequences = {"seq_0": sequence}
         
-        # Submit embedding task
+
         task_id = self._submit_embed_task(sequences, reduce=False)
         
-        # Wait for completion
+
         self._poll_task(task_id)
         
-        # Retrieve from database
+
         embedding = self._get_embedding_from_db(sequence, reduce=False)
         
         if embedding is None:
@@ -247,19 +247,19 @@ class ServerEmbedder:
         Returns:
             Pooled embedding as numpy array of shape (embedding_dim,)
         """
-        # Use FixedEmbedder in CI fixed mode
+
         if self._use_fixed_embedder:
             return self._compute_and_save_fixed_embedding(sequence, reduce=True)
         
         sequences = {"seq_0": sequence}
         
-        # Submit embedding task with reduce=True
+
         task_id = self._submit_embed_task(sequences, reduce=True)
         
-        # Wait for completion
+
         self._poll_task(task_id)
         
-        # Retrieve from database
+
         embedding = self._get_embedding_from_db(sequence, reduce=True)
         
         if embedding is None:
@@ -282,7 +282,7 @@ class ServerEmbedder:
         Returns:
             List of numpy arrays with embeddings for each sequence
         """
-        # Use FixedEmbedder in CI fixed mode
+
         if self._use_fixed_embedder:
             return [
                 self._compute_and_save_fixed_embedding(seq, reduce=pooled)
@@ -291,13 +291,13 @@ class ServerEmbedder:
         
         seq_dict = {f"seq_{i}": seq for i, seq in enumerate(sequences)}
         
-        # Submit embedding task
+
         task_id = self._submit_embed_task(seq_dict, reduce=pooled)
         
-        # Wait for completion
+
         self._poll_task(task_id)
         
-        # Retrieve all from database
+
         embeddings = []
         for seq in sequences:
             emb = self._get_embedding_from_db(seq, reduce=pooled)

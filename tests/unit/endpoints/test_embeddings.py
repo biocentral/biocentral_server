@@ -54,7 +54,7 @@ class TestCommonEmbeddersEndpoint:
         assert response.status_code == 200
         embedders = response.json()
 
-        # Should contain known embedder models
+
         expected_embedders = [e.value for e in CommonEmbedder]
         assert embedders == expected_embedders
 
@@ -73,7 +73,7 @@ class TestCommonEmbeddersEndpoint:
         assert response.status_code == 200
         embedders = response.json()
 
-        # Check for ESM2 models
+
         esm2_models = [e for e in embedders if "esm2" in e.lower()]
         assert len(esm2_models) >= 1
 
@@ -84,7 +84,7 @@ class TestCommonEmbeddersEndpoint:
         assert response.status_code == 200
         embedders = response.json()
 
-        # Should include baseline models
+
         assert "one_hot_encoding" in embedders
         assert "blosum62" in embedders
 
@@ -105,7 +105,7 @@ class TestEmbedEndpoint:
         embeddings_client,
     ):
         """Test embedding request with valid sequence data."""
-        # Setup mocks
+
         mock_rate_limiter.return_value = lambda: None
         mock_task_manager.return_value.add_task.return_value = "task-123"
         mock_user_manager.get_user_id_from_request = AsyncMock(return_value="user-1")
@@ -124,7 +124,7 @@ class TestEmbedEndpoint:
             "/embeddings_service/embed", json=request_data
         )
 
-        # Verify task was submitted
+
         assert response.status_code == 200
         assert "task_id" in response.json()
 
@@ -136,7 +136,7 @@ class TestEmbedEndpoint:
         request_data = {
             "embedder_name": "prot_t5_xl_uniref50",
             "reduce": False,
-            "sequence_data": {},  # Empty - should fail
+            "sequence_data": {},
             "use_half_precision": False,
         }
 
@@ -144,7 +144,7 @@ class TestEmbedEndpoint:
             "/embeddings_service/embed", json=request_data
         )
 
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
     @patch("biocentral_server.embeddings.embeddings_endpoint.RateLimiter")
     def test_embed_missing_embedder_name(self, mock_rate_limiter, embeddings_client):
@@ -161,7 +161,7 @@ class TestEmbedEndpoint:
             "/embeddings_service/embed", json=request_data
         )
 
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
 
 class TestGetMissingEmbeddingsEndpoint:
@@ -176,10 +176,10 @@ class TestGetMissingEmbeddingsEndpoint:
         mock_rate_limiter.return_value = lambda: None
 
         mock_db = MagicMock()
-        # filter_existing_embeddings returns (existing, non_existing) dicts
+
         mock_db.filter_existing_embeddings.return_value = (
-            {"seq1": "MVLSPAD"},  # existing
-            {"seq2": "MGHFTEE"},  # non-existing
+            {"seq1": "MVLSPAD"},
+            {"seq2": "MGHFTEE"},
         )
         mock_db_factory.return_value.get_embeddings_db.return_value = mock_db
 
@@ -213,7 +213,7 @@ class TestGetMissingEmbeddingsEndpoint:
             "/embeddings_service/get_missing_embeddings", json=request_data
         )
 
-        assert response.status_code == 422  # Pydantic validation error
+        assert response.status_code == 422
 
     @patch("biocentral_server.embeddings.embeddings_endpoint.RateLimiter")
     def test_get_missing_embeddings_sequences_not_dict(
@@ -223,7 +223,7 @@ class TestGetMissingEmbeddingsEndpoint:
         mock_rate_limiter.return_value = lambda: None
 
         request_data = {
-            "sequences": json.dumps(["seq1", "seq2"]),  # List instead of dict
+            "sequences": json.dumps(["seq1", "seq2"]),
             "embedder_name": "prot_t5_xl_uniref50",
             "reduced": True,
         }
@@ -232,7 +232,7 @@ class TestGetMissingEmbeddingsEndpoint:
             "/embeddings_service/get_missing_embeddings", json=request_data
         )
 
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
 
 class TestAddEmbeddingsEndpoint:
@@ -260,10 +260,10 @@ class TestAddEmbeddingsEndpoint:
 
         import numpy as np
 
-        # Create H5 file with required attributes
+
         buffer = io.BytesIO()
         with h5py.File(buffer, "w") as f:
-            # Create datasets with original_id attribute as expected by endpoint
+
             ds1 = f.create_dataset("0", data=np.random.rand(1024).astype(np.float32))
             ds1.attrs["original_id"] = "seq1"
             ds2 = f.create_dataset("1", data=np.random.rand(1024).astype(np.float32))
@@ -271,7 +271,7 @@ class TestAddEmbeddingsEndpoint:
         buffer.seek(0)
         h5_bytes = base64.b64encode(buffer.read()).decode("utf-8")
 
-        # Provide sequences JSON as required by the endpoint
+
         sequences = json.dumps({"seq1": "MVLSPAD", "seq2": "MGHFTEE"})
 
         request_data = {
@@ -285,7 +285,7 @@ class TestAddEmbeddingsEndpoint:
             "/embeddings_service/add_embeddings", json=request_data
         )
 
-        # Should succeed or return appropriate status
+
         assert response.status_code in [200, 201]
 
     @patch("biocentral_server.embeddings.embeddings_endpoint.RateLimiter")
@@ -305,5 +305,5 @@ class TestAddEmbeddingsEndpoint:
             "/embeddings_service/add_embeddings", json=request_data
         )
 
-        # Should fail with validation or processing error
+
         assert response.status_code in [400, 422, 500]

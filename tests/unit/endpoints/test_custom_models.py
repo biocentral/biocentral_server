@@ -92,7 +92,7 @@ class TestVerifyConfigEndpoint:
     ):
         """Test config verification with valid config returns no error."""
         mock_rate_limiter.return_value = lambda: None
-        mock_verify.return_value = ({}, "")  # Empty error means valid
+        mock_verify.return_value = ({}, "")
 
         request_data = {
             "config_dict": {
@@ -137,7 +137,7 @@ class TestVerifyConfigEndpoint:
             "/custom_models_service/verify_config/", json=request_data
         )
 
-        assert response.status_code == 422  # Validation error (min_length=1)
+        assert response.status_code == 422
 
 
 class TestStartTrainingEndpoint:
@@ -227,7 +227,7 @@ class TestStartTrainingEndpoint:
             "/custom_models_service/start_training", json=request_data
         )
 
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
 
 class TestModelFilesEndpoint:
@@ -364,4 +364,4 @@ class TestStartInferenceEndpoint:
             "/custom_models_service/start_inference", json=request_data
         )
 
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422

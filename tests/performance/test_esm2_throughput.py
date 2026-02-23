@@ -31,7 +31,7 @@ class TestESM2SingleSequenceLatency:
         
         result = benchmark(embed)
         assert result is not None
-        # ESM2-t6-8M has embedding dimension 320
+
         assert result.shape[0] == len(short_sequence)
         assert result.shape[1] == 320
 
@@ -101,7 +101,7 @@ class TestESM2PooledEmbeddings:
         """Benchmark: pooled embedding for single sequence from canonical dataset."""
         def embed_pooled():
             emb = esm2_embedder.embed(medium_sequence)
-            # Mean pooling
+
             return np.mean(emb, axis=0)
         
         result = benchmark(embed_pooled)
@@ -115,22 +115,22 @@ class TestESM2Comparison:
 
     def test_esm2_vs_fixed_embedder(self, esm2_embedder, perf_embedder, medium_sequence):
         """Compare real ESM2 latency against mock FixedEmbedder."""
-        # Time FixedEmbedder
+
         fixed_times = []
         for _ in range(10):
             start = time.perf_counter()
             perf_embedder.embed(medium_sequence)
             fixed_times.append(time.perf_counter() - start)
         
-        # Time ESM2
+
         esm2_times = []
         for _ in range(10):
             start = time.perf_counter()
             esm2_embedder.embed(medium_sequence)
             esm2_times.append(time.perf_counter() - start)
         
-        fixed_mean = np.mean(fixed_times) * 1000  # ms
-        esm2_mean = np.mean(esm2_times) * 1000  # ms
+        fixed_mean = np.mean(fixed_times) * 1000
+        esm2_mean = np.mean(esm2_times) * 1000
         
         print(f"\n{'='*50}")
         print(f"Performance Comparison (sequence length: {len(medium_sequence)})")
@@ -140,7 +140,7 @@ class TestESM2Comparison:
         print(f"Ratio:         {esm2_mean/fixed_mean:.1f}x slower")
         print(f"{'='*50}")
         
-        # ESM2 should be slower but still complete
+
         assert esm2_mean > 0
         assert fixed_mean > 0
 
@@ -181,7 +181,7 @@ class TestESM2ScalingWithLength:
         
         print(f"{'='*60}")
         
-        # Basic sanity check - all embeddings should complete
+
         assert all(r["mean_ms"] > 0 for r in results)
         std_ms = np.std(times) * 1000
         throughput = 1000 / mean_ms if mean_ms > 0 else 0
@@ -197,5 +197,5 @@ class TestESM2ScalingWithLength:
         
         print(f"{'='*60}")
         
-        # Basic sanity check - longer sequences should take more time (generally)
+
         assert all(r["mean_ms"] > 0 for r in results)

@@ -12,14 +12,14 @@ from typing import Any, Dict, Generator
 
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 
-# Suppress verbose httpx/httpcore logging
+
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 def get_redis_port() -> int:
     """Get Redis port from environment, accounting for CI port mapping."""
-    # In CI, tests run on host, Redis is exposed on REDIS_JOBS_PORT
+
     return int(os.environ.get("REDIS_JOBS_PORT", "6379"))
 
 
@@ -31,10 +31,10 @@ def flush_redis():
         try:
             r = redis.Redis(host="localhost", port=redis_port, db=0)
             r.flushdb()
-            # Give worker time to notice queue is empty
+
             time.sleep(0.5)
         except redis.ConnectionError:
-            pass  # Redis not available, skip flush
+            pass
     return _flush
 
 
@@ -46,7 +46,7 @@ def get_server_url() -> str:
             "CI_SERVER_URL environment variable not set. Start the server and set "
             "CI_SERVER_URL=http://localhost:9540"
         )
-        # Log and print so the reason is visible in CI/local runs before skipping
+
         logging.warning(msg)
         print(f"SKIPPING integration tests: {msg}", file=sys.stderr)
         pytest.skip(msg)
@@ -66,7 +66,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
     
     This client connects to the real running server instance.
     """
-    # Use transport with retries for connection resilience
+
     transport = httpx.HTTPTransport(retries=5)
     http_client = httpx.Client(
         base_url=f"{server_url}/api/v1",
@@ -74,7 +74,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
         transport=transport,
     )
     
-    # Verify server is accessible (health endpoint is at root, not under /api/v1)
+
     try:
         response = httpx.get(f"{server_url}/health", timeout=10.0)
         if response.status_code != 200:
@@ -82,7 +82,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
     except httpx.RequestError as e:
         pytest.fail(f"Cannot connect to server at {server_url}: {e}")
     
-    # If CI_EMBEDDER is set to 'fixed', wrap client to intercept embed endpoints
+
     if os.environ.get("CI_EMBEDDER", "").lower() == "fixed":
         import uuid
         from tests.fixtures.fixed_embedder import get_fixed_embedder
@@ -98,7 +98,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
             def json(self, *args, **kwargs):
                 return self._payload
 
-        # Track fake tasks created by this test client
+
         _fake_tasks: Dict[str, Dict] = {}
 
         def _save_embeddings_to_db(sequences: Dict[str, str], embedder_name: str, reduced: bool, fe):
@@ -121,12 +121,12 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 )
                 
                 with conn.cursor() as cur:
-                    for _, sequence in sequences.items(): # seq_id is unused, thus _ 
+                    for _, sequence in sequences.items():
                         seq_hash = calculate_sequence_hash(sequence)
                         seq_len = len(sequence)
                         
-                        # Get embedding from fixed embedder
-                        # embed_pooled() for reduced, embed() for per-residue
+
+
                         if reduced:
                             emb_array = fe.embed_pooled(sequence)
                             per_seq_compressed = blosc2.pack_array(emb_array)
@@ -155,45 +155,45 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 print(f"[FIXED EMBEDDER] Warning: Failed to save to DB: {e}")
 
         def _fake_post(url, *args, **kwargs):
-            # Intercept embedding and projection endpoints (match path exactly)
+
             try:
                 path = urlparse(str(url)).path
             except Exception:
                 path = str(url)
 
             if path.startswith("/embeddings_service/embed"):
-                # Prefer explicit JSON kwarg; otherwise fall back to empty dict
+
                 data = kwargs.get("json") or {}
-                # Basic validation: require embedder_name and non-empty sequence_data
+
                 if not data.get("embedder_name"):
                     return FakeResponse(422, {"detail": "embedder_name missing"})
                 if not data.get("sequence_data"):
                     return FakeResponse(422, {"detail": "sequence_data empty"})
 
-                # Fast local embedding: compute deterministic embeddings for provided sequences
+
                 embedder_name = data.get("embedder_name")
                 seqs = data.get("sequence_data")
                 reduced = bool(data.get("reduce", False))
                 
-                # Use strict_dataset=False to allow any sequences (not just canonical test set)
+
                 fe = get_fixed_embedder(model_name=embedder_name, strict_dataset=False)
 
-                # Convert list to dict if needed
+
                 if isinstance(seqs, list):
                     seqs = {f"seq_{i}": seq for i, seq in enumerate(seqs)}
                 
-                # Save embeddings to database (like the real server does)
+
                 _save_embeddings_to_db(seqs, embedder_name, reduced, fe)
 
-                # Return a fake task_id and register a finished DTO for it
+
                 task_id = f"local-{uuid.uuid4().hex[:8]}"
                 _fake_tasks[task_id] = {"status": "FINISHED", "result": {}}
                 return FakeResponse(200, {"task_id": task_id})
 
             if path.startswith("/projection_service/project"):
-                # Intercept projection endpoint when using fixed embedder
-                # This endpoint performs dimensionality reduction (PCA, UMAP, t-SNE)
-                # on protein embeddings for visualization purposes
+
+
+
                 data = kwargs.get("json") or {}
                 if not data.get("sequence_data"):
                     return FakeResponse(422, {"detail": "sequence_data empty"})
@@ -202,15 +202,15 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 method = data.get("method", "pca")
                 n_components = data.get("config", {}).get("n_components", 2)
 
-                # Validate method - must be a known dimensionality reduction method
+
                 valid_methods = {"pca", "umap", "tsne", "pacmap", "trimap"}
                 if method.lower() not in valid_methods:
                     return FakeResponse(400, {"detail": f"Unknown method: {method}"})
 
-                # Return a fake task_id with projection result
+
                 task_id = f"local-{uuid.uuid4().hex[:8]}"
-                # Create fake projection result with deterministic coordinates
-                # Real service returns reduced coordinates from ProtSpace
+
+
                 seq_ids = list(seqs.keys()) if isinstance(seqs, dict) else [f"seq_{i}" for i in range(len(seqs))]
                 projection_result = {
                     method: {
@@ -225,14 +225,14 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
             return original_post(url, *args, **kwargs)
 
         def _fake_get(url, *args, **kwargs):
-            # Intercept only exact task status polling paths and return finished immediately
+
             try:
                 path = urlparse(str(url)).path
             except Exception:
                 path = str(url)
 
             if path.startswith("/biocentral_service/task_status/local-"):
-                # extract task_id from path (last path component)
+
                 try:
                     task_id = path.rstrip("/").split("/")[-1]
                 except Exception:
@@ -264,7 +264,7 @@ def _make_request_with_retry(client, method: str, url: str, max_retries: int = 5
                 raise ValueError(f"Unsupported method: {method}")
         except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadTimeout) as e:
             last_error = e
-            wait_time = min(2 ** attempt, 30)  # Cap at 30 seconds
+            wait_time = min(2 ** attempt, 30)
             logging.debug(f"Request failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {wait_time}s...")
             if attempt < max_retries - 1:
                 time.sleep(wait_time)
@@ -315,7 +315,7 @@ def poll_task(client):
                     client, "GET", f"/biocentral_service/task_status/{task_id}",
                     max_retries=3,
                 )
-                # Reset error counter on successful request
+
                 consecutive_errors = 0
                 
             except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadTimeout) as e:
@@ -330,7 +330,7 @@ def poll_task(client):
                         f"Last error: {e}. Last known status: {last_status}"
                     )
                 
-                # Wait longer after errors
+
                 time.sleep(poll_interval * 2)
                 continue
                 
@@ -356,16 +356,16 @@ def poll_task(client):
                 time.sleep(poll_interval)
                 continue
             
-            # Get the latest DTO's status
+
             latest_dto = dtos[-1]
             task_status = latest_dto.get("status", "").upper()
             last_status = task_status
             
-            # Log progress periodically
+
             if elapsed % 30 == 0 and elapsed > 0:
                 logging.info(f"[POLL] Task {task_id}: {task_status} ({elapsed}s elapsed)")
             
-            # Check for terminal states
+
             if task_status in ("FINISHED", "COMPLETED", "DONE"):
                 logging.info(f"[POLL] Task {task_id} completed successfully in {elapsed}s")
                 return latest_dto
@@ -400,7 +400,7 @@ def get_embedder_name() -> str:
     
     embedder_name = EMBEDDER_MAP[ci_embedder]
     
-    #print(f"\n[CONFIG] Using embedder: {embedder_name}")
+
     return embedder_name
 
 
@@ -650,7 +650,7 @@ def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
     or before projection test to confirm cache will be hit.
     """
     def _verify(expect_cached: bool = True):
-        # Use the server's missing embeddings endpoint to check cache
+
         import json
         from biotrainer.utilities import calculate_sequence_hash
     
@@ -728,15 +728,15 @@ def precache_prott5_embeddings(shared_embedding_sequences):
             seq_hash = calculate_sequence_hash(sequence)
             seq_len = len(sequence)
             
-            # Generate deterministic fake embeddings (seeded by hash)
+
             seed = hash(seq_hash) % (2**32)
             rng = np.random.default_rng(seed)
             
-            # ProtT5 produces 1024-dim embeddings
+
             per_residue = rng.standard_normal((seq_len, 1024)).astype(np.float32)
-            per_sequence = per_residue.mean(axis=0)  # Reduced embedding
+            per_sequence = per_residue.mean(axis=0)
             
-            # Compress like the server does
+
             per_seq_compressed = blosc2.pack_array(per_sequence)
             per_res_compressed = blosc2.pack_array(per_residue)
             
@@ -787,19 +787,19 @@ def load_bindembed_onnx():
     import requests
     from pathlib import Path
     
-    # SeaweedFS connection info - use localhost since test runs outside Docker
+
     seaweedfs_host = os.environ.get("SEAWEEDFS_FILER_HOST", "localhost")
     seaweedfs_port = os.environ.get("SEAWEEDFS_FILER_PORT", "8888")
     seaweedfs_url = f"http://{seaweedfs_host}:{seaweedfs_port}"
     
-    # Model download URL (same as PredictInitializer uses)
+
     model_url = "https://nextcloud.in.tum.de/index.php/s/kxJ64RcRi7g6p6r/download"
     
-    # Target path in SeaweedFS - server expects models at /PREDICT/bindembed/
+
     target_base = "PREDICT"
     
     try:
-        # Check if bindembed model files already exist by checking for any .onnx file
+
         check_response = requests.head(f"{seaweedfs_url}/{target_base}/bindembed/", timeout=5)
         print(f"\n[ONNX] Check response: {check_response.status_code}")
     except Exception as e:
@@ -809,7 +809,7 @@ def load_bindembed_onnx():
         print(f"\n[ONNX] Downloading prediction models from {model_url}...")
         
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Download the zip file
+
             response = requests.get(model_url, stream=True, timeout=300)
             response.raise_for_status()
             
@@ -820,42 +820,42 @@ def load_bindembed_onnx():
             
             print(f"[ONNX] Downloaded {zip_path.stat().st_size / 1024 / 1024:.1f} MB")
             
-            # Extract the zip file
+
             extract_dir = Path(tmpdir) / "extracted"
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_dir)
             
-            # Find the actual model root
+
             extracted_items = list(extract_dir.iterdir())
             print(f"[ONNX] Top-level extracted: {[item.name for item in extracted_items]}")
             
-            # The zip typically extracts to a single folder, find the model root
+
             model_root = extract_dir
             if len(extracted_items) == 1 and extracted_items[0].is_dir():
                 model_root = extracted_items[0]
                 print(f"[ONNX] Using nested root: {model_root.name}")
             
-            # List contents to debug structure
+
             for item in model_root.iterdir():
                 if item.is_dir():
                     files = list(item.iterdir())[:3]
                     print(f"[ONNX] Dir {item.name}/: {[f.name for f in files]}...")
             
-            # Upload each file to SeaweedFS using the correct API format
+
             uploaded_count = 0
             failed_count = 0
             
             for file_path in model_root.rglob("*"):
                 if file_path.is_file():
                     rel_path = file_path.relative_to(model_root)
-                    # SeaweedFS path format: /PREDICT/bindembed/model.onnx
+
                     seaweed_path = f"/{target_base}/{rel_path}"
                     
                     try:
                         with open(file_path, "rb") as f:
                             file_data = f.read()
                         
-                        # Use proper SeaweedFS upload format
+
                         files = {"file": (file_path.name, file_data, "application/octet-stream")}
                         upload_response = requests.post(
                             f"{seaweedfs_url}{seaweed_path}",
@@ -876,7 +876,7 @@ def load_bindembed_onnx():
             
             print(f"[ONNX] Uploaded {uploaded_count} files, {failed_count} failed")
             
-            # Verify upload by listing the bindembed directory
+
             try:
                 verify_response = requests.get(
                     f"{seaweedfs_url}/{target_base}/bindembed/?pretty=y",

@@ -42,7 +42,7 @@ class TestProjectionConfigEndpoint:
         mock_reducers.keys.return_value = ["umap", "tsne", "pca"]
 
         mock_config_instance = MagicMock()
-        # parameters_by_method returns a LIST of parameter dicts, not a single dict
+
         mock_config_instance.parameters_by_method.return_value = [
             {"name": "n_neighbors", "default": 15},
             {"name": "min_dist", "default": 0.1},
@@ -68,7 +68,7 @@ class TestProjectionConfigEndpoint:
         mock_reducers.keys.return_value = methods
 
         mock_config_instance = MagicMock()
-        # parameters_by_method returns a LIST of parameter dicts
+
         mock_config_instance.parameters_by_method.side_effect = lambda m: [
             {"name": "method", "default": m},
             {"name": "n_components", "default": 2},
@@ -79,7 +79,7 @@ class TestProjectionConfigEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        # Should have called parameters_by_method for each reducer
+
         assert mock_config_instance.parameters_by_method.call_count == len(methods)
 
 
@@ -131,7 +131,7 @@ class TestProjectEndpoint:
     ):
         """Test projection with unknown method returns 400."""
         mock_rate_limiter.return_value = lambda: None
-        # REDUCERS doesn't contain the method
+
         mock_reducers.__contains__ = lambda self, x: False
 
         request_data = {
@@ -153,7 +153,7 @@ class TestProjectEndpoint:
         """Test projection with missing required fields fails validation."""
         mock_rate_limiter.return_value = lambda: None
 
-        # Missing sequence_data
+
         request_data = {
             "method": "umap",
             "embedder_name": "prot_t5_xl_uniref50",
@@ -164,7 +164,7 @@ class TestProjectEndpoint:
             "/projection_service/project", json=request_data
         )
 
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
     @patch("biocentral_server.embeddings.projection_endpoint.TaskManager")
     @patch("biocentral_server.embeddings.projection_endpoint.UserManager")
@@ -184,7 +184,7 @@ class TestProjectEndpoint:
         mock_rate_limiter.return_value = lambda: None
         mock_reducers.__contains__ = lambda self, x: x in ["umap", "tsne", "pca"]
 
-        # Capture the config passed to convert_config
+
         captured_config = {}
         def capture_config(config_dict):
             captured_config.update(config_dict)

@@ -47,7 +47,7 @@ class TestFixedEmbedderDeterminism:
         emb1 = embedder.embed(seq1)
         emb2 = embedder.embed(seq2)
 
-        # Should not be equal
+
         assert not np.allclose(emb1, emb2)
 
     def test_different_seeds_different_embeddings(self):
@@ -77,10 +77,10 @@ class TestFixedEmbedderDeterminism:
         embedder = FixedEmbedder(model_name="prot_t5")
         sequences = ["MKTAYIAK", "ACDEFGHI", "QRSTVWY"]
 
-        # Batch embedding
+
         batch_embeddings = embedder.embed_batch(sequences, pooled=False)
 
-        # Individual embeddings
+
         individual_embeddings = [embedder.embed(seq) for seq in sequences]
 
         for batch_emb, ind_emb in zip(batch_embeddings, individual_embeddings):
@@ -155,7 +155,7 @@ class TestFixedEmbedderEdgeCases:
     def test_very_long_sequence(self):
         """Very long sequences should work without issues."""
         embedder = FixedEmbedder(model_name="prot_t5")
-        sequence = "M" + "AKTGV" * 400  # 2001 residues
+        sequence = "M" + "AKTGV" * 400
 
         embedding = embedder.embed(sequence)
 
@@ -188,7 +188,7 @@ class TestFixedEmbedderEdgeCases:
         embedding = embedder.embed("A" * 50)
 
         assert embedding.shape == (50, 1024)
-        # Positions should still be different due to positional encoding
+
         assert not np.allclose(embedding[0], embedding[1])
 
     def test_lowercase_handling(self):
@@ -198,7 +198,7 @@ class TestFixedEmbedderEdgeCases:
         upper_emb = embedder.embed("MKTAYIAK")
         lower_emb = embedder.embed("mktayiak")
 
-        # Should produce same embeddings (case insensitive)
+
         np.testing.assert_array_equal(upper_emb, lower_emb)
 
 
@@ -298,7 +298,7 @@ class TestFixedEmbedderRegistry:
         FixedEmbedderRegistry.clear()
         embedder2 = FixedEmbedderRegistry.get_embedder("prot_t5")
 
-        # Should be different instances after clear
+
         assert embedder1 is not embedder2
 
 
@@ -362,7 +362,7 @@ class TestEmbeddingQuality:
         """Embeddings should not contain NaN values."""
         embedder = FixedEmbedder(model_name="prot_t5")
 
-        # Test various sequences
+
         for seq in ["M", "MKTAYIAK", "X" * 10, "A" * 100]:
             embedding = embedder.embed(seq)
             assert not np.any(np.isnan(embedding)), f"NaN found for sequence: {seq}"
@@ -381,7 +381,7 @@ class TestEmbeddingQuality:
 
         embedding = embedder.embed("MKTAYIAK")
 
-        # Values should be in a reasonable range
+
         assert np.abs(embedding).max() < 100
 
     def test_embedding_dtype(self):
@@ -399,7 +399,7 @@ class TestEmbeddingQuality:
 
         embedding = embedder.embed(sequence)
 
-        # Check that adjacent positions are different
+
         for i in range(len(sequence) - 1):
             assert not np.allclose(
                 embedding[i], embedding[i + 1]

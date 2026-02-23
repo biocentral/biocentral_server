@@ -18,9 +18,9 @@ def mock_fastapi_limiter():
     """
     from fastapi_limiter import FastAPILimiter
 
-    # Create a mock redis that satisfies FastAPILimiter's interface
+
     mock_redis = MagicMock()
-    mock_redis.evalsha = AsyncMock(return_value=0)  # Return 0 to allow all requests (pexpire=0 means no limit hit)
+    mock_redis.evalsha = AsyncMock(return_value=0)
     mock_redis.script_load = AsyncMock(return_value="fake_sha")
     mock_redis.get = AsyncMock(return_value=None)
     mock_redis.set = AsyncMock(return_value=True)
@@ -32,13 +32,13 @@ def mock_fastapi_limiter():
     async def close_limiter():
         await FastAPILimiter.close()
 
-    # Run init before test
+
     loop = asyncio.new_event_loop()
     loop.run_until_complete(init_limiter())
 
     yield
 
-    # Cleanup after test
+
     loop.run_until_complete(close_limiter())
     loop.close()
 

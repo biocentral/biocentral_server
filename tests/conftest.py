@@ -1,7 +1,7 @@
 """Shared pytest fixtures for biocentral_server tests."""
 
-# Configure matplotlib to use non-interactive backend in CI environments
-# This avoids needing xvfb while preserving interactive backend locally
+
+
 import os
 if os.environ.get('CI') or not os.environ.get('DISPLAY'):
     import matplotlib
@@ -13,7 +13,6 @@ from typing import Dict, List, Tuple
 from tests.fixtures.fixed_embedder import (
     FixedEmbedder,
     FixedEmbedderRegistry,
-    get_fixed_embedder,
 )
 
 
@@ -96,14 +95,14 @@ def five_sequences() -> List[str]:
 def edge_case_sequences() -> List[str]:
     """Edge case sequences for boundary testing."""
     return [
-        "M",  # Single residue
-        "MK",  # Two residues
-        "A" * 10,  # short
-        "A" * 100,  # long
-        "ACDEFGHIKLMNPQRSTVWY",  # All 20 standard amino acids
-        "X" * 5,  # Unknown residues
-        "MXKXAX",  # Mixed unknown
-        "MKTAYIAK" * 50,  # Long repetitive (400 residues)
+        "M",
+        "MK",
+        "A" * 10,
+        "A" * 100,
+        "ACDEFGHIKLMNPQRSTVWY",
+        "X" * 5,
+        "MXKXAX",
+        "MKTAYIAK" * 50,
     ]
 
 
@@ -240,16 +239,16 @@ def pytest_collection_modifyitems(session, config, items):
     embeddings that test_project_flow.py depends on.
     """
     def get_test_priority(item):
-        # Get the test file name
+
         test_file = item.fspath.basename if hasattr(item, 'fspath') else ""
         
-        # Priority ordering: lower number = runs first
+
         if "test_embed" in test_file:
-            return 0  # Embedding tests first
+            return 0
         elif "test_project" in test_file:
-            return 1  # Projection tests second (depend on cached embeddings)
+            return 1
         else:
-            return 2  # All other tests
+            return 2
     
-    # Sort items by priority, maintaining relative order within same priority
+
     items.sort(key=lambda item: (get_test_priority(item), items.index(item) if item in items else 0))

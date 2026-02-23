@@ -30,11 +30,11 @@ from tests.property.oracles.embedding_metrics import (
 )
 
 
-# ============================================================================
-# ORACLE RESULT STORAGE
-# ============================================================================
 
-# Global storage for collecting results across tests
+
+
+
+
 _oracle_results: List[Dict[str, Any]] = []
 
 
@@ -55,9 +55,9 @@ def clear_oracle_results() -> None:
     _oracle_results.clear()
 
 
-# ============================================================================
-# EMBEDDER PROTOCOL
-# ============================================================================
+
+
+
 
 
 class EmbedderProtocol(Protocol):
@@ -78,9 +78,9 @@ class EmbedderProtocol(Protocol):
         ...
 
 
-# ============================================================================
-# ORACLE CONFIGURATION
-# ============================================================================
+
+
+
 
 
 @dataclass
@@ -93,7 +93,7 @@ class OracleConfig:
     masking_ratios: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.2, 0.3])
 
 
-# Pre-defined configurations for supported embedders
+
 ORACLE_CONFIGS = {
     "fixed_embedder": OracleConfig(
         embedder_name="fixed_embedder",
@@ -106,9 +106,9 @@ ORACLE_CONFIGS = {
 }
 
 
-# ============================================================================
-# BATCH INVARIANCE ORACLE
-# ============================================================================
+
+
+
 
 
 class BatchInvarianceOracle:
@@ -151,22 +151,22 @@ class BatchInvarianceOracle:
         """
         results = []
 
-        # Get the "ground truth" embedding: sequence embedded alone
+
         single_embedding = self.embedder.embed_pooled(target_sequence)
 
         for batch_size in self.config.batch_sizes:
-            # Create batch with target at a random position
+
             batch = self._create_batch(target_sequence, filler_sequences, batch_size)
             target_idx = batch.index(target_sequence)
 
-            # Embed the batch
+
             batch_embeddings = self.embedder.embed_batch(batch, pooled=True)
             batched_embedding = batch_embeddings[target_idx]
 
-            # Compute all metrics
+
             metrics = compute_all_metrics(single_embedding, batched_embedding)
 
-            # Check if passed (using cosine distance)
+
             passed = metrics["cosine_distance"] <= self.config.cosine_threshold
 
             result = {
@@ -194,13 +194,13 @@ class BatchInvarianceOracle:
         if batch_size == 1:
             return [target]
 
-        # Select filler sequences (with repetition if needed)
+
         n_fillers = batch_size - 1
         selected_fillers = []
         for i in range(n_fillers):
             selected_fillers.append(fillers[i % len(fillers)])
 
-        # Insert target at random position
+
         batch = selected_fillers.copy()
         insert_pos = random.randint(0, len(batch))
         batch.insert(insert_pos, target)
@@ -208,9 +208,9 @@ class BatchInvarianceOracle:
         return batch
 
 
-# ============================================================================
-# MASKING ROBUSTNESS ORACLE
-# ============================================================================
+
+
+
 
 
 class MaskingRobustnessOracle:
@@ -256,20 +256,20 @@ class MaskingRobustnessOracle:
         results = []
         random.seed(seed)
 
-        # Get the "ground truth" embedding: original unmasked sequence
+
         original_embedding = self.embedder.embed_pooled(sequence)
 
         for ratio in self.config.masking_ratios:
-            # Create masked sequence
+
             masked_sequence = self._mask_sequence(sequence, ratio, seed)
 
-            # Embed the masked sequence
+
             masked_embedding = self.embedder.embed_pooled(masked_sequence)
 
-            # Compute all metrics
+
             metrics = compute_all_metrics(original_embedding, masked_embedding)
 
-            # Check if passed (using cosine distance)
+
             passed = metrics["cosine_distance"] <= self.config.cosine_threshold
 
             result = {
@@ -309,11 +309,11 @@ class MaskingRobustnessOracle:
         if ratio >= 1:
             return self.MASK_TOKEN * len(sequence)
 
-        random.seed(seed + int(ratio * 1000))  # Different seed per ratio
+        random.seed(seed + int(ratio * 1000))
         seq_list = list(sequence)
         n_mask = int(len(sequence) * ratio)
 
-        # Select positions to mask
+
         positions = random.sample(range(len(sequence)), n_mask)
 
         for pos in positions:
@@ -322,9 +322,9 @@ class MaskingRobustnessOracle:
         return "".join(seq_list)
 
 
-# ============================================================================
-# PYTEST FIXTURES
-# ============================================================================
+
+
+
 
 
 @pytest.fixture(scope="module")
@@ -356,7 +356,7 @@ def esm2_t6_8m_embedder():
             device="cpu",
         )
 
-        # Wrap in a compatible interface
+
         return ESM2EmbedderWrapper(embedding_service)
 
     except ImportError as e:
@@ -379,7 +379,7 @@ class ESM2EmbedderWrapper:
 
     def embed(self, sequence: str) -> np.ndarray:
         """Embed single sequence, returning per-residue embeddings."""
-        # generate_embeddings yields tuples
+
         results = list(
             self.embedding_service.generate_embeddings(
                 input_data=[sequence], reduce=False
@@ -423,13 +423,13 @@ def test_sequences() -> List[str]:
 @pytest.fixture(scope="module")
 def filler_sequences() -> List[str]:
     """Filler sequences for batch creation from canonical dataset."""
-    # Use edge case sequences as fillers for diversity
+
     return get_test_sequences(categories=["edge_case"])
 
 
-# ============================================================================
-# TEST CLASSES
-# ============================================================================
+
+
+
 
 
 class TestBatchInvarianceFixedEmbedder:
@@ -449,18 +449,18 @@ class TestBatchInvarianceFixedEmbedder:
         )
 
         all_results = []
-        for seq in test_sequences[:3]:  # Test first 3 sequences
+        for seq in test_sequences[:3]:
             results = oracle.verify(seq, filler_sequences)
             all_results.extend(results)
 
-        # Print results table
+
         table = format_metrics_table(
             all_results,
             title="Batch Invariance Oracle - FixedEmbedder",
         )
         print(table)
 
-        # Assert all tests passed
+
         for result in all_results:
             assert result["passed"], (
                 f"Batch invariance failed for {result['parameter']}: "
@@ -485,18 +485,18 @@ class TestMaskingRobustnessFixedEmbedder:
         )
 
         all_results = []
-        for seq in test_sequences[:3]:  # Test first 3 sequences
+        for seq in test_sequences[:3]:
             results = oracle.verify(seq)
             all_results.extend(results)
 
-        # Print results table
+
         table = format_metrics_table(
             all_results,
             title="Masking Robustness Oracle - FixedEmbedder",
         )
         print(table)
 
-        # Assert all tests passed
+
         for result in all_results:
             assert result["passed"], (
                 f"Masking robustness failed for {result['parameter']}: "
@@ -523,18 +523,18 @@ class TestBatchInvarianceESM2:
         )
 
         all_results = []
-        for seq in test_sequences[:2]:  # Test first 2 sequences (real model is the slower one)
+        for seq in test_sequences[:2]:
             results = oracle.verify(seq, filler_sequences)
             all_results.extend(results)
 
-        # Print results table
+
         table = format_metrics_table(
             all_results,
             title="Batch Invariance Oracle - ESM2-T6-8M",
         )
         print(table)
 
-        # Assert all tests passed
+
         for result in all_results:
             assert result["passed"], (
                 f"Batch invariance failed for {result['parameter']}: "
@@ -560,18 +560,18 @@ class TestMaskingRobustnessESM2:
         )
 
         all_results = []
-        for seq in test_sequences[:2]:  # Test first 2 sequences (again real model is slower)
+        for seq in test_sequences[:2]:
             results = oracle.verify(seq)
             all_results.extend(results)
 
-        # Print results table
+
         table = format_metrics_table(
             all_results,
             title="Masking Robustness Oracle - ESM2-T6-8M",
         )
         print(table)
 
-        # Assert all tests passed
+
         for result in all_results:
             assert result["passed"], (
                 f"Masking robustness failed for {result['parameter']}: "
@@ -580,9 +580,9 @@ class TestMaskingRobustnessESM2:
             )
 
 
-# ============================================================================
-# SESSION CLEANUP - WRITE CSV REPORT
-# ============================================================================
+
+
+
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -590,12 +590,12 @@ def write_oracle_report(request):
     """Write accumulated oracle results to CSV after module completes."""
     yield
 
-    # Write results to CSV
+
     results = get_oracle_results()
     if results:
         report_path = get_default_report_path()
         write_metrics_csv(results, report_path)
         print(f"\n📊 Oracle metrics report written to: {report_path}")
 
-    # Clear results for next module
+
     clear_oracle_results()

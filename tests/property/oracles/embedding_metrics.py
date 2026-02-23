@@ -36,10 +36,10 @@ def compute_cosine_distance(a: np.ndarray, b: np.ndarray) -> float:
     norm_b = np.linalg.norm(b_flat)
 
     if norm_a == 0 or norm_b == 0:
-        return 1.0  # Maximum distance for zero vectors
+        return 1.0
 
     cosine_similarity = np.dot(a_flat, b_flat) / (norm_a * norm_b)
-    # Clamp to [-1, 1] to handle numerical errors
+
     cosine_similarity = np.clip(cosine_similarity, -1.0, 1.0)
     return float(1.0 - cosine_similarity)
 
@@ -79,17 +79,17 @@ def compute_kl_divergence(a: np.ndarray, b: np.ndarray, epsilon: float = 1e-10) 
     a_flat = _ensure_1d(a)
     b_flat = _ensure_1d(b)
 
-    # Convert to probability distributions using softmax
+
     p = softmax(a_flat)
     q = softmax(b_flat)
 
-    # Add epsilon to avoid log(0)
-    q = q + epsilon
-    q = q / q.sum()  # Re-normalize after adding epsilon
 
-    # Compute KL divergence
+    q = q + epsilon
+    q = q / q.sum()
+
+
     kl = np.sum(p * np.log(p / q))
-    return float(max(0.0, kl))  # Ensure non-negative due to numerical errors
+    return float(max(0.0, kl))
 
 
 def compute_all_metrics(a: np.ndarray, b: np.ndarray) -> Dict[str, float]:
@@ -123,7 +123,7 @@ def _ensure_1d(arr: np.ndarray) -> np.ndarray:
     if arr.ndim == 1:
         return arr
     elif arr.ndim == 2:
-        # Mean pool over sequence dimension (axis 0)
+
         return arr.mean(axis=0)
     else:
         raise ValueError(f"Expected 1D or 2D array, got {arr.ndim}D")
@@ -147,26 +147,26 @@ def format_metrics_table(
     if not results:
         return "No results to display."
 
-    # Column headers and widths
+
     headers = ["Embedder", "Test Type", "Parameter", "Cosine", "L2", "KL", "Threshold", "Passed"]
     col_widths = [15, 20, 12, 10, 10, 10, 10, 8]
 
     lines = []
 
-    # Add title if provided
+
     if title:
         lines.append(f"\n{'=' * 97}")
         lines.append(f"  {title}")
         lines.append(f"{'=' * 97}")
 
-    # Header row
+
     header_row = " | ".join(
         h.ljust(w) for h, w in zip(headers, col_widths)
     )
     lines.append(header_row)
     lines.append("-" * len(header_row))
 
-    # Data rows
+
     for row in results:
         values = [
             str(row.get("embedder", ""))[:15],
@@ -203,7 +203,7 @@ def write_metrics_csv(
     """
     path = Path(path)
 
-    # Ensure parent directory exists
+
     path.parent.mkdir(parents=True, exist_ok=True)
 
     fieldnames = [
@@ -223,7 +223,7 @@ def write_metrics_csv(
         writer.writeheader()
 
         for row in results:
-            # Ensure all required fields exist
+
             csv_row = {
                 "timestamp": row.get("timestamp", datetime.now().isoformat()),
                 "embedder": row.get("embedder", ""),

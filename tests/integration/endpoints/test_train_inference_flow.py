@@ -9,7 +9,7 @@ from typing import Dict, List
 
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 
-# Standard sequences for inference testing
+
 STANDARD_SEQUENCES = {
     "standard_001": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
     "standard_002": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
@@ -134,7 +134,7 @@ class TestConfigOptionsEndpoint:
             assert e.response.status_code in (400, 500)
             return
 
-        # Server returns 500 for unrecognized protocols (internal handling error)
+
         assert response.status_code in [400, 500]
 
 
@@ -187,7 +187,7 @@ class TestVerifyConfigEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        # Should have non-empty error message
+
         assert data.get("error") != ""
 
 
@@ -254,7 +254,7 @@ class TestStartTrainingEndpoint:
             }
         )
 
-        # Should be rejected with validation error
+
         assert response.status_code == 422
 
     @pytest.mark.integration
@@ -275,7 +275,7 @@ class TestStartTrainingEndpoint:
             }
         )
 
-        # Should be rejected
+
         assert response.status_code in [400, 422]
 
 
@@ -297,7 +297,7 @@ class TestStartInferenceEndpoint:
             }
         )
 
-        # Should be rejected with validation error
+
         assert response.status_code == 422
 
     @pytest.mark.integration
@@ -314,7 +314,7 @@ class TestStartInferenceEndpoint:
             }
         )
 
-        # Either creates task or model not found
+
         assert response.status_code in [200, 404]
 
 
@@ -333,79 +333,79 @@ class TestModelFilesEndpoint:
                 "/custom_models_service/model_files",
                 json={"model_hash": "non-existent-model-xyz"}
             )
-            # Server returns 404 or 500 for non-existent model
+
             assert response.status_code in [404, 500]
         except Exception as e:
-            # StorageError from SeaweedFS is acceptable - it means the server
-            # correctly tried to fetch a non-existent model
+
+
             assert "404" in str(e) or "Not Found" in str(e) or "StorageError" in str(e)
 
-# Not realistic in standard github CI setting due to resource constraints
-# class TestTrainingTaskLifecycle:
-#     """
-#     Tests for training task lifecycle management.
-#     """
 
-#     @pytest.mark.integration
-#     def test_training_task_ids_are_unique(
-#         self,
-#         client,
-#         classification_config,
-#         classification_training_data,
-#     ):
-#         """Test that multiple training submissions get unique task IDs."""
-#         task_ids = set()
 
-#         for _ in range(3):
-#             try:
-#                 response = client.post(
-#                     "/custom_models_service/start_training",
-#                     json={
-#                         "config_dict": classification_config,
-#                         "training_data": classification_training_data,
-#                     }
-#                 )
-#             except httpx.RemoteProtocolError:
-#                 # Server may disconnect under heavy load, continue with collected IDs
-#                 break
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             
-#             if response.status_code == 200:
-#                 task_id = response.json().get("task_id")
-#                 if task_id:
-#                     task_ids.add(task_id)
 
-#         # All task IDs should be unique (if any were returned)
-#         if task_ids:
-#             assert len(task_ids) == min(3, len(task_ids))
 
-#     @pytest.mark.integration
-#     @pytest.mark.slow
-#     def test_training_task_completes(
-#         self,
-#         client,
-#         poll_task,
-#         classification_config,
-#         classification_training_data,
-#     ):
-#         """Test that training task eventually completes."""
-#         # Start training
-#         response = client.post(
-#             "/custom_models_service/start_training",
-#             json={
-#                 "config_dict": classification_config,
-#                 "training_data": classification_training_data,
-#             }
-#         )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         
-#         assert response.status_code == 200
-#         task_id = response.json()["task_id"]
 
-#         # Poll for completion
-#         result = poll_task(task_id, timeout=300)  # 5 minutes for training
 
-#         assert result is not None
-#         # Task should reach a terminal state (case-insensitive)
-#         assert result.get("status", "").upper() in ["FINISHED", "FAILED"]
+
+
+
+
+
+
+
 
 
 @pytest.mark.order(7)
@@ -427,10 +427,10 @@ class TestEndToEndTrainInferenceFlow:
         inference_sequences,
     ):
         """Test complete train then inference flow."""
-        # Flush any pending jobs from previous tests to free memory
+
         flush_redis()
         
-        # Step 1: Start training
+
         try:
             train_response = client.post(
                 "/custom_models_service/start_training",
@@ -445,7 +445,7 @@ class TestEndToEndTrainInferenceFlow:
         assert train_response.status_code == 200
         train_task_id = train_response.json()["task_id"]
 
-        # Step 2: Wait for training to complete
+
         train_result = poll_task(train_task_id, timeout=400)
         
         assert train_result is not None
@@ -454,14 +454,14 @@ class TestEndToEndTrainInferenceFlow:
             pytest.skip("Training failed (likely due to CI resource constraints)")
         assert train_status == "FINISHED"
 
-        # Extract model_hash from biotrainer result
+
         biotrainer_result = train_result.get("biotrainer_result", {})
         model_hash = biotrainer_result.get("derived_values", {}).get("model_hash")
         
         if not model_hash:
             pytest.fail(f"model_hash not found in training result: {train_result}")
 
-        # Step 3: Run inference with the trained model
+
         inference_response = client.post(
             "/custom_models_service/start_inference",
             json={
@@ -473,7 +473,7 @@ class TestEndToEndTrainInferenceFlow:
         assert inference_response.status_code == 200
         inference_task_id = inference_response.json()["task_id"]
 
-        # Step 4: Wait for inference to complete
+
         inference_result = poll_task(inference_task_id, timeout=380)
         
         assert inference_result is not None
@@ -491,10 +491,10 @@ class TestEndToEndTrainInferenceFlow:
         classification_training_data,
     ):
         """Test retrieving model files after training completes."""
-        # Flush any pending jobs from previous tests to free memory
+
         flush_redis()
         
-        # Train a model
+
         train_response = client.post(
             "/custom_models_service/start_training",
             json={
@@ -506,7 +506,7 @@ class TestEndToEndTrainInferenceFlow:
         assert train_response.status_code == 200
         train_task_id = train_response.json()["task_id"]
 
-        # Wait for training to complete
+
         train_result = poll_task(train_task_id, timeout=500)
         
         assert train_result is not None
@@ -515,14 +515,14 @@ class TestEndToEndTrainInferenceFlow:
             pytest.skip("Training failed (likely due to CI resource constraints)")
         assert train_status == "FINISHED"
 
-        # Extract model_hash from biotrainer result
+
         biotrainer_result = train_result.get("biotrainer_result", {})
         model_hash = biotrainer_result.get("derived_values", {}).get("model_hash")
         
         if not model_hash:
             pytest.fail(f"model_hash not found in training result: {train_result}")
 
-        # Get model files using the actual model_hash (not task_id)
+
         files_response = client.post(
             "/custom_models_service/model_files",
             json={"model_hash": model_hash}
@@ -548,7 +548,7 @@ class TestTrainingDataValidation:
         classification_config,
     ):
         """Test training with proper train/val split."""
-        # Data with explicit train/val split using canonical dataset
+
         training_data = [
             {"seq_id": "train_1", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence, "label": "A", "set": "train"},
             {"seq_id": "val_1", "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence, "label": "B", "set": "val"},
