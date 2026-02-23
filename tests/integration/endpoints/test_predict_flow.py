@@ -29,8 +29,8 @@ def prediction_sequences(shared_embedding_sequences) -> Dict[str, str]:
 def boundary_length_sequences() -> Dict[str, str]:
     """Sequences at or near the minimum length boundary for prediction."""
     return {
-        "short_5": CANONICAL_TEST_DATASET.get_by_id("length_short_5").sequence,  # 5 aa - below min
-        "short_10": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,  # 10 aa - above min
+        "short_5": CANONICAL_TEST_DATASET.get_by_id("length_short_5").sequence,
+        "short_10": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
     }
 
 
@@ -58,7 +58,7 @@ class TestModelMetadataEndpoint:
         response = client.get("/prediction_service/model_metadata")
         metadata = response.json()["metadata"]
 
-        # Each model should have metadata
+
         for model_meta in metadata:
             assert isinstance(model_meta, dict)
             assert "name" in model_meta
@@ -96,7 +96,7 @@ class TestPredictEndpoint:
 
         response = client.post("/prediction_service/predict", json=request_data)
 
-        # should be returning 422 for invalid values
+
         assert response.status_code == 422
 
     @pytest.mark.integration
@@ -104,7 +104,7 @@ class TestPredictEndpoint:
         """Test that empty sequence input is rejected with proper error."""
         request_data = {
             "model_names": ["BindEmbed"],
-            "sequence_input": {},  # Empty
+            "sequence_input": {},
         }
 
         response = client.post("/prediction_service/predict", json=request_data)
@@ -138,7 +138,7 @@ class TestPredictEndpoint:
     ):
         """Test that empty model names list is rejected with proper error."""
         request_data = {
-            "model_names": [],  # Empty model list
+            "model_names": [],
             "sequence_input": prediction_sequences,
         }
 

@@ -30,8 +30,8 @@ class ESM2EmbedderAdapter:
         Returns:
             np.ndarray of shape (sequence_length, embedding_dim)
         """
-        # generate_embeddings yields (id, embedding) tuples
-        # For a single sequence, we pass it as a dict and get back one result
+
+
         results = list(self._service.generate_embeddings(
             input_data={sequence: sequence},
             reduce=False,
@@ -158,12 +158,12 @@ def large_batch() -> List[str]:
 def variable_length_sequences() -> List[str]:
     """Sequences with varying lengths from canonical dataset."""
     ids = [
-        "length_min_1",      # 1 aa
-        "length_short_5",    # 5 aa
-        "length_short_10",   # 10 aa
-        "length_medium_50",  # 49 aa
-        "standard_001",      # 79 aa
-        "length_long_200",   # 211 aa
-        "length_very_long_400",  # 400 aa
+        "length_min_1",
+        "length_short_5",
+        "length_short_10",
+        "length_medium_50",
+        "standard_001",
+        "length_long_200",
+        "length_very_long_400",
     ]
     return [CANONICAL_TEST_DATASET.get_by_id(id).sequence for id in ids]

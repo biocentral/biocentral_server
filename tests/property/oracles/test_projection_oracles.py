@@ -21,9 +21,9 @@ from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 from tests.fixtures.fixed_embedder import FixedEmbedder
 
 
-# ============================================================================
-# ORACLE RESULT STORAGE
-# ============================================================================
+
+
+
 
 _projection_oracle_results: List[Dict[str, Any]] = []
 
@@ -45,9 +45,9 @@ def clear_projection_oracle_results() -> None:
     _projection_oracle_results.clear()
 
 
-# ============================================================================
-# ORACLE CONFIGURATION
-# ============================================================================
+
+
+
 
 
 @dataclass
@@ -56,10 +56,10 @@ class ProjectionOracleConfig:
 
     method: str
     n_components: int = 2
-    distance_correlation_threshold: float = 0.5  # Minimum acceptable correlation
+    distance_correlation_threshold: float = 0.5
 
 
-# Pre-defined configurations for common projection methods
+
 PROJECTION_ORACLE_CONFIGS = {
     "umap": ProjectionOracleConfig(
         method="umap",
@@ -79,9 +79,9 @@ PROJECTION_ORACLE_CONFIGS = {
 }
 
 
-# ============================================================================
-# PROJECTOR PROTOCOL
-# ============================================================================
+
+
+
 
 
 class ProjectorProtocol(Protocol):
@@ -97,9 +97,9 @@ class ProjectorProtocol(Protocol):
         ...
 
 
-# ============================================================================
-# MOCK PROJECTOR FOR TESTING
-# ============================================================================
+
+
+
 
 
 class MockProjector:
@@ -116,7 +116,7 @@ class MockProjector:
         """Get deterministic seed from embeddings."""
         import hashlib
         
-        # Create hash from all embedding values
+
         combined = np.concatenate([emb.flatten() for emb in embeddings.values()])
         hash_bytes = hashlib.sha256(combined.tobytes()).digest()
         return int.from_bytes(hash_bytes[:4], "big")
@@ -131,34 +131,34 @@ class MockProjector:
         seed = self._get_seed(embeddings)
         rng = np.random.default_rng(seed)
 
-        # Create projection matrix (simulates dimensionality reduction)
+
         if embeddings:
             first_emb = next(iter(embeddings.values()))
             input_dim = first_emb.shape[-1] if len(first_emb.shape) > 0 else 1
         else:
-            input_dim = 320  # Default ESM2 dimension
+            input_dim = 320
 
-        # Generate a consistent projection matrix
+
         proj_matrix = rng.standard_normal((input_dim, n_components))
         proj_matrix /= np.linalg.norm(proj_matrix, axis=0, keepdims=True)
 
-        # Project each embedding
+
         projections = {}
         for seq_id, emb in embeddings.items():
-            # Use mean pooling if per-residue
+
             if len(emb.shape) > 1:
                 emb = emb.mean(axis=0)
             
-            # Project and normalize to reasonable range
+
             proj = emb @ proj_matrix
             projections[seq_id] = proj.astype(np.float32)
 
         return projections
 
 
-# ============================================================================
-# PROJECTION DETERMINISM ORACLE
-# ============================================================================
+
+
+
 
 
 class ProjectionDeterminismOracle:
@@ -198,7 +198,7 @@ class ProjectionDeterminismOracle:
             )
             projections_list.append(proj)
 
-        # Check all projections are identical
+
         first = projections_list[0]
         all_identical = all(
             self._projections_equal(first, p) for p in projections_list[1:]
@@ -228,9 +228,9 @@ class ProjectionDeterminismOracle:
         return True
 
 
-# ============================================================================
-# DIMENSIONALITY ORACLE
-# ============================================================================
+
+
+
 
 
 class DimensionalityOracle:
@@ -286,9 +286,9 @@ class DimensionalityOracle:
         return result
 
 
-# ============================================================================
-# VALUE VALIDITY ORACLE
-# ============================================================================
+
+
+
 
 
 class ProjectionValueValidityOracle:
@@ -304,7 +304,7 @@ class ProjectionValueValidityOracle:
         self,
         projector: ProjectorProtocol,
         config: ProjectionOracleConfig,
-        max_abs_value: float = 1000.0,  # Reasonable upper bound
+        max_abs_value: float = 1000.0,
     ):
         self.projector = projector
         self.config = config
@@ -328,11 +328,11 @@ class ProjectionValueValidityOracle:
 
         issues = []
         for seq_id, proj in projections.items():
-            # Check for NaN/Inf
+
             if not np.isfinite(proj).all():
                 issues.append(f"{seq_id}: contains NaN or Inf values")
 
-            # Check bounds
+
             if np.abs(proj).max() > self.max_abs_value:
                 issues.append(
                     f"{seq_id}: values exceed bounds "
@@ -352,9 +352,9 @@ class ProjectionValueValidityOracle:
         return result
 
 
-# ============================================================================
-# DISTANCE PRESERVATION ORACLE
-# ============================================================================
+
+
+
 
 
 class DistancePreservationOracle:
@@ -397,7 +397,7 @@ class DistancePreservationOracle:
             self.config.n_components,
         )
 
-        # Compute pairwise distances in original space
+
         seq_ids = list(embeddings.keys())
         original_dists = []
         projected_dists = []
@@ -406,7 +406,7 @@ class DistancePreservationOracle:
             for j in range(i + 1, len(seq_ids)):
                 id_i, id_j = seq_ids[i], seq_ids[j]
 
-                # Original distance (using pooled embeddings)
+
                 emb_i = embeddings[id_i]
                 emb_j = embeddings[id_j]
                 if len(emb_i.shape) > 1:
@@ -415,7 +415,7 @@ class DistancePreservationOracle:
                     emb_j = emb_j.mean(axis=0)
                 orig_dist = np.linalg.norm(emb_i - emb_j)
 
-                # Projected distance
+
                 proj_dist = np.linalg.norm(
                     projections[id_i] - projections[id_j]
                 )
@@ -423,10 +423,10 @@ class DistancePreservationOracle:
                 original_dists.append(orig_dist)
                 projected_dists.append(proj_dist)
 
-        # Compute correlation
+
         correlation = np.corrcoef(original_dists, projected_dists)[0, 1]
         
-        # Handle edge case of constant values
+
         if np.isnan(correlation):
             correlation = 0.0
 
@@ -444,9 +444,9 @@ class DistancePreservationOracle:
         return result
 
 
-# ============================================================================
-# PYTEST FIXTURES
-# ============================================================================
+
+
+
 
 
 @pytest.fixture(scope="module")
@@ -501,9 +501,9 @@ def diverse_test_embeddings() -> Dict[str, np.ndarray]:
     return embedder.embed_dict(sequences, pooled=True)
 
 
-# ============================================================================
-# TEST CLASSES
-# ============================================================================
+
+
+
 
 
 class TestProjectionDeterminism:
@@ -642,7 +642,7 @@ class TestDistancePreservation:
         )
 
         result = oracle.verify(test_embeddings)
-        # UMAP may have lower correlation, that's expected
+
         print(f"UMAP distance correlation: {result.get('correlation', 'N/A')}")
         assert result["passed"], (
             f"Distance preservation failed: correlation={result['correlation']:.3f} "
@@ -650,9 +650,9 @@ class TestDistancePreservation:
         )
 
 
-# ============================================================================
-# SESSION CLEANUP
-# ============================================================================
+
+
+
 
 
 @pytest.fixture(scope="module", autouse=True)

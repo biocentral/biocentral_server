@@ -11,7 +11,7 @@ def disable_strict_dataset(monkeypatch):
     original_init = FixedEmbedder.__init__
     
     def patched_init(self, *args, strict_dataset=False, **kwargs):
-        # Force strict_dataset=False for unit tests
+
         return original_init(self, *args, strict_dataset=False, **kwargs)
     
     monkeypatch.setattr(FixedEmbedder, "__init__", patched_init)

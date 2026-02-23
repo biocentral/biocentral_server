@@ -33,7 +33,7 @@ class TestCommonEmbeddersEndpoint:
         assert response.status_code == 200
         embedders = response.json()
         
-        # Baseline models for testing (fast, no downloads needed)
+
         assert "one_hot_encoding" in embedders
         assert "blosum62" in embedders
 
@@ -65,7 +65,7 @@ class TestEmbedEndpoint:
         request_data = {
             "embedder_name": embedder_name,
             "reduce": False,
-            "sequence_data": {},  # Empty - should fail validation
+            "sequence_data": {},
             "use_half_precision": True,
         }
 
@@ -82,7 +82,7 @@ class TestEmbedEndpoint:
     ):
         """Test that missing embedder name is rejected with proper error."""
         request_data = {
-            # Missing embedder_name
+
             "reduce": False,
             "sequence_data": short_test_sequences,
             "use_half_precision": True,
@@ -117,7 +117,7 @@ class TestEndToEndEmbedFlow:
         IMPORTANT: This test pre-computes reduced embeddings for sequences
         that will be reused by projection tests.
         """
-        # Check cache BEFORE embedding
+
         print("\n[BEFORE EMBEDDING] Checking cache status...")
         verify_embedding_cache(expect_cached=False)
        
@@ -128,17 +128,17 @@ class TestEndToEndEmbedFlow:
             "use_half_precision": False,
         }
 
-        # Submit embedding task
+
         response = client.post("/embeddings_service/embed", json=request_data)
         assert response.status_code == 200, f"Failed to submit embedding task: {response.text}"
         
         task_id = response.json()["task_id"]
         print(f"[EMBEDDING] Submitted task {task_id}, waiting for completion...")
         
-        # Wait for completion - poll_task handles retries internally
+
         result = poll_task(task_id, timeout=480, max_consecutive_errors=15)
         
-        # Verify task succeeded (not just reached terminal state)
+
         task_status = result["status"].upper()
         assert task_status in ("FINISHED", "COMPLETED", "DONE"), \
             f"Embedding task failed with status '{task_status}': {result.get('error', 'unknown error')}"

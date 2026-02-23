@@ -39,7 +39,7 @@ class TestModelMetadataEndpoint:
         """Test that model metadata endpoint returns available models."""
         mock_rate_limiter.return_value = lambda: None
 
-        # Create a real ModelMetadata instance that Pydantic will accept
+
         from biocentral_server.predict.models.base_model.model_metadata import (
             ModelMetadata,
             ModelOutput,
@@ -90,13 +90,13 @@ class TestModelMetadataEndpoint:
         import pydantic_core
 
         mock_rate_limiter.return_value = lambda: None
-        mock_get_metadata.return_value = []  # Return empty list
+        mock_get_metadata.return_value = []
 
-        # The TestClient raises the ResponseValidationError by default
+
         with pytest.raises(pydantic_core.ValidationError) as exc_info:
             predict_client.get("/prediction_service/model_metadata")
         
-        # Verify it's about the min_length constraint
+
         assert "too_short" in str(exc_info.value)
 
 
@@ -121,7 +121,7 @@ class TestPredictEndpoint:
         from biocentral_server.predict.models import BiocentralPredictionModel
 
         mock_rate_limiter.return_value = lambda: None
-        # Return list of objects with .name attribute matching the enum
+
         mock_metadata = MagicMock()
         mock_metadata.name = BiocentralPredictionModel.BindEmbed
         mock_get_metadata.return_value = [mock_metadata]
@@ -163,7 +163,7 @@ class TestPredictEndpoint:
 
         response = predict_client.post("/prediction_service/predict", json=request_data)
 
-        # Invalid enum value causes validation error
+
         assert response.status_code == 422
 
     @patch("biocentral_server.predict.predict_endpoint.RateLimiter")
@@ -178,7 +178,7 @@ class TestPredictEndpoint:
 
         response = predict_client.post("/prediction_service/predict", json=request_data)
 
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
     @patch("biocentral_server.predict.predict_endpoint.RateLimiter")
     def test_predict_empty_sequences(self, mock_rate_limiter, predict_client):
@@ -192,7 +192,7 @@ class TestPredictEndpoint:
 
         response = predict_client.post("/prediction_service/predict", json=request_data)
 
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
     @patch("biocentral_server.predict.predict_endpoint.RateLimiter")
     def test_predict_sequence_too_short(self, mock_rate_limiter, predict_client):
@@ -201,12 +201,12 @@ class TestPredictEndpoint:
 
         request_data = {
             "model_names": ["BindEmbed"],
-            "sequence_input": {"protein1": "MVL"},  # Too short (min is 7)
+            "sequence_input": {"protein1": "MVL"},
         }
 
         response = predict_client.post("/prediction_service/predict", json=request_data)
 
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
     @patch("biocentral_server.predict.predict_endpoint.RateLimiter")
     def test_predict_sequence_too_long(self, mock_rate_limiter, predict_client):
@@ -215,9 +215,9 @@ class TestPredictEndpoint:
 
         request_data = {
             "model_names": ["BindEmbed"],
-            "sequence_input": {"protein1": "M" * 5001},  # Too long (max is 5000)
+            "sequence_input": {"protein1": "M" * 5001},
         }
 
         response = predict_client.post("/prediction_service/predict", json=request_data)
 
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422

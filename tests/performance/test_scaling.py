@@ -34,12 +34,12 @@ class TestSequenceLengthScaling:
             elapsed = time.perf_counter() - start
             times.append(elapsed / iterations)
 
-        # Check scaling factor between consecutive lengths
+
         for i in range(1, len(lengths)):
             length_ratio = lengths[i] / lengths[i - 1]
             time_ratio = times[i] / times[i - 1]
 
-            # Allow up to 3x deviation from linear
+
             assert time_ratio < length_ratio * 3, (
                 f"Non-linear scaling: length {lengths[i-1]}->{lengths[i]}, "
                 f"expected ~{length_ratio:.1f}x, got {time_ratio:.1f}x"
@@ -66,7 +66,7 @@ class TestSequenceLengthScaling:
                 }
             )
 
-        # Print results table
+
         print("\n\nSequence Length Scaling:")
         print("-" * 60)
         print(f"{'Length':>8} {'Mean (ms)':>12} {'Std (ms)':>12} {'Min-Max (ms)':>16}")
@@ -84,7 +84,7 @@ class TestBatchSizeScaling:
 
     def test_linear_scaling_with_batch_size(self, perf_embedder, canonical_sequences):
         """Time should scale O(n) with batch size."""
-        # Use subsets of canonical sequences
+
         batch_sizes = [2, 5, 10, 15, len(canonical_sequences)]
         times = []
 
@@ -97,7 +97,7 @@ class TestBatchSizeScaling:
 
             times.append(elapsed)
 
-        # Check scaling
+
         for i in range(1, len(batch_sizes)):
             size_ratio = batch_sizes[i] / batch_sizes[i - 1]
             time_ratio = times[i] / times[i - 1]
@@ -109,7 +109,7 @@ class TestBatchSizeScaling:
 
     def test_collect_batch_scaling_data(self, perf_embedder, canonical_sequences):
         """Collect batch scaling data for analysis."""
-        # Use increasing subsets of canonical sequences
+
         total = len(canonical_sequences)
         batch_sizes = [1, 5, 10, 15, total]
         results = []
@@ -131,7 +131,7 @@ class TestBatchSizeScaling:
                 }
             )
 
-        # Print results
+
         print("\n\nBatch Size Scaling:")
         print("-" * 50)
         print(f"{'Batch Size':>12} {'Total (ms)':>12} {'Per Seq (ms)':>14}")
@@ -148,17 +148,17 @@ class TestSequentialVsBatch:
 
     def test_batch_vs_sequential(self, perf_embedder, medium_batch):
         """Compare batch vs sequential performance."""
-        # Sequential
+
         start = time.perf_counter()
         sequential_results = [perf_embedder.embed(seq) for seq in medium_batch]
         sequential_time = time.perf_counter() - start
 
-        # Batch
+
         start = time.perf_counter()
         batch_results = perf_embedder.embed_batch(medium_batch)
         batch_time = time.perf_counter() - start
 
-        # Results should be identical
+
         for seq_result, batch_result in zip(sequential_results, batch_results):
             np.testing.assert_array_equal(seq_result, batch_result)
 

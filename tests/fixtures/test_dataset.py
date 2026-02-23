@@ -35,7 +35,7 @@ class TestDataset:
 
 CANONICAL_TEST_DATASET = TestDataset(
     sequences=[
-        # Standard sequences
+
         TestSequence(
             id="standard_001",
             sequence="MKTAYIAKQRQISFV",
@@ -51,7 +51,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MVHLTPEEKSAVTALWGALG",
             description="Hemoglobin-like sequence (20 aa)",
         ),
-        # Length edge cases
+
         TestSequence(
             id="length_min_1",
             sequence="M",
@@ -87,7 +87,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MKTAYIAK" * 50,
             description="Very long repetitive sequence (400 aa)",
         ),
-        # Unknown token (X) edge cases
+
         TestSequence(
             id="unknown_single",
             sequence="X",
@@ -123,7 +123,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MXXXXXKXXXXXAXXXX",
             description="High ratio of unknown residues (~70%)",
         ),
-        # Amino acid composition edge cases
+
         TestSequence(
             id="all_standard_aa",
             sequence="ACDEFGHIKLMNPQRSTVWY",
@@ -159,7 +159,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MCCKCCMCCKCCKCCMCCKCCKCCM",
             description="Cysteine-rich sequence (25 aa) - disulfide potential",
         ),
-        # Special characters and ambiguous codes
+
         TestSequence(
             id="ambiguous_B",
             sequence="MKTABIAK",
@@ -185,7 +185,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MKTAOIAK",
             description="Contains O (Pyrrolysine)",
         ),
-        # Structural motifs
+
         TestSequence(
             id="motif_alpha_helix",
             sequence="AEEAAKAAEEAAKAAEEAAKAAEEAAK",
@@ -201,7 +201,7 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="GGGGGGGGGGGGGGG",
             description="Glycine-rich flexible loop (15 aa)",
         ),
-        # real world sequences - probably unnecessary 
+
         TestSequence(
             id="real_insulin_b",
             sequence="FVNQHLCGSHLVEALYLVCGERGFFYTPKT",
@@ -237,7 +237,7 @@ def get_test_sequences(categories: Optional[List[str]] = None) -> List[str]:
     if categories is None:
         return CANONICAL_TEST_DATASET.get_all_sequences()
 
-    # Map category names to sequence ID prefixes
+
     category_prefixes = {
         "standard": ["standard_"],
         "length": ["length_"],
@@ -251,13 +251,13 @@ def get_test_sequences(categories: Optional[List[str]] = None) -> List[str]:
                       "proline_", "cysteine_", "all_standard_aa"],
     }
 
-    # Collect all prefixes for requested categories
+
     prefixes = []
     for cat in categories:
         if cat in category_prefixes:
             prefixes.extend(category_prefixes[cat])
 
-    # Filter sequences by ID prefix
+
     result = []
     for seq in CANONICAL_TEST_DATASET.sequences:
         if any(seq.id.startswith(prefix) for prefix in prefixes):

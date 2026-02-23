@@ -7,10 +7,10 @@ from dataclasses import dataclass, field
 
 @dataclass
 class FixedEmbedderConfig:
-    embedding_dim: int = 320  # Default ESM2_t6 dimension 
+    embedding_dim: int = 320
     seed_base: int = 42
     noise_scale: float = 0.1
-    # Supported dimensions for different "models"
+
     model_dimensions: Dict[str, int] = field(
         default_factory=lambda: {
             "prot_t5": 1024,
@@ -43,9 +43,9 @@ class FixedEmbedder:
         strict_dataset: If True, only accept sequences from canonical test dataset
     """
 
-    # Amino acid vocabulary for validation
+
     AMINO_ACIDS = set("ACDEFGHIKLMNPQRSTVWY")
-    EXTENDED_AMINO_ACIDS = AMINO_ACIDS | set("BJOUXZ")  # Include ambiguous codes
+    EXTENDED_AMINO_ACIDS = AMINO_ACIDS | set("BJOUXZ")
 
     def __init__(
         self,
@@ -68,7 +68,7 @@ class FixedEmbedder:
         self.model_name = model_name
         self.config = FixedEmbedderConfig(seed_base=seed_base, noise_scale=noise_scale)
 
-        # Determine embedding dimension
+
         if embedding_dim is not None:
             self.embedding_dim = embedding_dim
         else:
@@ -80,12 +80,12 @@ class FixedEmbedder:
         self.noise_scale = noise_scale
         self.strict_dataset = strict_dataset
 
-        # Load allowed sequences from canonical dataset if strict mode
+
         self._allowed_sequences: Optional[set] = None
         if self.strict_dataset:
             self._allowed_sequences = self._load_canonical_sequences()
 
-        # Pre-compute amino acid base embeddings for consistency
+
         self._aa_embeddings = self._generate_aa_base_embeddings()
 
     def _load_canonical_sequences(self) -> set:
@@ -123,12 +123,12 @@ class FixedEmbedder:
         Returns:
             Integer seed derived from sequence hash
         """
-        # Normalize to uppercase for case-insensitive hashing
+
         normalized_sequence = sequence.upper()
-        # Combine sequence with seed base for reproducibility
+
         hash_input = f"{self.seed_base}:{normalized_sequence}".encode("utf-8")
         hash_bytes = hashlib.sha256(hash_input).digest()
-        # Use first 8 bytes as seed (enough for numpy)
+
         seed = int.from_bytes(hash_bytes[:8], byteorder="big") % (2**32)
         return seed
 
@@ -144,12 +144,12 @@ class FixedEmbedder:
             Dictionary mapping amino acid to base embedding vector
         """
         aa_embeddings = {}
-        all_aas = sorted(self.EXTENDED_AMINO_ACIDS | {"X", "-", "*"})  # Special chars
+        all_aas = sorted(self.EXTENDED_AMINO_ACIDS | {"X", "-", "*"})
 
         for i, aa in enumerate(all_aas):
-            # Deterministic seed for each amino acid
+
             rng = np.random.default_rng(self.seed_base + i * 1000)
-            # Generate base embedding with unit norm
+
             base = rng.standard_normal(self.embedding_dim).astype(np.float32)
             base = base / np.linalg.norm(base)
             aa_embeddings[aa] = base
@@ -160,7 +160,7 @@ class FixedEmbedder:
         """Get base embedding for amino acid, with fallback for unknown chars."""
         if aa in self._aa_embeddings:
             return self._aa_embeddings[aa]
-        # Fallback to 'X' (unknown) for any unrecognized character
+
         return self._aa_embeddings.get(
             "X", np.zeros(self.embedding_dim, dtype=np.float32)
         )
@@ -181,40 +181,40 @@ class FixedEmbedder:
         if not sequence:
             return np.zeros((0, self.embedding_dim), dtype=np.float32)
 
-        # Validate sequence against canonical dataset if strict mode
+
         self._validate_sequence(sequence)
 
         seq_len = len(sequence)
 
-        # Get sequence-specific seed
+
         seq_seed = self._sequence_to_seed(sequence)
         rng = np.random.default_rng(seq_seed)
 
-        # Build embedding: base (AA-specific) + positional + noise
+
         embeddings = np.zeros((seq_len, self.embedding_dim), dtype=np.float32)
 
         for pos, aa in enumerate(sequence):
-            # 1. Amino acid base component (semantic similarity)
+
             aa_base = self._get_aa_embedding(aa.upper())
 
-            # 2. Positional encoding component (position-specific)
+
             pos_seed = seq_seed + pos * 100
             pos_rng = np.random.default_rng(pos_seed)
             positional = (
                 pos_rng.standard_normal(self.embedding_dim).astype(np.float32) * 0.3
             )
 
-            # 3. Context noise component (sequence-specific variation)
+
             noise = (
                 rng.standard_normal(self.embedding_dim).astype(np.float32)
                 * self.noise_scale
             )
 
-            # Combine components
+
             embeddings[pos] = aa_base + positional + noise
 
-        # Normalize to have reasonable magnitude (similar to real embeddings)
-        # Real PLM embeddings typically have values in [-5, 5] range
+
+
         embeddings = embeddings / np.std(embeddings) * 1.0
 
         return embeddings
@@ -418,7 +418,7 @@ def get_expected_embedding_properties(model_name: str) -> Dict:
         "prot_t5": {
             "dimension": 1024,
             "dtype": np.float32,
-            "value_range": (-10.0, 10.0),  # Approximate range
+            "value_range": (-10.0, 10.0),
         },
         "esm2_t33": {
             "dimension": 1280,
@@ -507,12 +507,12 @@ def assert_embedding_valid(
     Raises:
         AssertionError: If embedding is invalid
     """
-    # Check shape
+
     assert validate_embedding_shape(
         embedding, sequence_length, model_name, pooled
     ), f"Invalid shape: {embedding.shape}"
 
-    # Check properties
+
     props = validate_embedding_properties(embedding, model_name)
     for prop_name, is_valid in props.items():
         assert is_valid, f"Embedding failed {prop_name} check"
