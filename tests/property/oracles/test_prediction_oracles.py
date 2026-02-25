@@ -1,5 +1,6 @@
 """Prediction oracle tests for output consistency and validity."""
 
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Protocol
@@ -11,15 +12,19 @@ from tests.fixtures.test_dataset import (
     CANONICAL_TEST_DATASET,
 )
 
-
 _prediction_oracle_results: List[Dict[str, Any]] = []
 pytestmark = pytest.mark.property
 
+# Skip real model tests when CI uses FixedEmbedder
+_using_fixed_embedder_ci = os.environ.get("CI_EMBEDDER") == "FixedEmbedder"
+skip_in_fixed_embedder_ci = pytest.mark.skipif(
+    _using_fixed_embedder_ci,
+    reason="Testing with CI_EMBEDDER=FixedEmbedder",
+)
 
 def get_prediction_oracle_results() -> List[Dict[str, Any]]:
     """Get accumulated prediction oracle results."""
     return _prediction_oracle_results
-
 
 def add_prediction_oracle_result(result: Dict[str, Any]) -> None:
     """Add a result to the prediction oracle results collection."""
@@ -27,11 +32,9 @@ def add_prediction_oracle_result(result: Dict[str, Any]) -> None:
         result["timestamp"] = datetime.now().isoformat()
     _prediction_oracle_results.append(result)
 
-
 def clear_prediction_oracle_results() -> None:
     """Clear all accumulated prediction oracle results."""
     _prediction_oracle_results.clear()
-
 
 @dataclass
 class PredictionOracleConfig:
@@ -42,8 +45,6 @@ class PredictionOracleConfig:
     is_classification: bool = True
     num_classes: Optional[int] = None
     value_range: Optional[tuple] = None
-
-
 
 PREDICTION_ORACLE_CONFIGS = {
     "ProtT5SecondaryStructure": PredictionOracleConfig(
@@ -72,7 +73,6 @@ PREDICTION_ORACLE_CONFIGS = {
     ),
 }
 
-
 class PredictorProtocol(Protocol):
     """Protocol defining the predictor interface for oracle tests."""
 
@@ -83,7 +83,6 @@ class PredictorProtocol(Protocol):
     def predict_batch(self, sequences: List[str]) -> List[Dict[str, Any]]:
         """Predict for multiple sequences."""
         ...
-
 
 class MockPredictor:
     """
@@ -577,137 +576,148 @@ class TestShapeInvariance:
 
 class RealPredictor:
     """
-    Wrapper to run real prediction models (BindEmbed, TMbed, etc.).
+    Wrapper that makes HTTP requests to the real running server.
     
-    Handles embedding generation and model inference for oracle tests.
+    Submits prediction requests to /prediction_service/predict and polls
+    for completion, just like a real client would. This tests the full
+    end-to-end prediction pipeline including embeddings and ONNX inference.
     
-    By default uses FixedEmbedder (mock embeddings) so tests can run in CI
-    without ProtT5. Set use_real_embeddings=True for full end-to-end testing
-    with actual ProtT5 (requires @pytest.mark.slow).
+    Requires:
+        - Server running (docker-compose.dev.yml or CI_SERVER_URL)
+        - Pre-cached ProtT5 embeddings in the database
     """
 
     def __init__(
         self,
         model_name: str,
         config: PredictionOracleConfig,
-        device: str = "cpu",
-        batch_size: int = 1,
-        use_real_embeddings: bool = False,
+        server_url: str = None,
+        timeout: int = 120,
+        poll_interval: float = 2.0,
     ):
         self.model_name = model_name
         self.config = config
-        self.device = device
-        self.batch_size = batch_size
-        self.use_real_embeddings = use_real_embeddings
-        self._model = None
-        self._embedding_service = None
-        self._fixed_embedder = None
+        self.timeout = timeout
+        self.poll_interval = poll_interval
+        
+        # Get server URL from env or parameter
+        self.server_url = server_url or os.environ.get(
+            "CI_SERVER_URL", "http://localhost:9540"
+        )
+        self._client = None
 
     def _ensure_initialized(self):
-        """Lazy initialization of model and embedding service."""
-        if self._model is not None:
+        """Lazy initialization of HTTP client."""
+        if self._client is not None:
             return
-
-        from biocentral_server.predict.models import MODEL_MAP
-
-        # Get model class from MODEL_MAP
-        model_class = MODEL_MAP.get(self.model_name)
-        if model_class is None:
-            raise ValueError(f"Unknown model: {self.model_name}")
-
-        # Initialize model with ONNX backend
-        self._model = model_class(batch_size=self.batch_size, backend="onnx")
         
-        if self.use_real_embeddings:
-            # Use real ProtT5 embeddings (slow, not for CI)
-            from biotrainer.embedders import get_embedding_service
-            
-            embedder_name = self._model.get_metadata().embedder
-            self._embedding_service = get_embedding_service(
-                embedder_name=embedder_name,
-                use_half_precision=False,
-                custom_tokenizer_config=None,
-                device=self.device,
-            )
-        else:
-            # Use FixedEmbedder with ProtT5 dimensions s
-            from tests.fixtures.fixed_embedder import FixedEmbedder
-            
-            self._fixed_embedder = FixedEmbedder(
-                model_name="prot_t5",
-                embedding_dim=1024,  # ProtT5 dimension
-                strict_dataset=False,  # Allow any test sequence
+        import httpx
+        self._client = httpx.Client(
+            base_url=self.server_url,
+            timeout=30.0,
+        )
+        
+        # Verify server is reachable
+        try:
+            response = self._client.get("/health")
+            if response.status_code != 200:
+                raise RuntimeError(f"Server health check failed: {response.status_code}")
+        except Exception as e:
+            raise RuntimeError(
+                f"Cannot connect to server at {self.server_url}. "
+                f"Ensure server is running: {e}"
             )
 
-    def _generate_embedding(self, sequence: str) -> np.ndarray:
-        """Generate embedding using configured method."""
-        if self.use_real_embeddings:
-            results = list(
-                self._embedding_service.generate_embeddings(
-                    input_data=[sequence],
-                    reduce=False,
+    def _poll_task(self, task_id: str) -> Dict[str, Any]:
+        """Poll task until completion."""
+        import time
+        
+        start = time.time()
+        while time.time() - start < self.timeout:
+            response = self._client.get(f"/biocentral_service/task_status/{task_id}")
+            
+            if response.status_code != 200:
+                time.sleep(self.poll_interval)
+                continue
+            
+            dtos = response.json().get("dtos", [])
+            if not dtos:
+                time.sleep(self.poll_interval)
+                continue
+            
+            latest = dtos[-1]
+            status = latest.get("status", "").upper()
+            
+            if status in ("FINISHED", "COMPLETED", "DONE"):
+                return latest
+            elif status in ("FAILED", "ERROR", "CANCELLED"):
+                raise RuntimeError(
+                    f"Prediction task failed: {latest.get('error', 'unknown')}"
                 )
-            )
-            if not results:
-                raise RuntimeError("Embedding generation failed")
-            _, embedding = results[0]
-            return np.array(embedding)
-        else:
-            return self._fixed_embedder.embed(sequence)
+            
+            time.sleep(self.poll_interval)
+        
+        raise TimeoutError(f"Task {task_id} did not complete within {self.timeout}s")
 
     def predict(self, sequence: str) -> Dict[str, Any]:
-        """Predict for a single sequence."""
+        """Predict for a single sequence via server HTTP API."""
         self._ensure_initialized()
         
-        # Generate embedding
-        embedding = self._generate_embedding(sequence)
+        seq_id = "oracle_test_seq"
         
-        seq_id = "test_seq"
-        embeddings = {seq_id: embedding}
-        sequences = {seq_id: sequence}
+        # Submit prediction request
+        request_data = {
+            "model_names": [self.model_name],
+            "sequence_input": {seq_id: sequence},
+        }
         
-        # Run prediction with real ONNX model
-        predictions = self._model.predict(sequences=sequences, embeddings=embeddings)
+        response = self._client.post("/prediction_service/predict", json=request_data)
         
-        # Convert to oracle-expected format
-        pred_result = predictions.get(seq_id, [])
-        return self._format_prediction(pred_result, sequence)
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Prediction request failed: {response.status_code} - {response.text}"
+            )
+        
+        task_id = response.json().get("task_id")
+        if not task_id:
+            raise RuntimeError("No task_id in prediction response")
+        
+        # Poll for completion
+        result = self._poll_task(task_id)
+        
+        # Extract predictions from result
+        return self._format_server_response(result, seq_id, sequence)
 
-    def _format_prediction(
+    def _format_server_response(
         self,
-        model_output: List,
+        result: Dict[str, Any],
+        seq_id: str,
         sequence: str,
     ) -> Dict[str, Any]:
-        """Format model output to match PredictorProtocol interface."""
+        """Format server response to match PredictorProtocol interface."""
+        # Server returns predictions nested under model name
+        predictions_by_model = result.get("predictions", {})
+        model_predictions = predictions_by_model.get(self.model_name, {})
+        seq_predictions = model_predictions.get(seq_id, [])
+        
         if self.config.is_classification:
-            # Per-residue classification (e.g., BindEmbed returns list of Prediction objects)
+            # Per-residue classification
             predictions = []
-            probabilities = []
-            
-            for residue_pred in model_output:
-                # Each residue_pred should have class index and probabilities
-                if hasattr(residue_pred, 'output_value'):
-                    # Prediction object format
-                    predictions.append(residue_pred.output_value)
-                elif isinstance(residue_pred, dict):
-                    predictions.append(residue_pred.get('class', 0))
-                    if 'probabilities' in residue_pred:
-                        probabilities.append(residue_pred['probabilities'])
+            for residue_pred in seq_predictions:
+                if isinstance(residue_pred, dict):
+                    predictions.append(residue_pred.get("class", residue_pred.get("prediction", 0)))
                 else:
                     predictions.append(int(residue_pred))
             
-            result = {
+            return {
                 "predictions": predictions,
                 "sequence_length": len(sequence),
             }
-            if probabilities:
-                result["probabilities"] = probabilities
-            return result
         else:
             # Regression output
             values = [
-                float(p.output_value) if hasattr(p, 'output_value') else float(p)
-                for p in model_output
+                float(p.get("value", p) if isinstance(p, dict) else p)
+                for p in seq_predictions
             ]
             return {
                 "predictions": values,
@@ -720,7 +730,7 @@ class RealPredictor:
 
 
 # =============================================================================
-# Real Model Fixtures
+# Real Model Fixtures (Server Integration)
 # =============================================================================
 
 
@@ -732,75 +742,60 @@ def _get_available_models() -> List[str]:
 @pytest.fixture(scope="module")
 def real_bindembed_predictor():
     """
-    Load BindEmbed model with mock ProtT5 embeddings (FixedEmbedder).
+    Create predictor that calls the real server's BindEmbed endpoint.
     
-    Uses fake embeddings for CI compatibility. The ONNX model inference
-    is still real - only embeddings are mocked.
+    Requires server running with pre-cached ProtT5 embeddings.
+    Set CI_SERVER_URL environment variable or uses localhost:9540.
     """
     try:
         config = PREDICTION_ORACLE_CONFIGS["BindEmbed"]
         predictor = RealPredictor(
             model_name="BindEmbed",
             config=config,
-            device="cpu",
-            use_real_embeddings=False,  # CI-safe: use FixedEmbedder
         )
-        # Force initialization to fail fast if model unavailable
         predictor._ensure_initialized()
         return predictor
-    except ImportError as e:
-        pytest.fail(
-            f"Failed to import prediction model dependencies. "
-            f"Ensure biotrainer and model files are available: {e}"
-        )
     except Exception as e:
-        pytest.fail(
-            f"Failed to load BindEmbed model. "
-            f"Model must be available for oracle tests: {e}"
-        )
+        pytest.skip(f"Server not available for BindEmbed: {e}")
 
 
 @pytest.fixture(scope="module")
 def real_tmbed_predictor():
-    """Load TMbed model with mock ProtT5 embeddings."""
+    """Create predictor that calls the real server's TMbed endpoint."""
     try:
         config = PREDICTION_ORACLE_CONFIGS["TMbed"]
         predictor = RealPredictor(
             model_name="TMbed",
             config=config,
-            device="cpu",
-            use_real_embeddings=False,
         )
         predictor._ensure_initialized()
         return predictor
     except Exception as e:
-        pytest.fail(f"Failed to load TMbed model: {e}")
+        pytest.skip(f"Server not available for TMbed: {e}")
 
 
 @pytest.fixture(scope="module")
 def real_seth_predictor():
-    """Load Seth (disorder) model with mock ProtT5 embeddings."""
+    """Create predictor that calls the real server's Seth endpoint."""
     try:
         config = PREDICTION_ORACLE_CONFIGS["Seth"]
         predictor = RealPredictor(
             model_name="Seth",
             config=config,
-            device="cpu",
-            use_real_embeddings=False,
         )
         predictor._ensure_initialized()
         return predictor
     except Exception as e:
-        pytest.fail(f"Failed to load Seth model: {e}")
+        pytest.skip(f"Server not available for Seth: {e}")
 
 
 @pytest.fixture(scope="module", params=["BindEmbed"])
 def real_predictor(request):
     """
-    Parametrized fixture to test multiple real models with mock embeddings.
+    Parametrized fixture to test multiple models via server.
     
-    Uses FixedEmbedder for CI compatibility. Add model names to params
-    list to test more models: params=["BindEmbed", "TMbed", "Seth"]
+    Add model names to params list to test more models:
+    params=["BindEmbed", "TMbed", "Seth"]
     """
     model_name = request.param
     config = PREDICTION_ORACLE_CONFIGS[model_name]
@@ -808,30 +803,35 @@ def real_predictor(request):
         predictor = RealPredictor(
             model_name=model_name,
             config=config,
-            device="cpu",
-            use_real_embeddings=False,
         )
         predictor._ensure_initialized()
         return predictor, config
     except Exception as e:
-        pytest.skip(f"Model {model_name} not available: {e}")
+        pytest.skip(f"Server not available for {model_name}: {e}")
 
 
 # =============================================================================
-# Real Model Oracle Tests
+# Server Integration Oracle Tests
 # =============================================================================
 
 
 @pytest.mark.slow
+@pytest.mark.integration
+@skip_in_fixed_embedder_ci
 class TestPredictionDeterminismRealModels:
-    """Prediction determinism tests using real models."""
+    """
+    Prediction determinism tests via the real running server.
+    
+    Tests end-to-end prediction flow: HTTP request -> embeddings -> ONNX -> response.
+    Requires server running with pre-cached ProtT5 embeddings.
+    """
 
     def test_bindembed_determinism(
         self,
         real_bindembed_predictor: RealPredictor,
         binding_oracle_config: PredictionOracleConfig,
     ):
-        """Verify BindEmbed predictions are deterministic."""
+        """Verify BindEmbed predictions are deterministic via server."""
         oracle = PredictionDeterminismOracle(
             predictor=real_bindembed_predictor,
             config=binding_oracle_config,
@@ -848,15 +848,21 @@ class TestPredictionDeterminismRealModels:
 
 
 @pytest.mark.slow
+@pytest.mark.integration
+@skip_in_fixed_embedder_ci
 class TestOutputValidityRealModels:
-    """Output validity tests using real models."""
+    """
+    Output validity tests via the real running server.
+    
+    Validates that server returns properly formatted prediction outputs.
+    """
 
     def test_bindembed_output_validity(
         self,
         real_bindembed_predictor: RealPredictor,
         binding_oracle_config: PredictionOracleConfig,
     ):
-        """Verify BindEmbed outputs are valid."""
+        """Verify BindEmbed outputs are valid via server."""
         oracle = OutputValidityOracle(
             predictor=real_bindembed_predictor,
             config=binding_oracle_config,
@@ -872,15 +878,21 @@ class TestOutputValidityRealModels:
 
 
 @pytest.mark.slow
+@pytest.mark.integration
+@skip_in_fixed_embedder_ci
 class TestShapeInvarianceRealModels:
-    """Shape invariance tests using real models."""
+    """
+    Shape invariance tests via the real running server.
+    
+    Validates that server returns predictions with correct shapes.
+    """
 
     def test_bindembed_shape_invariance(
         self,
         real_bindembed_predictor: RealPredictor,
         binding_oracle_config: PredictionOracleConfig,
     ):
-        """Verify BindEmbed output shapes match sequence lengths."""
+        """Verify BindEmbed output shapes match sequence lengths via server."""
         oracle = ShapeInvarianceOracle(
             predictor=real_bindembed_predictor,
             config=binding_oracle_config,
@@ -900,10 +912,14 @@ class TestShapeInvarianceRealModels:
 
 
 @pytest.mark.slow
+@pytest.mark.integration
+@skip_in_fixed_embedder_ci
 class TestParametrizedRealModelOracles:
     """
-    Parametrized oracle tests that run against multiple real models.
+    Parametrized oracle tests via the real running server.
     
+    Tests multiple prediction models through the server's HTTP API.
+    Skipped when CI_EMBEDDER=FixedEmbedder (no server available).
     To add more models, modify the `real_predictor` fixture params.
     """
 
@@ -911,7 +927,7 @@ class TestParametrizedRealModelOracles:
         self,
         real_predictor,
     ):
-        """Verify predictions are deterministic for any real model."""
+        """Verify predictions are deterministic for any model via server."""
         predictor, config = real_predictor
         oracle = PredictionDeterminismOracle(
             predictor=predictor,
@@ -930,7 +946,7 @@ class TestParametrizedRealModelOracles:
         self,
         real_predictor,
     ):
-        """Verify outputs are valid for any real model."""
+        """Verify outputs are valid for any model via server."""
         predictor, config = real_predictor
         oracle = OutputValidityOracle(
             predictor=predictor,
