@@ -8,12 +8,32 @@ import pytest
 from typing import Dict, List
 
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
+from tests.integration.endpoints.conftest import (
+    assert_task_success,
+    validate_task_response,
+)
 
 
 STANDARD_SEQUENCES = {
     "standard_001": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
     "standard_002": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
 }
+
+
+def _assert_not_immediate_terminal_failure(client, task_id: str) -> None:
+    """Lightweight status check after task submission."""
+    status_response = client.get(f"/biocentral_service/task_status/{task_id}")
+    assert status_response.status_code == 200, (
+        f"Unable to check status for task {task_id}: {status_response.status_code}"
+    )
+    dtos = status_response.json().get("dtos", [])
+    if not dtos:
+        return
+    current_status = str(dtos[-1].get("status", "")).upper()
+    assert current_status not in ("FAILED", "ERROR"), (
+        f"Task {task_id} failed immediately after submission with status={current_status}: "
+        f"{dtos[-1].get('error')}"
+    )
 
 
 @pytest.fixture
@@ -76,11 +96,11 @@ def inference_sequences() -> Dict[str, str]:
 
 
 @pytest.fixture
-def classification_config(embedder_name: str) -> Dict:
+def classification_config() -> Dict:
     """Biotrainer configuration for sequence classification."""
     return {
         "protocol": "sequence_to_class",
-        "embedder_name": "facebook/esm2_t6_8M_UR50D",
+        "embedder_name": "one_hot_encoding",
         "num_epochs": 1,
         "learning_rate": 0.001,
         "batch_size": 1,
@@ -88,11 +108,11 @@ def classification_config(embedder_name: str) -> Dict:
 
 
 @pytest.fixture
-def regression_config(embedder_name: str) -> Dict:
+def regression_config() -> Dict:
     """Biotrainer configuration for regression."""
     return {
         "protocol": "sequence_to_value",
-        "embedder_name": embedder_name,
+        "embedder_name": "one_hot_encoding",
         "num_epochs": 1,
         "learning_rate": 0.001,
         "batch_size": 1,
@@ -216,8 +236,8 @@ class TestStartTrainingEndpoint:
         )
 
         assert response.status_code == 200
-        data = response.json()
-        assert "task_id" in data
+        task_id = validate_task_response(response.json())
+        _assert_not_immediate_terminal_failure(client, task_id)
 
     @pytest.mark.integration
     def test_start_regression_training(
@@ -236,8 +256,8 @@ class TestStartTrainingEndpoint:
         )
 
         assert response.status_code == 200
-        data = response.json()
-        assert "task_id" in data
+        task_id = validate_task_response(response.json())
+        _assert_not_immediate_terminal_failure(client, task_id)
 
     @pytest.mark.integration
     def test_start_training_empty_data_rejected(
@@ -316,6 +336,9 @@ class TestStartInferenceEndpoint:
 
 
         assert response.status_code in [200, 404]
+        if response.status_code == 200:
+            task_id = validate_task_response(response.json())
+            _assert_not_immediate_terminal_failure(client, task_id)
 
 
 @pytest.mark.order(4)
@@ -443,10 +466,10 @@ class TestEndToEndTrainInferenceFlow:
             pytest.skip("Server disconnected")
         
         assert train_response.status_code == 200
-        train_task_id = train_response.json()["task_id"]
+        train_task_id = validate_task_response(train_response.json())
 
 
-        train_result = poll_task(train_task_id, timeout=400)
+        train_result = poll_task(train_task_id, timeout=320)
         
         assert train_result is not None
         train_status = train_result.get("status", "").upper()
@@ -455,11 +478,13 @@ class TestEndToEndTrainInferenceFlow:
         assert train_status == "FINISHED"
 
 
+        assert_task_success(train_result, context="train task")
         biotrainer_result = train_result.get("biotrainer_result", {})
+        assert isinstance(biotrainer_result, dict), "Training result missing biotrainer_result payload"
         model_hash = biotrainer_result.get("derived_values", {}).get("model_hash")
-        
-        if not model_hash:
-            pytest.fail(f"model_hash not found in training result: {train_result}")
+        assert isinstance(model_hash, str) and len(model_hash) > 0, (
+            f"model_hash not found in training result payload: {train_result}"
+        )
 
 
         inference_response = client.post(
@@ -471,14 +496,22 @@ class TestEndToEndTrainInferenceFlow:
         )
 
         assert inference_response.status_code == 200
-        inference_task_id = inference_response.json()["task_id"]
+        inference_task_id = validate_task_response(inference_response.json())
 
 
-        inference_result = poll_task(inference_task_id, timeout=380)
+        inference_result = poll_task(inference_task_id, timeout=260, require_success=True)
         
         assert inference_result is not None
-        inference_status = inference_result.get("status", "").upper()
-        assert inference_status in ("FINISHED", "FAILED")
+        assert_task_success(inference_result, context="inference task")
+        predictions = inference_result.get("predictions")
+        assert isinstance(predictions, dict), f"Inference result missing predictions dict: {inference_result}"
+        assert set(predictions.keys()) == set(inference_sequences.keys()), (
+            f"Inference predictions keys {sorted(predictions.keys())} do not match "
+            f"input keys {sorted(inference_sequences.keys())}"
+        )
+        for seq_id, seq_predictions in predictions.items():
+            assert isinstance(seq_predictions, list), f"Predictions for {seq_id} must be list"
+            assert len(seq_predictions) > 0, f"Predictions list for {seq_id} is empty"
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -504,10 +537,10 @@ class TestEndToEndTrainInferenceFlow:
         )
         
         assert train_response.status_code == 200
-        train_task_id = train_response.json()["task_id"]
+        train_task_id = validate_task_response(train_response.json())
 
 
-        train_result = poll_task(train_task_id, timeout=500)
+        train_result = poll_task(train_task_id, timeout=360)
         
         assert train_result is not None
         train_status = train_result.get("status", "").upper()
@@ -516,11 +549,13 @@ class TestEndToEndTrainInferenceFlow:
         assert train_status == "FINISHED"
 
 
+        assert_task_success(train_result, context="train task for model_files")
         biotrainer_result = train_result.get("biotrainer_result", {})
+        assert isinstance(biotrainer_result, dict), "Training result missing biotrainer_result payload"
         model_hash = biotrainer_result.get("derived_values", {}).get("model_hash")
-        
-        if not model_hash:
-            pytest.fail(f"model_hash not found in training result: {train_result}")
+        assert isinstance(model_hash, str) and len(model_hash) > 0, (
+            f"model_hash not found in training result payload: {train_result}"
+        )
 
 
         files_response = client.post(
@@ -530,8 +565,13 @@ class TestEndToEndTrainInferenceFlow:
 
         assert files_response.status_code == 200
         data = files_response.json()
-        
-        assert "BIOTRAINER_RESULT" in data or "BIOTRAINER_LOGGING" in data or "BIOTRAINER_CHECKPOINT" in data
+        expected_keys = {"BIOTRAINER_RESULT", "BIOTRAINER_LOGGING", "BIOTRAINER_CHECKPOINT"}
+        assert expected_keys.issubset(data.keys()), (
+            f"model_files response missing expected keys: expected {sorted(expected_keys)}, got {sorted(data.keys())}"
+        )
+        assert isinstance(data["BIOTRAINER_RESULT"], str), "BIOTRAINER_RESULT should be string"
+        assert isinstance(data["BIOTRAINER_LOGGING"], str), "BIOTRAINER_LOGGING should be string"
+        assert isinstance(data["BIOTRAINER_CHECKPOINT"], dict), "BIOTRAINER_CHECKPOINT should be dict"
 
 
 @pytest.mark.order(6)
@@ -563,3 +603,5 @@ class TestTrainingDataValidation:
         )
 
         assert response.status_code == 200
+        task_id = validate_task_response(response.json())
+        _assert_not_immediate_terminal_failure(client, task_id)

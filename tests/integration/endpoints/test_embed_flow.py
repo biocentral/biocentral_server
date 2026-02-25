@@ -3,6 +3,7 @@
 import pytest
 
 from tests.integration.endpoints.conftest import (
+    assert_task_success,
     validate_error_response,
     validate_task_response,
 )
@@ -132,11 +133,18 @@ class TestEndToEndEmbedFlow:
         response = client.post("/embeddings_service/embed", json=request_data)
         assert response.status_code == 200, f"Failed to submit embedding task: {response.text}"
         
-        task_id = response.json()["task_id"]
+        task_id = validate_task_response(response.json())
         print(f"[EMBEDDING] Submitted task {task_id}, waiting for completion...")
         
 
-        result = poll_task(task_id, timeout=480, max_consecutive_errors=15)
+        result = poll_task(
+            task_id,
+            timeout=480,
+            max_consecutive_errors=15,
+            require_success=True,
+        )
+        assert_task_success(result, context="embed task")
+        assert result.get("error") in (None, "", []), "Successful embed task should not contain error payload"
         
 
         task_status = result["status"].upper()
@@ -151,6 +159,7 @@ class TestEndToEndEmbedFlow:
     def test_embed_with_different_embedders(
         self,
         client,
+        poll_task,
         single_test_sequence,
     ):
         """Test that different embedders can be used."""
@@ -166,4 +175,6 @@ class TestEndToEndEmbedFlow:
 
             response = client.post("/embeddings_service/embed", json=request_data)
             assert response.status_code == 200, f"Failed for embedder: {embedder}"
-            validate_task_response(response.json())
+            task_id = validate_task_response(response.json())
+            result = poll_task(task_id, timeout=240, max_consecutive_errors=12, require_success=True)
+            assert_task_success(result, context=f"embed task ({embedder})")
