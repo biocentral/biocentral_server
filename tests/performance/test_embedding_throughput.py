@@ -10,10 +10,6 @@ All tests use sequences from the canonical test dataset.
 """
 
 import pytest
-import numpy as np
-
-from tests.fixtures.fixed_embedder import FixedEmbedder
-
 
 @pytest.mark.performance
 class TestSingleSequenceLatency:

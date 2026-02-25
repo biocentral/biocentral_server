@@ -5,7 +5,6 @@ import gc
 import numpy as np
 
 from tests.fixtures.fixed_embedder import FixedEmbedder
-from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 
 
 def get_memory_mb() -> float:
@@ -93,6 +92,7 @@ class TestMemoryLeaks:
         gc.collect()
 
         after_gc = get_memory_mb()
+        print(f"Memory baseline: {baseline:.1f} MB")
         print(f"Memory after GC: {after_gc:.1f} MB")
         print(f"Released: {peak - after_gc:.1f} MB")
 

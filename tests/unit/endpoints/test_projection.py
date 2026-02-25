@@ -78,7 +78,7 @@ class TestProjectionConfigEndpoint:
         response = projection_client.get("/projection_service/projection_config")
 
         assert response.status_code == 200
-        data = response.json()
+        _ = response.json() # we don't care about the actual response
 
         assert mock_config_instance.parameters_by_method.call_count == len(methods)
 

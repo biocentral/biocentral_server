@@ -345,7 +345,7 @@ def print_relation_summary(rel_name: str, results: List[RelationResult]) -> None
     # Compute and show statistics across all results with metrics
     all_distances = [r.metrics.cosine_distance for r in results if r.metrics]
     if all_distances:
-        print(f"\n  Distance Statistics:")
+        print("\n  Distance Statistics:")
         print(f"    Mean cosine distance: {np.mean(all_distances):.6f}")
         print(f"    Std cosine distance:  {np.std(all_distances):.6f}")
         print(f"    Min:  {np.min(all_distances):.6f}")
@@ -362,7 +362,7 @@ def print_relation_summary(rel_name: str, results: List[RelationResult]) -> None
         )[:5]
     
     if interesting_results:
-        print(f"\n  Notable Findings:")
+        print("\n  Notable Findings:")
         for r in interesting_results[:5]:
             if r.metrics:
                 print(f"    - {r.test_case}/{r.parameter}: cosine={r.metrics.cosine_distance:.6f}")

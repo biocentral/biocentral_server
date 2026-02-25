@@ -12,9 +12,6 @@ import pytest
 import time
 import numpy as np
 
-from tests.fixtures.fixed_embedder import FixedEmbedder
-from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
-
 
 @pytest.mark.performance
 class TestSequenceLengthScaling:
