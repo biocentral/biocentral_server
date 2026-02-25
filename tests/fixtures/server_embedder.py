@@ -13,18 +13,7 @@ from biotrainer.utilities import calculate_sequence_hash
 
 
 class ServerEmbedder:
-    """
-    Embedder that calls the server's embedding endpoint.
-    
-    Implements the EmbedderProtocol interface so it can be used with
-    metamorphic relations for integration testing.
-    
-    After submitting an embedding task and waiting for completion,
-    it retrieves the embeddings directly from the PostgreSQL database.
-    
-    When CI_EMBEDDER=fixed, uses FixedEmbedder locally and saves to DB
-    (same behavior as integration test interception in conftest.py).
-    """
+    # Embedder that calls the server's embedding endpoint.
     
     def __init__(
         self,
@@ -33,15 +22,7 @@ class ServerEmbedder:
         timeout: float = 300.0,
         poll_interval: float = 2.0,
     ):
-        """
-        Initialize the server embedder.
-        
-        Args:
-            base_url: Server base URL (default: from CI_SERVER_URL env var)
-            embedder_name: Name of the embedder to use on the server
-            timeout: Maximum time to wait for embedding task (seconds)
-            poll_interval: Time between status polls (seconds)
-        """
+        # Initialize the server embedder.
         self.base_url = base_url or os.environ.get("CI_SERVER_URL", "http://localhost:9540")
         self.api_url = f"{self.base_url}/api/v1"
         self.embedder_name = embedder_name
@@ -158,11 +139,7 @@ class ServerEmbedder:
         sequence: str,
         reduce: bool = False,
     ) -> np.ndarray:
-        """
-        Compute embedding using FixedEmbedder and save to database.
-        
-        Used when CI_EMBEDDER=fixed to bypass the server's embedding endpoint.
-        """
+        # Compute embedding using FixedEmbedder and save to database.
         from datetime import datetime
         
 
@@ -208,15 +185,7 @@ class ServerEmbedder:
         return embedding
 
     def embed(self, sequence: str) -> np.ndarray:
-        """
-        Embed a single sequence, returning per-residue embeddings.
-        
-        Args:
-            sequence: Protein sequence string
-            
-        Returns:
-            Per-residue embeddings as numpy array of shape (seq_len, embedding_dim)
-        """
+        # Embed a single sequence, returning per-residue embeddings.
 
         if self._use_fixed_embedder:
             return self._compute_and_save_fixed_embedding(sequence, reduce=False)
@@ -238,15 +207,7 @@ class ServerEmbedder:
         return embedding
     
     def embed_pooled(self, sequence: str) -> np.ndarray:
-        """
-        Embed a single sequence, returning pooled (reduced) embedding.
-        
-        Args:
-            sequence: Protein sequence string
-            
-        Returns:
-            Pooled embedding as numpy array of shape (embedding_dim,)
-        """
+        # Embed a single sequence, returning pooled (reduced) embedding.
 
         if self._use_fixed_embedder:
             return self._compute_and_save_fixed_embedding(sequence, reduce=True)
@@ -272,16 +233,7 @@ class ServerEmbedder:
         sequences: List[str],
         pooled: bool = False,
     ) -> List[np.ndarray]:
-        """
-        Embed multiple sequences.
-        
-        Args:
-            sequences: List of protein sequence strings
-            pooled: Whether to return pooled embeddings
-            
-        Returns:
-            List of numpy arrays with embeddings for each sequence
-        """
+        # Embed multiple sequences.
 
         if self._use_fixed_embedder:
             return [

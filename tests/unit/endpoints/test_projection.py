@@ -1,10 +1,4 @@
-"""
-Unit tests for projection endpoint.
-
-Tests endpoints:
-- GET /projection_service/projection_config
-- POST /projection_service/project
-"""
+# Unit tests for projection endpoint.
 
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch

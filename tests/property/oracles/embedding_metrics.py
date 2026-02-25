@@ -1,9 +1,4 @@
-"""
-Embedding metrics utilities for oracle-based testing.
-
-Provides divergence metrics (cosine, L2, KL) for comparing embeddings,
-along with table formatting and CSV report generation.
-"""
+# Embedding metrics utilities for oracle-based testing.
 
 import csv
 from pathlib import Path
@@ -31,19 +26,7 @@ def _format_float(value: Any, precision: int = 8) -> str:
 
 
 def compute_cosine_distance(a: np.ndarray, b: np.ndarray) -> float:
-    """
-    Compute cosine distance between two embeddings.
-
-    Cosine distance = 1 - cosine_similarity
-    Range: [0, 2] where 0 = identical direction, 2 = opposite direction
-
-    Args:
-        a: First embedding vector (1D or 2D - will be pooled if 2D)
-        b: Second embedding vector (1D or 2D - will be pooled if 2D)
-
-    Returns:
-        Cosine distance as float
-    """
+    # Compute cosine distance between two embeddings.
     a_flat = _ensure_1d(a)
     b_flat = _ensure_1d(b)
 
@@ -60,16 +43,7 @@ def compute_cosine_distance(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def compute_l2_distance(a: np.ndarray, b: np.ndarray) -> float:
-    """
-    Compute L2 (Euclidean) distance between two embeddings.
-
-    Args:
-        a: First embedding vector (1D or 2D - will be pooled if 2D)
-        b: Second embedding vector (1D or 2D - will be pooled if 2D)
-
-    Returns:
-        L2 distance as float
-    """
+    # Compute L2 (Euclidean) distance between two embeddings.
     a_flat = _ensure_1d(a)
     b_flat = _ensure_1d(b)
 
@@ -77,20 +51,7 @@ def compute_l2_distance(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def compute_kl_divergence(a: np.ndarray, b: np.ndarray, epsilon: float = 1e-10) -> float:
-    """
-    Compute KL divergence between two embeddings after softmax normalization.
-
-    KL(P || Q) = sum(P * log(P / Q))
-    Uses softmax to convert embeddings to probability distributions.
-
-    Args:
-        a: First embedding vector (1D or 2D - will be pooled if 2D)
-        b: Second embedding vector (1D or 2D - will be pooled if 2D)
-        epsilon: Small value to avoid log(0)
-
-    Returns:
-        KL divergence as float (always >= 0)
-    """
+    # Compute KL divergence between two embeddings after softmax normalization.
     a_flat = _ensure_1d(a)
     b_flat = _ensure_1d(b)
 
@@ -108,16 +69,7 @@ def compute_kl_divergence(a: np.ndarray, b: np.ndarray, epsilon: float = 1e-10) 
 
 
 def compute_all_metrics(a: np.ndarray, b: np.ndarray) -> Dict[str, float]:
-    """
-    Compute all divergence metrics between two embeddings.
-
-    Args:
-        a: First embedding vector
-        b: Second embedding vector
-
-    Returns:
-        Dictionary with keys: cosine_distance, l2_distance, kl_divergence
-    """
+    # Compute all divergence metrics between two embeddings.
     return {
         "cosine_distance": compute_cosine_distance(a, b),
         "l2_distance": compute_l2_distance(a, b),
@@ -126,15 +78,7 @@ def compute_all_metrics(a: np.ndarray, b: np.ndarray) -> Dict[str, float]:
 
 
 def _ensure_1d(arr: np.ndarray) -> np.ndarray:
-    """
-    Ensure array is 1D by mean-pooling if 2D.
-
-    Args:
-        arr: Input array (1D or 2D)
-
-    Returns:
-        1D numpy array
-    """
+    # Ensure array is 1D by mean-pooling if 2D.
     if arr.ndim == 1:
         return arr
     elif arr.ndim == 2:
@@ -148,17 +92,7 @@ def format_metrics_table(
     results: List[Dict[str, Any]],
     title: Optional[str] = None,
 ) -> str:
-    """
-    Format metrics results as a readable table for console output.
-
-    Args:
-        results: List of dicts with keys: embedder, test_type, parameter,
-                 cosine_distance, l2_distance, kl_divergence, threshold, passed
-        title: Optional title for the table
-
-    Returns:
-        Formatted string table
-    """
+    # Format metrics results as a readable table for console output.
     if not results:
         return "No results to display."
 
@@ -206,16 +140,7 @@ def write_metrics_csv(
     results: List[Dict[str, Any]],
     path: Union[str, Path],
 ) -> None:
-    """
-    Write metrics results to a CSV file, overwriting any existing content.
-
-    CSV columns: timestamp, embedder, test_type, parameter, cosine_distance,
-                 l2_distance, kl_divergence, threshold, passed
-
-    Args:
-        results: List of metric result dictionaries
-        path: Path to output CSV file
-    """
+    # Write metrics results to a CSV file, overwriting any existing content.
     path = Path(path)
 
 

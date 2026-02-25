@@ -1,13 +1,4 @@
-"""
-Benchmark embedding generation throughput.
-
-Tests measure:
-- Single sequence embedding latency at various lengths
-- Batch embedding throughput at various batch sizes
-- Pooled vs per-residue embedding performance
-
-All tests use sequences from the canonical test dataset.
-"""
+# Benchmark embedding generation throughput.
 
 import pytest
 

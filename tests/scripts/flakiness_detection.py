@@ -72,12 +72,7 @@ def parse_results(results_dir: Path) -> dict[str, list[bool]]:
 
 
 def calculate_flakiness(test_results: dict[str, list[bool]]) -> tuple[list[FlakyTest], int, int]:
-    """
-    Analyze test results and identify flaky tests.
-    
-    Returns:
-        tuple of (flaky_tests, consistent_pass_count, consistent_fail_count)
-    """
+    # Analyze test results and identify flaky tests.
     flaky_tests: list[FlakyTest] = []
     consistent_pass = 0
     consistent_fail = 0

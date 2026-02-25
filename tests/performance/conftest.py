@@ -10,26 +10,13 @@ from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET, get_test_sequenc
 
 
 class ESM2EmbedderAdapter:
-    """
-    Adapter to provide a consistent embed() API for biotrainer's EmbeddingService.
-    
-    biotrainer's EmbeddingService uses generate_embeddings() which yields tuples,
-    but our tests expect a simple embed(sequence) -> np.ndarray interface.
-    """
+    # Adapter to provide a consistent embed() API for biotrainer's EmbeddingService.
     
     def __init__(self, embedding_service):
         self._service = embedding_service
     
     def embed(self, sequence: str) -> np.ndarray:
-        """
-        Embed a single sequence, returning per-residue embeddings.
-        
-        Args:
-            sequence: Protein sequence string
-            
-        Returns:
-            np.ndarray of shape (sequence_length, embedding_dim)
-        """
+        # Embed a single sequence, returning per-residue embeddings.
 
 
         results = list(self._service.generate_embeddings(
@@ -42,15 +29,7 @@ class ESM2EmbedderAdapter:
         raise ValueError(f"Failed to embed sequence: {sequence[:50]}...")
     
     def embed_pooled(self, sequence: str) -> np.ndarray:
-        """
-        Embed a single sequence, returning pooled (reduced) embedding.
-        
-        Args:
-            sequence: Protein sequence string
-            
-        Returns:
-            np.ndarray of shape (embedding_dim,)
-        """
+        # Embed a single sequence, returning pooled (reduced) embedding.
         results = list(self._service.generate_embeddings(
             input_data={sequence: sequence},
             reduce=True,
@@ -61,16 +40,7 @@ class ESM2EmbedderAdapter:
         raise ValueError(f"Failed to embed sequence: {sequence[:50]}...")
     
     def embed_batch(self, sequences: List[str], pooled: bool = False) -> List[np.ndarray]:
-        """
-        Embed multiple sequences.
-        
-        Args:
-            sequences: List of protein sequence strings
-            pooled: If True, return pooled embeddings
-            
-        Returns:
-            List of np.ndarray embeddings
-        """
+        # Embed multiple sequences.
         input_data = {seq: seq for seq in sequences}
         results = list(self._service.generate_embeddings(
             input_data=input_data,
@@ -87,14 +57,7 @@ def perf_embedder() -> FixedEmbedder:
 
 @pytest.fixture(scope="module")
 def esm2_embedder():
-    """
-    Real ESM2-t6-8M embedder for performance benchmarking.
-    
-    Uses biotrainer's embedding service to load the actual model.
-    Module-scoped to avoid reloading the model for each test.
-    
-    Returns an ESM2EmbedderAdapter that provides a consistent embed() API.
-    """
+    # Real ESM2-t6-8M embedder for performance benchmarking.
     from biotrainer.embedders import get_embedding_service
     
     service = get_embedding_service(

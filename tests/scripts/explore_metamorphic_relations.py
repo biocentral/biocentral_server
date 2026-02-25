@@ -61,11 +61,7 @@ def get_test_sequences() -> List[str]:
 
 
 def explore_idempotency(embedder, sequences: List[str], verbose: bool = True) -> Dict[str, Any]:
-    """
-    Explore idempotency: Does same sequence -> same embedding?
-    
-    This is a fundamental invariant that SHOULD always hold.
-    """
+    # Explore idempotency: Does same sequence -> same embedding?
     print("\n" + "=" * 70)
     print("EXPLORING IDEMPOTENCY")
     print("Question: Does embedding the same sequence always produce identical results?")
@@ -116,11 +112,7 @@ def explore_idempotency(embedder, sequences: List[str], verbose: bool = True) ->
 
 
 def explore_batch_variance(embedder, sequences: List[str], verbose: bool = True) -> Dict[str, Any]:
-    """
-    Explore batch variance: Does batching affect individual embeddings?
-    
-    This is a fundamental invariant that SHOULD always hold.
-    """
+    # Explore batch variance: Does batching affect individual embeddings?
     print("\n" + "=" * 70)
     print("EXPLORING BATCH INVARIANCE")
     print("Question: Does embedding A alone produce the same result as A in a batch?")
@@ -185,11 +177,7 @@ def explore_batch_variance(embedder, sequences: List[str], verbose: bool = True)
 
 
 def explore_reversal(embedder, sequences: List[str], verbose: bool = True) -> Dict[str, Any]:
-    """
-    Explore sequence reversal effects.
-    
-    This is EXPLORATORY - we're discovering what happens, not testing an invariant.
-    """
+    # Explore sequence reversal effects.
     print("\n" + "=" * 70)
     print("EXPLORING SEQUENCE REVERSAL")
     print("Question: How similar is embed(seq) to embed(reverse(seq))?")
@@ -246,12 +234,7 @@ def explore_reversal(embedder, sequences: List[str], verbose: bool = True) -> Di
 
 
 def explore_progressive_masking(embedder, sequences: List[str], verbose: bool = True) -> Dict[str, Any]:
-    """
-    Explore progressive masking effects.
-    
-    This is EXPLORATORY - we're discovering the degradation curve as sequences
-    are progressively masked with 'X' (unknown amino acid placeholder).
-    """
+    # Explore progressive masking effects.
     print("\n" + "=" * 70)
     print("EXPLORING PROGRESSIVE MASKING")
     print("Question: At what point does replacing amino acids with 'X' significantly")
@@ -314,11 +297,7 @@ def explore_progressive_masking(embedder, sequences: List[str], verbose: bool = 
 
 
 def explore_projection_determinism(embedder, sequences: List[str], verbose: bool = True) -> Dict[str, Any]:
-    """
-    Explore projection determinism with UMAP, PCA, t-SNE.
-    
-    This SHOULD hold with fixed seeds.
-    """
+    # Explore projection determinism with UMAP, PCA, t-SNE.
     print("\n" + "=" * 70)
     print("EXPLORING PROJECTION DETERMINISM")
     print("Question: Do PCA/UMAP/t-SNE projections produce identical results")

@@ -9,13 +9,7 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture(autouse=True, scope="function")
 def mock_fastapi_limiter():
-    """
-    Initialize FastAPILimiter with a mock Redis for all endpoint unit tests.
-
-    This fixture runs automatically before each test and properly tears down after.
-    It prevents the "You must call FastAPILimiter.init" error by providing a
-    mock backend that doesn't require an actual Redis connection.
-    """
+    # Initialize FastAPILimiter with a mock Redis for all endpoint unit tests.
     from fastapi_limiter import FastAPILimiter
 
 

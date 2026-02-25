@@ -26,30 +26,13 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def get_fixed_embedder(model_name: str = "esm2_t6", strict: bool = False):
-    """
-    Get a FixedEmbedder instance for testing.
-    
-    Args:
-        model_name: Name of the model to emulate
-        strict: Whether to restrict to canonical test dataset
-    
-    Returns:
-        FixedEmbedder instance
-    """
+    # Get a FixedEmbedder instance for testing.
     from tests.fixtures.fixed_embedder import FixedEmbedder
     return FixedEmbedder(model_name=model_name, strict_dataset=strict)
 
 
 def get_real_embedder(model_name: str = "facebook/esm2_t6_8M_UR50D"):
-    """
-    Get a real embedder using biotrainer.
-    
-    Args:
-        model_name: HuggingFace model name
-    
-    Returns:
-        Wrapped embedder instance
-    """
+    # Get a real embedder using biotrainer.
     try:
         from biotrainer.embedders import get_embedding_service
     except ImportError:
@@ -109,15 +92,7 @@ class RealEmbedderWrapper:
 
 
 def get_test_sequences(use_canonical: bool = True) -> List[str]:
-    """
-    Get test sequences for experiments.
-    
-    Args:
-        use_canonical: Whether to use canonical test dataset
-    
-    Returns:
-        List of test sequences
-    """
+    # Get test sequences for experiments.
     if use_canonical:
         from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
         return CANONICAL_TEST_DATASET.get_all_sequences()
@@ -144,19 +119,7 @@ def run_experiments(
     config: Dict[str, Any],
     verbose: bool = True,
 ) -> Dict[str, List[RelationResult]]:
-    """
-    Run metamorphic experiments.
-    
-    Args:
-        embedder: Embedder instance
-        sequences: Test sequences
-        relations: List of relation names to run
-        config: Configuration for relations
-        verbose: Whether to print progress
-    
-    Returns:
-        Dictionary mapping relation names to results
-    """
+    # Run metamorphic experiments.
     all_results = {}
     
     for rel_name in relations:

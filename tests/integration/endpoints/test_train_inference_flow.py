@@ -1,7 +1,4 @@
-"""Integration tests for custom models (training and inference) endpoints.
-
-Test class ordering: Lightweight tests (order=1-4) run first, heavy training tests (order=5-7) run last.
-"""
+# Integration tests for custom models (training and inference) endpoints.
 
 import httpx
 import pytest
@@ -121,10 +118,7 @@ def regression_config() -> Dict:
 
 @pytest.mark.order(1)
 class TestConfigOptionsEndpoint:
-    """
-    Integration tests for GET /custom_models_service/config_options/{protocol}.
-    Lightweight: No model loading required.
-    """
+    # Integration tests for GET /custom_models_service/config_options/{protocol}.
 
     @pytest.mark.integration
     def test_get_config_options_for_classification(self, client):
@@ -160,10 +154,7 @@ class TestConfigOptionsEndpoint:
 
 @pytest.mark.order(2)
 class TestVerifyConfigEndpoint:
-    """
-    Integration tests for POST /custom_models_service/verify_config.
-    Lightweight: Config validation only, no model loading.
-    """
+    # Integration tests for POST /custom_models_service/verify_config.
 
     @pytest.mark.integration
     def test_verify_valid_classification_config(self, client, classification_config):
@@ -213,10 +204,7 @@ class TestVerifyConfigEndpoint:
 
 @pytest.mark.order(5)
 class TestStartTrainingEndpoint:
-    """
-    Integration tests for POST /custom_models_service/start_training.
-    Medium: Submits training jobs (doesn't wait for completion).
-    """
+    # Integration tests for POST /custom_models_service/start_training.
  
 
     @pytest.mark.integration
@@ -301,10 +289,7 @@ class TestStartTrainingEndpoint:
 
 @pytest.mark.order(3)
 class TestStartInferenceEndpoint:
-    """
-    Integration tests for POST /custom_models_service/start_inference.
-    Lightweight: Validation tests only, model not found expected.
-    """
+    # Integration tests for POST /custom_models_service/start_inference.
 
     @pytest.mark.integration
     def test_start_inference_empty_sequences_rejected(self, client):
@@ -343,10 +328,7 @@ class TestStartInferenceEndpoint:
 
 @pytest.mark.order(4)
 class TestModelFilesEndpoint:
-    """
-    Integration tests for POST /custom_models_service/model_files.
-    Lightweight: File retrieval for non-existent model.
-    """
+    # Integration tests for POST /custom_models_service/model_files.
 
     @pytest.mark.integration
     def test_get_model_files_nonexistent(self, client):
@@ -433,10 +415,7 @@ class TestModelFilesEndpoint:
 
 @pytest.mark.order(7)
 class TestEndToEndTrainInferenceFlow:
-    """
-    End-to-end tests for the complete training -> inference workflow.
-    Heavy: Runs full training and waits for completion. Run last.
-    """
+    # End-to-end tests for the complete training -> inference workflow.
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -576,10 +555,7 @@ class TestEndToEndTrainInferenceFlow:
 
 @pytest.mark.order(6)
 class TestTrainingDataValidation:
-    """
-    Tests for training data validation.
-    Medium: Submits training job (doesn't wait for completion).
-    """
+    # Tests for training data validation.
 
     @pytest.mark.integration
     def test_training_with_train_val_split(

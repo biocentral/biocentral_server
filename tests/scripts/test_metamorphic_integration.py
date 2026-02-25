@@ -51,15 +51,7 @@ def use_server(request) -> bool:
 
 @pytest.fixture(scope="module")
 def embedder(use_server, use_real_embedder):
-    """
-    Get appropriate embedder based on configuration.
-    
-    Priority:
-    1. FixedEmbedder if CI_EMBEDDER=fixed (fast mock, no server needed)
-    2. ServerEmbedder if CI_SERVER_URL is set (integration test mode with esm2_t6_8M)
-    3. Real ESM2 embedder if --use-real-embedder flag
-    4. FixedEmbedder (default fallback)
-    """
+    # Get appropriate embedder based on configuration.
     from tests.fixtures.fixed_embedder import FixedEmbedder
     
     ci_embedder = os.environ.get("CI_EMBEDDER", "").lower()
@@ -129,22 +121,13 @@ def short_sequences(test_sequences):
 
 @pytest.fixture(scope="module")
 def ci_scale():
-    """
-    Get CI scale setting from environment.
-    
-    Returns 'half' when CI_METAMORPHIC_SCALE=half, 'full' otherwise.
-    """
+    # Get CI scale setting from environment.
     return os.environ.get("CI_METAMORPHIC_SCALE", "full")
 
 
 @pytest.fixture(scope="module")
 def ci_config(ci_scale):
-    """
-    Get scaled test configuration based on CI environment.
-    
-    When CI_METAMORPHIC_SCALE=half, reduces all test parameters significantly
-    for faster CI execution without GPU.
-    """
+    # Get scaled test configuration based on CI environment.
     if ci_scale == "half":
         return {
             # Idempotency - minimal for CI
@@ -199,11 +182,7 @@ def ci_config(ci_scale):
 
 @pytest.mark.exploration
 class TestIdempotencyRelation:
-    """Explores idempotency: embed(seq) == embed(seq).
-    
-    This is a STRICT INVARIANT - it should always hold.
-    "Failures" here indicate non-determinism in the embedder.
-    """
+    # Explores idempotency: embed(seq) == embed(seq).
     
     def test_single_sequence_idempotency(self, embedder, test_sequences, ci_config):
         """Explore whether embedding the same sequence twice yields identical results."""
@@ -280,11 +259,7 @@ class TestIdempotencyRelation:
 
 @pytest.mark.exploration
 class TestBatchVarianceRelation:
-    """Explores batch invariance: embed([A,B])[i] == embed([A])[0].
-    
-    This is a STRICT INVARIANT - it should always hold.
-    "Failures" here indicate batch context affecting embeddings.
-    """
+    # Explores batch invariance: embed([A,B])[i] == embed([A])[0].
     
     def test_single_vs_batch_embedding(self, embedder, standard_sequences, ci_config):
         """Verify embedding alone equals embedding in a batch."""
@@ -371,11 +346,7 @@ class TestBatchVarianceRelation:
 
 @pytest.mark.exploration
 class TestProjectionDeterminismRelation:
-    """Explores projection determinism with fixed seeds.
-    
-    This is a STRICT INVARIANT when seeds are fixed.
-    "Failures" indicate improper random state management.
-    """
+    # Explores projection determinism with fixed seeds.
     
     def test_pca_determinism(self, embedder, standard_sequences, ci_config):
         """Verify PCA projection is deterministic."""
@@ -440,11 +411,7 @@ class TestProjectionDeterminismRelation:
 @pytest.mark.exploration
 @pytest.mark.slow
 class TestReversalRelation:
-    """Explores sequence reversal effects (EXPLORATORY).
-    
-    This is NOT an invariant - we're discovering what happens.
-    There are no "failures", only findings about model behavior.
-    """
+    # Explores sequence reversal effects (EXPLORATORY).
     
     def test_reversal_relationship(self, embedder, standard_sequences, ci_config):
         """Explore relationship between sequence and its reverse."""
@@ -482,12 +449,7 @@ class TestReversalRelation:
 @pytest.mark.exploration
 @pytest.mark.slow
 class TestProgressiveMaskingRelation:
-    """Explores progressive X-masking effects (EXPLORATORY).
-    
-    This is NOT an invariant - we're discovering the degradation curve.
-    The goal is to understand at what masking ratio embeddings diverge
-    significantly from the original.
-    """
+    # Explores progressive X-masking effects (EXPLORATORY).
     
     def test_masking_degradation_curve(self, embedder, standard_sequences, ci_config):
         """Analyze embedding degradation as masking increases."""

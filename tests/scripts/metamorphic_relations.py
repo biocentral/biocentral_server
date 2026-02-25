@@ -133,17 +133,7 @@ def embeddings_are_identical(a: np.ndarray, b: np.ndarray, rtol: float = 1e-5, a
 
 
 class MetamorphicRelation(ABC):
-    """
-    Abstract base class for metamorphic relations.
-    
-    A metamorphic relation defines a relationship between inputs and their
-    corresponding outputs. We use these to explore and understand embedding
-    behavior, discovering properties that could inform testing strategies.
-    
-    Types of relations:
-    - Strict invariants: embed(seq) == embed(seq), batch independence, etc.
-    - Exploratory: How does reversal/masking affect embeddings?
-    """
+    # Abstract base class for metamorphic relations.
     
     def __init__(
         self,
@@ -180,16 +170,7 @@ class MetamorphicRelation(ABC):
 
 
 class IdempotencyRelation(MetamorphicRelation):
-    """
-    Explores idempotency of embeddings (STRICT INVARIANT).
-    
-    Property: embed(seq) == embed(seq) for any sequence seq
-    
-    This SHOULD always hold (for the FixedEmbedder). If violated, it indicates:
-    - Non-deterministic model behavior
-    - Numerical instability
-    - Hardware/floating-point issues
-    """
+    # Explores idempotency of embeddings (STRICT INVARIANT).
     
     def __init__(
         self,
@@ -245,16 +226,7 @@ class IdempotencyRelation(MetamorphicRelation):
 
 
 class BatchVarianceRelation(MetamorphicRelation):
-    """
-    Explores batch invariance of embeddings (STRICT INVARIANT).
-    
-    Property: embed([A, B])[i] == embed([A])[0] for any batch containing A at index i
-    
-    If violated, it indicates:
-    - Batch normalization affecting individual embeddings
-    - Attention mechanisms bleeding across sequences
-    - Batch size or order dependencies
-    """
+    # Explores batch invariance of embeddings (STRICT INVARIANT).
     
     def __init__(
         self,
@@ -391,15 +363,7 @@ class BatchVarianceRelation(MetamorphicRelation):
 
 
 class ProjectionDeterminismRelation(MetamorphicRelation):
-    """
-    Explores determinism of projection methods
-    
-    Property: project(embeddings, seed=S) == project(embeddings, seed=S)
-    
-    This explores whether dimensionality reduction methods (UMAP, PCA, t-SNE)
-    produce identical results when using the same random seed. Should hold
-    for proper implementations.
-    """
+    # Explores determinism of projection methods Property: project(embeddings, seed=S) == project(embeddings, seed=S) This explores whether dimensionality reduction methods (UMAP, PCA, t-SNE) produce identical results when using the same random seed.
     
     SUPPORTED_METHODS = ["umap", "pca", "tsne"]
     
@@ -496,48 +460,21 @@ class ProjectionDeterminismRelation(MetamorphicRelation):
 
 
 class ReversalRelation(MetamorphicRelation):
-    """
-    Explores sequence reversal effects (EXPLORATORY).
-    
-    Property: Analyze relationship between embed(seq) and embed(reverse(seq))
-    
-    This is an exploratory relation to understand how PLMs handle reversed
-    sequences. Unlike strict invariants, there's no expected behavior - we're
-    discovering what the model does.
-    
-    Questions we're exploring:
-    - Do reversed sequences produce similar or different embeddings?
-    - Does sequence length affect the reversal relationship?
-    - Are certain sequences more "reversible" than others?
-    """
+    # Explores sequence reversal effects (EXPLORATORY).
     
     def __init__(
         self,
         embedder: EmbedderProtocol,
         threshold: float = 0.5,  # Relaxed threshold for exploration
     ):
-        """
-        Initialize ReversalRelation.
-        
-        Args:
-            embedder: Embedder to test
-            threshold: Threshold for "significant" difference
-        """
+        # Initialize ReversalRelation.
         super().__init__(embedder, threshold, name="SequenceReversal")
     
     def verify(
         self,
         sequence: str,
     ) -> List[RelationResult]:
-        """
-        Analyze embedding relationship for a sequence and its reverse.
-        
-        Args:
-            sequence: Sequence to test
-        
-        Returns:
-            List containing single RelationResult with analysis
-        """
+        # Analyze embedding relationship for a sequence and its reverse.
         reversed_seq = sequence[::-1]
         
         # Embed both
@@ -581,22 +518,7 @@ class ReversalRelation(MetamorphicRelation):
 
 
 class ProgressiveMaskingRelation(MetamorphicRelation):
-    """
-    Explores progressive token masking effects (EXPLORATORY).
-    
-    Property: Analyze how embed(seq) changes as more tokens are replaced with 'X'
-    
-    'X' is the common placeholder token for "not resolved/unknown" amino acids.
-    This relation explores:
-    
-    1. At what masking ratio do embeddings diverge significantly from original?
-    2. Is the degradation linear or does it follow another pattern?
-    3. Are some sequences more robust to masking than others?
-    4. What is the "information threshold" where embeddings become meaningless?
-    
-    This helps understand model robustness and could inform quality thresholds
-    for sequences with missing residues.
-    """
+    # Explores progressive token masking effects (EXPLORATORY).
     
     MASK_TOKEN = "X"
     
@@ -606,14 +528,7 @@ class ProgressiveMaskingRelation(MetamorphicRelation):
         threshold: float = 0.3,
         masking_ratios: Optional[List[float]] = None,
     ):
-        """
-        Initialize ProgressiveMaskingRelation.
-        
-        Args:
-            embedder: Embedder to test
-            threshold: Threshold for "significantly different"
-            masking_ratios: Ratios to test (default: [0, 0.1, 0.2, ..., 0.9])
-        """
+        # Initialize ProgressiveMaskingRelation.
         super().__init__(embedder, threshold, name="ProgressiveMasking")
         self.masking_ratios = masking_ratios or [
             0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
@@ -624,16 +539,7 @@ class ProgressiveMaskingRelation(MetamorphicRelation):
         sequence: str,
         seed: int = 42,
     ) -> List[RelationResult]:
-        """
-        Analyze embedding degradation under progressive masking.
-        
-        Args:
-            sequence: Sequence to test
-            seed: Random seed for mask position selection
-        
-        Returns:
-            List of RelationResult objects for each masking ratio
-        """
+        # Analyze embedding degradation under progressive masking.
         results = []
         
         # Ground truth: unmasked sequence
@@ -681,17 +587,7 @@ class ProgressiveMaskingRelation(MetamorphicRelation):
         seed: int = 42,
         granularity: float = 0.05,
     ) -> Dict[str, Any]:
-        """
-        Find the masking ratio at which embeddings diverge significantly.
-        
-        Args:
-            sequence: Sequence to test
-            seed: Random seed
-            granularity: Step size for masking ratio search
-        
-        Returns:
-            Dictionary with threshold information
-        """
+        # Find the masking ratio at which embeddings diverge significantly.
         original_emb = self.embedder.embed_pooled(sequence)
         
         ratios = np.arange(0, 1.0 + granularity, granularity)
@@ -778,18 +674,7 @@ def run_all_relations(
     relations: Optional[List[str]] = None,
     config: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, List[RelationResult]]:
-    """
-    Run all (or selected) metamorphic relations on given sequences.
-    
-    Args:
-        embedder: Embedder to test
-        sequences: Sequences to use for testing
-        relations: List of relation names to run (default: all)
-        config: Configuration overrides for relations
-    
-    Returns:
-        Dictionary mapping relation names to their results
-    """
+    # Run all (or selected) metamorphic relations on given sequences.
     config = config or {}
     relations = relations or RelationRegistry.list_relations()
     
@@ -826,15 +711,7 @@ def run_all_relations(
 
 
 def summarize_results(results: Dict[str, List[RelationResult]]) -> Dict[str, Any]:
-    """
-    Generate summary statistics for relation results.
-    
-    Args:
-        results: Dictionary of relation results
-    
-    Returns:
-        Summary dictionary with pass/fail counts and rates
-    """
+    # Generate summary statistics for relation results.
     summary = {
         "total_tests": 0,
         "passed": 0,

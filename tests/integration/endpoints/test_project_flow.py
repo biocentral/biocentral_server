@@ -33,12 +33,7 @@ class TestProjectEndpoint:
         shared_embedding_sequences,
         verify_embedding_cache,
     ):
-        """
-        Test that projection task completes successfully.
-        
-        Uses shared_embedding_sequences which are pre-cached by
-        test_embed_and_wait_for_completion in test_embed_flow.py.
-        """
+        # Test that projection task completes successfully.
 
         cache_status = verify_embedding_cache(expect_cached=True)
         print(f"\n[PROJECTION] Cache status: {cache_status['cached']}/{cache_status['total']} cached")
@@ -243,10 +238,7 @@ class TestProjectEndpoint:
 
 @pytest.mark.order(3)
 class TestEndToEndProjectionFlow:
-    """
-    End-to-end tests for the complete projection workflow.
-    Heavier: Waits for task completion.
-    """
+    # End-to-end tests for the complete projection workflow.
 
     @pytest.mark.integration
     def test_complete_projection_flow(
@@ -256,12 +248,7 @@ class TestEndToEndProjectionFlow:
         embedder_name,
         shared_embedding_sequences,
     ):
-        """
-        Test complete projection flow from request to completion.
-        
-        Uses shared_embedding_sequences which are pre-cached by
-        test_embed_and_wait_for_completion in test_embed_flow.py.
-        """
+        # Test complete projection flow from request to completion.
         request_data = {
             "method": "pca",
             "sequence_data": shared_embedding_sequences,

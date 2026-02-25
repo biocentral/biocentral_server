@@ -4,12 +4,7 @@ import re
 
 
 def get_mutation_score() -> tuple[int, int, int, int, float]:
-    """
-    Parse mutmut results and calculate mutation score.
-
-    Returns:
-        Tuple of (killed, survived, suspicious, total, score_percentage)
-    """
+    # Parse mutmut results and calculate mutation score.
     try:
         result = subprocess.run(
             ["mutmut", "results"],
