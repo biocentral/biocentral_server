@@ -580,7 +580,10 @@ class RealPredictor:
     Wrapper to run real prediction models (BindEmbed, TMbed, etc.).
     
     Handles embedding generation and model inference for oracle tests.
-    Requires ProtT5 embeddings for most models.
+    
+    By default uses FixedEmbedder (mock embeddings) so tests can run in CI
+    without ProtT5. Set use_real_embeddings=True for full end-to-end testing
+    with actual ProtT5 (requires @pytest.mark.slow).
     """
 
     def __init__(
@@ -589,13 +592,16 @@ class RealPredictor:
         config: PredictionOracleConfig,
         device: str = "cpu",
         batch_size: int = 1,
+        use_real_embeddings: bool = False,
     ):
         self.model_name = model_name
         self.config = config
         self.device = device
         self.batch_size = batch_size
+        self.use_real_embeddings = use_real_embeddings
         self._model = None
         self._embedding_service = None
+        self._fixed_embedder = None
 
     def _ensure_initialized(self):
         """Lazy initialization of model and embedding service."""
@@ -603,7 +609,6 @@ class RealPredictor:
             return
 
         from biocentral_server.predict.models import MODEL_MAP
-        from biotrainer.embedders import get_embedding_service
 
         # Get model class from MODEL_MAP
         model_class = MODEL_MAP.get(self.model_name)
@@ -613,37 +618,55 @@ class RealPredictor:
         # Initialize model with ONNX backend
         self._model = model_class(batch_size=self.batch_size, backend="onnx")
         
-        # Get embedder name from model metadata
-        embedder_name = self._model.get_metadata().embedder
-        
-        # Initialize embedding service
-        self._embedding_service = get_embedding_service(
-            embedder_name=embedder_name,
-            use_half_precision=False,
-            custom_tokenizer_config=None,
-            device=self.device,
-        )
+        if self.use_real_embeddings:
+            # Use real ProtT5 embeddings (slow, not for CI)
+            from biotrainer.embedders import get_embedding_service
+            
+            embedder_name = self._model.get_metadata().embedder
+            self._embedding_service = get_embedding_service(
+                embedder_name=embedder_name,
+                use_half_precision=False,
+                custom_tokenizer_config=None,
+                device=self.device,
+            )
+        else:
+            # Use FixedEmbedder with ProtT5 dimensions s
+            from tests.fixtures.fixed_embedder import FixedEmbedder
+            
+            self._fixed_embedder = FixedEmbedder(
+                model_name="prot_t5",
+                embedding_dim=1024,  # ProtT5 dimension
+                strict_dataset=False,  # Allow any test sequence
+            )
+
+    def _generate_embedding(self, sequence: str) -> np.ndarray:
+        """Generate embedding using configured method."""
+        if self.use_real_embeddings:
+            results = list(
+                self._embedding_service.generate_embeddings(
+                    input_data=[sequence],
+                    reduce=False,
+                )
+            )
+            if not results:
+                raise RuntimeError("Embedding generation failed")
+            _, embedding = results[0]
+            return np.array(embedding)
+        else:
+            return self._fixed_embedder.embed(sequence)
 
     def predict(self, sequence: str) -> Dict[str, Any]:
         """Predict for a single sequence."""
         self._ensure_initialized()
         
         # Generate embedding
-        results = list(
-            self._embedding_service.generate_embeddings(
-                input_data=[sequence],
-                reduce=False,  # Per-residue embeddings for BindEmbed
-            )
-        )
+        embedding = self._generate_embedding(sequence)
         
-        if not results:
-            raise RuntimeError("Embedding generation failed")
-        
-        seq_id, embedding = results[0]
-        embeddings = {seq_id: np.array(embedding)}
+        seq_id = "test_seq"
+        embeddings = {seq_id: embedding}
         sequences = {seq_id: sequence}
         
-        # Run prediction
+        # Run prediction with real ONNX model
         predictions = self._model.predict(sequences=sequences, embeddings=embeddings)
         
         # Convert to oracle-expected format
@@ -709,9 +732,10 @@ def _get_available_models() -> List[str]:
 @pytest.fixture(scope="module")
 def real_bindembed_predictor():
     """
-    Load real BindEmbed model with ProtT5 embedder.
+    Load BindEmbed model with mock ProtT5 embeddings (FixedEmbedder).
     
-    Fails explicitly if dependencies cannot be loaded.
+    Uses fake embeddings for CI compatibility. The ONNX model inference
+    is still real - only embeddings are mocked.
     """
     try:
         config = PREDICTION_ORACLE_CONFIGS["BindEmbed"]
@@ -719,6 +743,7 @@ def real_bindembed_predictor():
             model_name="BindEmbed",
             config=config,
             device="cpu",
+            use_real_embeddings=False,  # CI-safe: use FixedEmbedder
         )
         # Force initialization to fail fast if model unavailable
         predictor._ensure_initialized()
@@ -737,13 +762,14 @@ def real_bindembed_predictor():
 
 @pytest.fixture(scope="module")
 def real_tmbed_predictor():
-    """Load real TMbed model with ProtT5 embedder."""
+    """Load TMbed model with mock ProtT5 embeddings."""
     try:
         config = PREDICTION_ORACLE_CONFIGS["TMbed"]
         predictor = RealPredictor(
             model_name="TMbed",
             config=config,
             device="cpu",
+            use_real_embeddings=False,
         )
         predictor._ensure_initialized()
         return predictor
@@ -753,13 +779,14 @@ def real_tmbed_predictor():
 
 @pytest.fixture(scope="module")
 def real_seth_predictor():
-    """Load real Seth (disorder) model with ProtT5 embedder."""
+    """Load Seth (disorder) model with mock ProtT5 embeddings."""
     try:
         config = PREDICTION_ORACLE_CONFIGS["Seth"]
         predictor = RealPredictor(
             model_name="Seth",
             config=config,
             device="cpu",
+            use_real_embeddings=False,
         )
         predictor._ensure_initialized()
         return predictor
@@ -770,10 +797,10 @@ def real_seth_predictor():
 @pytest.fixture(scope="module", params=["BindEmbed"])
 def real_predictor(request):
     """
-    Parametrized fixture to test multiple real models.
+    Parametrized fixture to test multiple real models with mock embeddings.
     
-    Add model names to params list to test more models:
-    params=["BindEmbed", "TMbed", "Seth"]
+    Uses FixedEmbedder for CI compatibility. Add model names to params
+    list to test more models: params=["BindEmbed", "TMbed", "Seth"]
     """
     model_name = request.param
     config = PREDICTION_ORACLE_CONFIGS[model_name]
@@ -782,6 +809,7 @@ def real_predictor(request):
             model_name=model_name,
             config=config,
             device="cpu",
+            use_real_embeddings=False,
         )
         predictor._ensure_initialized()
         return predictor, config
