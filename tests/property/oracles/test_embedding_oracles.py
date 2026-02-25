@@ -4,10 +4,9 @@ Embedding Oracle Tests for Batch Invariance and Masking Robustness.
 This module implements test oracles that verify critical embedding properties:
 1. Batch Invariance: Embedding a sequence alone yields the same vector as
    embedding it within a larger batch.
-2. Masking Robustness: Embeddings remain stable when input tokens are
-   progressively replaced with the unknown token 'X'.
-
-Supports both FixedEmbedder (deterministic mock) and real ESM2-T6-8M model.
+2. Masking Robustness: Embeddings degrade gracefully under low masking ratios
+   (0-30%) when tokens are replaced with unknown token 'X'. Note: Higher
+   masking ratios are expected to cause significant divergence.
 """
 
 import random
@@ -99,7 +98,7 @@ class OracleConfig:
 ORACLE_CONFIGS = {
     "fixed_embedder": OracleConfig(
         embedder_name="fixed_embedder",
-        cosine_threshold=1.0,
+        cosine_threshold=1.0, # since it should produce identical embeddings regardless of batch or masking
     ),
     "esm2_t6_8m": OracleConfig(
         embedder_name="esm2_t6_8m",
@@ -220,10 +219,11 @@ class BatchInvarianceOracle:
 
 class MaskingRobustnessOracle:
     """
-    Oracle verifying embedding stability under progressive token masking.
+    Oracle verifying embedding behavior under progressive token masking.
 
-    Tests that embeddings remain stable (below divergence threshold) when
-    input tokens are progressively replaced with the unknown token 'X'.
+    Tests that embeddings degrade gracefully at low masking ratios (0-30%)
+    when tokens are replaced with unknown token 'X'. At higher masking ratios,
+    significant divergence is expected and not considered a failure.
     """
 
     MASK_TOKEN = "X"
