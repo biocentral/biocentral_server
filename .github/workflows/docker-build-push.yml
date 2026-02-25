@@ -9,33 +9,12 @@ on:
 jobs:
   build-and-push:
     name: Build and Push Docker Image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-large-disk
     permissions:
       contents: read
       packages: write  # Needed for GitHub Container Registry
 
     steps:
-      - name: Maximize build disk space
-        uses: easimon/maximize-build-space@v10
-        with:
-          root-reserve-mb: 24576
-          swap-size-mb: 1024
-          temp-reserve-mb: 16384
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'       
-          remove-codeql: 'true'
-          remove-docker-images: 'true'
-          overprovision-lvm: 'true'
-
-      - name: Move Docker storage to large partition
-        run: |
-          sudo systemctl stop docker.service
-          sudo systemctl stop docker.socket
-          sudo mkdir -p /home/runner/work/docker
-          sudo mv /var/lib/docker /home/runner/work/docker
-          sudo ln -s /home/runner/work/docker /var/lib/docker
-          sudo systemctl start docker.service
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -53,13 +32,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/denizozturk95/biocentral-server
+          images: ghcr.io/${{ github.repository }}/biocentral-server
           tags: |
             type=sha,format=short
-            type=raw,value=ci
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
-        id: docker_build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -68,8 +46,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
