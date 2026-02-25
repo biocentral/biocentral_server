@@ -6,7 +6,6 @@ along with table formatting and CSV report generation.
 """
 
 import csv
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
