@@ -10,6 +10,7 @@ This module implements test oracles that verify critical projection properties:
 Uses the canonical test dataset for reproducible testing.
 """
 
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Protocol
@@ -20,15 +21,19 @@ import pytest
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 from tests.fixtures.fixed_embedder import FixedEmbedder
 
-
 _projection_oracle_results: List[Dict[str, Any]] = []
 pytestmark = pytest.mark.property
 
+# Skip real server tests when CI uses FixedEmbedder (no server available)
+_using_fixed_embedder_ci = os.environ.get("CI_EMBEDDER") == "FixedEmbedder"
+skip_in_fixed_embedder_ci = pytest.mark.skipif(
+    _using_fixed_embedder_ci,
+    reason="Server not available when CI_EMBEDDER=FixedEmbedder",
+)
 
 def get_projection_oracle_results() -> List[Dict[str, Any]]:
     """Get accumulated projection oracle results."""
     return _projection_oracle_results
-
 
 def add_projection_oracle_result(result: Dict[str, Any]) -> None:
     """Add a result to the projection oracle results collection."""
@@ -36,11 +41,9 @@ def add_projection_oracle_result(result: Dict[str, Any]) -> None:
         result["timestamp"] = datetime.now().isoformat()
     _projection_oracle_results.append(result)
 
-
 def clear_projection_oracle_results() -> None:
     """Clear all accumulated projection oracle results."""
     _projection_oracle_results.clear()
-
 
 @dataclass
 class ProjectionOracleConfig:
@@ -49,8 +52,6 @@ class ProjectionOracleConfig:
     method: str
     n_components: int = 2
     distance_correlation_threshold: float = 0.5
-
-
 
 PROJECTION_ORACLE_CONFIGS = {
     "umap": ProjectionOracleConfig(
@@ -201,12 +202,6 @@ class ProjectionDeterminismOracle:
                 return False
         return True
 
-
-
-
-
-
-
 class DimensionalityOracle:
     """
     Oracle verifying that projection dimensions are correct.
@@ -258,12 +253,6 @@ class DimensionalityOracle:
         }
         add_projection_oracle_result(result)
         return result
-
-
-
-
-
-
 
 class ProjectionValueValidityOracle:
     """
@@ -324,13 +313,7 @@ class ProjectionValueValidityOracle:
         }
         add_projection_oracle_result(result)
         return result
-
-
-
-
-
-
-
+    
 class DistancePreservationOracle:
     """
     Oracle verifying that projections approximately preserve distances.
@@ -417,35 +400,25 @@ class DistancePreservationOracle:
         add_projection_oracle_result(result)
         return result
 
-
-
-
-
-
-
 @pytest.fixture(scope="module")
 def pca_config() -> ProjectionOracleConfig:
     """Oracle configuration for PCA projection."""
     return PROJECTION_ORACLE_CONFIGS["pca"]
-
 
 @pytest.fixture(scope="module")
 def umap_config() -> ProjectionOracleConfig:
     """Oracle configuration for UMAP projection."""
     return PROJECTION_ORACLE_CONFIGS["umap"]
 
-
 @pytest.fixture(scope="module")
 def mock_pca_projector(pca_config) -> MockProjector:
     """Mock projector for PCA."""
     return MockProjector(pca_config)
 
-
 @pytest.fixture(scope="module")
 def mock_umap_projector(umap_config) -> MockProjector:
     """Mock projector for UMAP."""
     return MockProjector(umap_config)
-
 
 @pytest.fixture(scope="module")
 def oracle_embeddings() -> Dict[str, np.ndarray]:
@@ -460,7 +433,6 @@ def oracle_embeddings() -> Dict[str, np.ndarray]:
     }
     return embedder.embed_dict(sequences, pooled=True)
 
-
 @pytest.fixture(scope="module")
 def diverse_test_embeddings() -> Dict[str, np.ndarray]:
     """Diverse test embeddings with varied sequence lengths."""
@@ -473,12 +445,6 @@ def diverse_test_embeddings() -> Dict[str, np.ndarray]:
         "hydrophobic": CANONICAL_TEST_DATASET.get_by_id("hydrophobic_rich").sequence,
     }
     return embedder.embed_dict(sequences, pooled=True)
-
-
-
-
-
-
 
 class TestProjectionDeterminism:
     """Tests for projection determinism oracle."""
@@ -640,10 +606,341 @@ class TestDistancePreservation:
             f"num_pairs={result['num_pairs']}"
         )
 
+# =============================================================================
+# Real Server Projector
+# =============================================================================
 
 
+class RealProjector:
+    """
+    Projector that makes HTTP requests to the real running server.
+    
+    Submits projection requests to /projection_service/project and polls
+    for completion. Tests the full end-to-end projection pipeline.
+    
+    Requires:
+        - Server running (docker-compose.dev.yml or CI_SERVER_URL)
+        - Pre-cached embeddings in the database
+    """
+
+    def __init__(
+        self,
+        embedder_name: str = "Rostlab/prot_t5_xl_uniref50",
+        server_url: str = None,
+        timeout: int = 120,
+        poll_interval: float = 2.0,
+    ):
+        self.embedder_name = embedder_name
+        self.timeout = timeout
+        self.poll_interval = poll_interval
+        
+        # Get server URL from env or parameter
+        self.server_url = server_url or os.environ.get(
+            "CI_SERVER_URL", "http://localhost:9540"
+        )
+        self._client = None
+
+    def _ensure_initialized(self):
+        """Lazy initialization of HTTP client."""
+        if self._client is not None:
+            return
+        
+        import httpx
+        self._client = httpx.Client(
+            base_url=self.server_url,
+            timeout=30.0,
+        )
+        
+        # Verify server is reachable
+        try:
+            response = self._client.get("/health")
+            if response.status_code != 200:
+                raise RuntimeError(f"Server health check failed: {response.status_code}")
+        except Exception as e:
+            raise RuntimeError(
+                f"Cannot connect to server at {self.server_url}. "
+                f"Ensure server is running: {e}"
+            )
+
+    def _poll_task(self, task_id: str) -> Dict[str, Any]:
+        """Poll task until completion."""
+        import time
+        
+        start = time.time()
+        while time.time() - start < self.timeout:
+            response = self._client.get(f"/biocentral_service/task_status/{task_id}")
+            
+            if response.status_code != 200:
+                time.sleep(self.poll_interval)
+                continue
+            
+            dtos = response.json().get("dtos", [])
+            if not dtos:
+                time.sleep(self.poll_interval)
+                continue
+            
+            latest = dtos[-1]
+            status = latest.get("status", "").upper()
+            
+            if status in ("FINISHED", "COMPLETED", "DONE"):
+                return latest
+            elif status in ("FAILED", "ERROR", "CANCELLED"):
+                raise RuntimeError(
+                    f"Projection task failed: {latest.get('error', 'unknown')}"
+                )
+            
+            time.sleep(self.poll_interval)
+        
+        raise TimeoutError(f"Task {task_id} did not complete within {self.timeout}s")
+
+    def project(
+        self,
+        embeddings: Dict[str, np.ndarray],
+        method: str,
+        n_components: int,
+    ) -> Dict[str, np.ndarray]:
+        """
+        Project embeddings via server HTTP API.
+        
+        Note: The server uses sequences, not embeddings directly.
+        We need to pass sequences and have them pre-cached.
+        """
+        self._ensure_initialized()
+        
+        # For server projection, we need sequences - get them from canonical dataset
+        # The embeddings dict keys are sequence IDs
+        sequences = {}
+        for seq_id in embeddings.keys():
+            try:
+                seq_record = CANONICAL_TEST_DATASET.get_by_id(seq_id)
+                sequences[seq_id] = seq_record.sequence
+            except KeyError:
+                # If not in canonical dataset, try to reconstruct
+                # This shouldn't happen in normal test flow
+                raise ValueError(
+                    f"Sequence ID '{seq_id}' not found in canonical dataset. "
+                    f"Server projection requires known sequences."
+                )
+        
+        # Submit projection request
+        request_data = {
+            "method": method,
+            "sequence_data": sequences,
+            "embedder_name": self.embedder_name,
+            "config": {
+                "n_components": n_components,
+            },
+        }
+        
+        response = self._client.post("/projection_service/project", json=request_data)
+        
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Projection request failed: {response.status_code} - {response.text}"
+            )
+        
+        task_id = response.json().get("task_id")
+        if not task_id:
+            raise RuntimeError("No task_id in projection response")
+        
+        # Poll for completion
+        result = self._poll_task(task_id)
+        
+        # Extract projections from result
+        return self._format_server_response(result, method, n_components)
+
+    def _format_server_response(
+        self,
+        result: Dict[str, Any],
+        method: str,
+        n_components: int,
+    ) -> Dict[str, np.ndarray]:
+        """Format server response to match ProjectorProtocol interface."""
+        projection_result = result.get("projection_result", {})
+        
+        # Method payload is keyed by method name (lowercase)
+        method_key = method.lower()
+        method_payload = (
+            projection_result.get(method_key) or
+            projection_result.get(method.upper()) or
+            projection_result.get(method)
+        )
+        
+        if not method_payload:
+            raise RuntimeError(
+                f"Projection result missing method payload for '{method}'. "
+                f"Available keys: {list(projection_result.keys())}"
+            )
+        
+        # Extract identifiers and dimension values
+        identifiers = method_payload.get("identifier", [])
+        
+        # Build projections dict
+        projections = {}
+        for i, seq_id in enumerate(identifiers):
+            coords = []
+            for dim in range(1, n_components + 1):
+                dim_key = f"D{dim}"
+                if dim_key in method_payload:
+                    coords.append(method_payload[dim_key][i])
+            projections[seq_id] = np.array(coords, dtype=np.float32)
+        
+        return projections
 
 
+# =============================================================================
+# Real Server Fixtures
+# =============================================================================
+
+
+@pytest.fixture(scope="module")
+def real_pca_projector():
+    """
+    Create projector that calls the real server's PCA endpoint.
+    
+    Requires server running with pre-cached embeddings.
+    """
+    try:
+        projector = RealProjector()
+        projector._ensure_initialized()
+        return projector
+    except Exception as e:
+        pytest.skip(f"Server not available for projection: {e}")
+
+
+@pytest.fixture(scope="module")
+def real_umap_projector():
+    """Create projector that calls the real server's UMAP endpoint."""
+    try:
+        projector = RealProjector()
+        projector._ensure_initialized()
+        return projector
+    except Exception as e:
+        pytest.skip(f"Server not available for projection: {e}")
+
+
+@pytest.fixture(scope="module")
+def server_oracle_sequences() -> Dict[str, str]:
+    """
+    Sequences for server projection tests.
+    
+    These must match sequences that have pre-cached ProtT5 embeddings.
+    """
+    return {
+        "standard_001": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+        "standard_002": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+        "standard_003": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
+    }
+
+
+# =============================================================================
+# Server Integration Oracle Tests
+# =============================================================================
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+@skip_in_fixed_embedder_ci
+class TestProjectionDeterminismRealServer:
+    """
+    Projection determinism tests via the real running server.
+    
+    Tests end-to-end projection flow: HTTP request -> embeddings -> projection -> response.
+    Requires server running with pre-cached embeddings.
+    """
+
+    def test_pca_determinism_via_server(
+        self,
+        real_pca_projector: RealProjector,
+        pca_config: ProjectionOracleConfig,
+        oracle_embeddings: Dict[str, np.ndarray],
+    ):
+        """Verify PCA projections are deterministic via server."""
+        oracle = ProjectionDeterminismOracle(
+            projector=real_pca_projector,
+            config=pca_config,
+        )
+        
+        result = oracle.verify(oracle_embeddings)
+        assert result["passed"], (
+            f"PCA determinism failed via server: method={result['method']}, "
+            f"num_sequences={result['num_sequences']}, num_runs={result['num_runs']}"
+        )
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+@skip_in_fixed_embedder_ci
+class TestDimensionalityRealServer:
+    """Dimensionality tests via the real running server."""
+
+    def test_pca_dimensionality_via_server(
+        self,
+        real_pca_projector: RealProjector,
+        pca_config: ProjectionOracleConfig,
+        oracle_embeddings: Dict[str, np.ndarray],
+    ):
+        """Verify PCA projects to correct dimensions via server."""
+        oracle = DimensionalityOracle(
+            projector=real_pca_projector,
+            config=pca_config,
+        )
+        
+        result = oracle.verify(oracle_embeddings)
+        assert result["passed"], (
+            f"Dimensionality check failed via server: method={result['method']}, "
+            f"n_components={result['n_components']}: {result['issues']}"
+        )
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+@skip_in_fixed_embedder_ci
+class TestProjectionValueValidityRealServer:
+    """Value validity tests via the real running server."""
+
+    def test_pca_values_valid_via_server(
+        self,
+        real_pca_projector: RealProjector,
+        pca_config: ProjectionOracleConfig,
+        oracle_embeddings: Dict[str, np.ndarray],
+    ):
+        """Verify PCA projection values are valid via server."""
+        oracle = ProjectionValueValidityOracle(
+            projector=real_pca_projector,
+            config=pca_config,
+        )
+        
+        result = oracle.verify(oracle_embeddings)
+        assert result["passed"], (
+            f"Value validity failed via server: method={result['method']}, "
+            f"num_sequences={result['num_sequences']}: {result['issues']}"
+        )
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+@skip_in_fixed_embedder_ci
+class TestDistancePreservationRealServer:
+    """Distance preservation tests via the real running server."""
+
+    def test_pca_preserves_distances_via_server(
+        self,
+        real_pca_projector: RealProjector,
+        pca_config: ProjectionOracleConfig,
+        oracle_embeddings: Dict[str, np.ndarray],
+    ):
+        """Verify PCA approximately preserves distances via server."""
+        oracle = DistancePreservationOracle(
+            projector=real_pca_projector,
+            config=pca_config,
+        )
+        
+        result = oracle.verify(oracle_embeddings)
+        assert result["passed"], (
+            f"Distance preservation failed via server: method={result['method']}, "
+            f"correlation={result['correlation']:.6f} < threshold={result['threshold']:.6f}"
+        )
 
 
 @pytest.fixture(scope="module", autouse=True)
