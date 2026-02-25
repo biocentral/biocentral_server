@@ -4,6 +4,7 @@ import os
 import time
 import logging
 import sys
+import hashlib
 import pytest
 import httpx
 import redis
@@ -15,6 +16,9 @@ from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+TERMINAL_SUCCESS_STATUSES = {"FINISHED", "COMPLETED", "DONE"}
+TERMINAL_FAILURE_STATUSES = {"FAILED", "ERROR"}
 
 
 def get_redis_port() -> int:
@@ -187,7 +191,12 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
 
 
                 task_id = f"local-{uuid.uuid4().hex[:8]}"
-                _fake_tasks[task_id] = {"status": "FINISHED", "result": {}}
+                _fake_tasks[task_id] = {
+                    "task_id": task_id,
+                    "status": "FINISHED",
+                    "result": {},
+                    "error": None,
+                }
                 return FakeResponse(200, {"task_id": task_id})
 
             if path.startswith("/projection_service/project"):
@@ -219,7 +228,12 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                            for d in range(n_components)}
                     }
                 }
-                _fake_tasks[task_id] = {"status": "FINISHED", "projection_result": projection_result}
+                _fake_tasks[task_id] = {
+                    "task_id": task_id,
+                    "status": "FINISHED",
+                    "projection_result": projection_result,
+                    "error": None,
+                }
                 return FakeResponse(200, {"task_id": task_id})
 
             return original_post(url, *args, **kwargs)
@@ -252,16 +266,25 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
 
 
 def _make_request_with_retry(client, method: str, url: str, max_retries: int = 5, **kwargs) -> httpx.Response:
-    """Make an HTTP request with retry logic for connection errors."""
+    """Make an HTTP request with retry logic for transient errors."""
     last_error = None
     for attempt in range(max_retries):
         try:
             if method.upper() == "GET":
-                return client.get(url, **kwargs)
+                response = client.get(url, **kwargs)
             elif method.upper() == "POST":
-                return client.post(url, **kwargs)
+                response = client.post(url, **kwargs)
             else:
                 raise ValueError(f"Unsupported method: {method}")
+            if response.status_code >= 500 and attempt < max_retries - 1:
+                wait_time = min(2 ** attempt, 30)
+                logging.debug(
+                    f"Request got {response.status_code} "
+                    f"(attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s..."
+                )
+                time.sleep(wait_time)
+                continue
+            return response
         except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadTimeout) as e:
             last_error = e
             wait_time = min(2 ** attempt, 30)
@@ -271,6 +294,77 @@ def _make_request_with_retry(client, method: str, url: str, max_retries: int = 5
                 continue
             raise
     raise last_error
+
+
+def validate_task_dto(task_dto: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate minimal task DTO schema shared across endpoint integration tests."""
+    assert isinstance(task_dto, dict), f"Task DTO must be dict, got {type(task_dto)}"
+    assert "status" in task_dto, "Task DTO missing 'status'"
+    assert isinstance(task_dto["status"], str), "Task DTO 'status' must be string"
+    return task_dto
+
+
+def assert_task_success(task_dto: Dict[str, Any], context: str = "task") -> Dict[str, Any]:
+    """Assert that a task DTO is terminal-success and does not carry an error payload."""
+    validate_task_dto(task_dto)
+    status = task_dto["status"].upper()
+    assert status in TERMINAL_SUCCESS_STATUSES, (
+        f"{context} should succeed; got status={status}, error={task_dto.get('error')}"
+    )
+    error_value = task_dto.get("error")
+    assert error_value in (None, "", []), (
+        f"{context} has unexpected error payload despite success status: {error_value}"
+    )
+    return task_dto
+
+
+def assert_projection_result_schema(
+    task_dto: Dict[str, Any],
+    method: str,
+    expected_sequence_count: int,
+) -> Dict[str, Any]:
+    """Assert projection task result payload contains expected schema for a method."""
+    projection_result = task_dto.get("projection_result")
+    assert isinstance(projection_result, dict), "Task DTO missing 'projection_result' dict"
+
+    method_key = method.lower()
+    method_payload = projection_result.get(method_key) or projection_result.get(method.upper()) or projection_result.get(method)
+    assert isinstance(method_payload, dict), f"Projection result missing method payload for '{method}'"
+
+    identifiers = method_payload.get("identifier")
+    assert isinstance(identifiers, list), "Projection payload missing 'identifier' list"
+    assert len(identifiers) == expected_sequence_count, (
+        f"Projection identifier length {len(identifiers)} != expected {expected_sequence_count}"
+    )
+
+    for key, values in method_payload.items():
+        if key.startswith("D"):
+            assert isinstance(values, list), f"Projection axis '{key}' must be a list"
+            assert len(values) == len(identifiers), (
+                f"Projection axis '{key}' length {len(values)} != identifier length {len(identifiers)}"
+            )
+    return method_payload
+
+
+def assert_prediction_result_schema(
+    task_dto: Dict[str, Any],
+    expected_sequence_ids,
+) -> Dict[str, Any]:
+    """Assert prediction task result contains predictions aligned with input sequence ids."""
+    if isinstance(task_dto.get("predictions"), dict):
+        predictions = task_dto.get("predictions")
+        prediction_result = {"predictions": predictions}
+    else:
+        prediction_result = task_dto.get("prediction_result")
+        if prediction_result is None:
+            prediction_result = task_dto.get("result")
+        assert isinstance(prediction_result, dict), "Task DTO missing prediction result dict"
+        predictions = prediction_result.get("predictions")
+    assert isinstance(predictions, dict), "Prediction result missing 'predictions' dict"
+    assert set(predictions.keys()) == set(expected_sequence_ids), (
+        f"Prediction keys {sorted(predictions.keys())} do not match input ids {sorted(expected_sequence_ids)}"
+    )
+    return prediction_result
 
 
 @pytest.fixture(scope="session")
@@ -283,6 +377,7 @@ def poll_task(client):
         timeout: int = 120,
         poll_interval: float = 2.0,
         max_consecutive_errors: int = 10,
+        require_success: bool = False,
     ) -> Dict[str, Any]:
         """
         Poll task status until completion or timeout.
@@ -358,6 +453,7 @@ def poll_task(client):
             
 
             latest_dto = dtos[-1]
+            latest_dto = validate_task_dto(latest_dto)
             task_status = latest_dto.get("status", "").upper()
             last_status = task_status
             
@@ -366,11 +462,16 @@ def poll_task(client):
                 logging.info(f"[POLL] Task {task_id}: {task_status} ({elapsed}s elapsed)")
             
 
-            if task_status in ("FINISHED", "COMPLETED", "DONE"):
+            if task_status in TERMINAL_SUCCESS_STATUSES:
                 logging.info(f"[POLL] Task {task_id} completed successfully in {elapsed}s")
+                if require_success:
+                    assert_task_success(latest_dto, context=f"task {task_id}")
                 return latest_dto
-            elif task_status in ("FAILED", "ERROR"):
-                logging.warning(f"[POLL] Task {task_id} failed: {latest_dto.get('error', 'unknown')}")
+            elif task_status in TERMINAL_FAILURE_STATUSES:
+                err = latest_dto.get("error", "unknown")
+                logging.warning(f"[POLL] Task {task_id} failed: {err}")
+                if require_success:
+                    raise RuntimeError(f"Task {task_id} entered terminal failure status={task_status}: {err}")
                 return latest_dto
             
             time.sleep(poll_interval)
@@ -727,9 +828,9 @@ def precache_prott5_embeddings(shared_embedding_sequences):
         for seq_id, sequence in shared_embedding_sequences.items():
             seq_hash = calculate_sequence_hash(sequence)
             seq_len = len(sequence)
-            
 
-            seed = hash(seq_hash) % (2**32)
+            seed_bytes = hashlib.sha256(seq_hash.encode("utf-8")).digest()[:8]
+            seed = int.from_bytes(seed_bytes, "big")
             rng = np.random.default_rng(seed)
             
 
@@ -896,4 +997,4 @@ def load_bindembed_onnx():
         import traceback
         traceback.print_exc()
         return False
-        return False
+    

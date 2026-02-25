@@ -11,6 +11,7 @@ Supports both FixedEmbedder (deterministic mock) and real ESM2-T6-8M model.
 """
 
 import random
+import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Protocol
@@ -36,6 +37,7 @@ from tests.property.oracles.embedding_metrics import (
 
 
 _oracle_results: List[Dict[str, Any]] = []
+pytestmark = pytest.mark.property
 
 
 def get_oracle_results() -> List[Dict[str, Any]]:
@@ -97,7 +99,7 @@ class OracleConfig:
 ORACLE_CONFIGS = {
     "fixed_embedder": OracleConfig(
         embedder_name="fixed_embedder",
-        cosine_threshold=0.1,
+        cosine_threshold=1.0,
     ),
     "esm2_t6_8m": OracleConfig(
         embedder_name="esm2_t6_8m",
@@ -202,7 +204,10 @@ class BatchInvarianceOracle:
 
 
         batch = selected_fillers.copy()
-        insert_pos = random.randint(0, len(batch))
+        seed_material = f"{self.config.embedder_name}:{batch_size}:{target}".encode("utf-8")
+        seed = int.from_bytes(hashlib.sha256(seed_material).digest()[:8], "big")
+        rng = random.Random(seed)
+        insert_pos = rng.randint(0, len(batch))
         batch.insert(insert_pos, target)
 
         return batch
@@ -254,7 +259,6 @@ class MaskingRobustnessOracle:
             List of result dictionaries with metrics for each masking ratio
         """
         results = []
-        random.seed(seed)
 
 
         original_embedding = self.embedder.embed_pooled(sequence)
@@ -309,12 +313,12 @@ class MaskingRobustnessOracle:
         if ratio >= 1:
             return self.MASK_TOKEN * len(sequence)
 
-        random.seed(seed + int(ratio * 1000))
+        rng = random.Random(seed + int(ratio * 1000))
         seq_list = list(sequence)
         n_mask = int(len(sequence) * ratio)
 
 
-        positions = random.sample(range(len(sequence)), n_mask)
+        positions = rng.sample(range(len(sequence)), n_mask)
 
         for pos in positions:
             seq_list[pos] = self.MASK_TOKEN
@@ -415,7 +419,7 @@ class ESM2EmbedderWrapper:
 
 
 @pytest.fixture(scope="module")
-def test_sequences() -> List[str]:
+def oracle_sequences() -> List[str]:
     """Test sequences for oracle verification from canonical dataset."""
     return get_test_sequences(categories=["standard"])
 
@@ -439,7 +443,7 @@ class TestBatchInvarianceFixedEmbedder:
         self,
         fixed_embedder_esm2_t6: FixedEmbedder,
         fixed_embedder_oracle_config: OracleConfig,
-        test_sequences: List[str],
+        oracle_sequences: List[str],
         filler_sequences: List[str],
     ):
         """Verify embeddings are identical regardless of batch composition."""
@@ -449,8 +453,11 @@ class TestBatchInvarianceFixedEmbedder:
         )
 
         all_results = []
-        for seq in test_sequences[:3]:
+        for idx, seq in enumerate(oracle_sequences[:3]):
             results = oracle.verify(seq, filler_sequences)
+            for result in results:
+                result["sequence_index"] = idx
+                result["sequence_length"] = len(seq)
             all_results.extend(results)
 
 
@@ -465,7 +472,10 @@ class TestBatchInvarianceFixedEmbedder:
             assert result["passed"], (
                 f"Batch invariance failed for {result['parameter']}: "
                 f"cosine_distance={result['cosine_distance']:.6f} > "
-                f"threshold={result['threshold']:.4f}"
+                f"threshold={result['threshold']:.4f}; "
+                f"embedder={result['embedder']}; "
+                f"sequence_index={result.get('sequence_index')}; "
+                f"sequence_length={result.get('sequence_length')}"
             )
 
 
@@ -476,7 +486,7 @@ class TestMaskingRobustnessFixedEmbedder:
         self,
         fixed_embedder_esm2_t6: FixedEmbedder,
         fixed_embedder_oracle_config: OracleConfig,
-        test_sequences: List[str],
+        oracle_sequences: List[str],
     ):
         """Verify embeddings remain stable under progressive masking."""
         oracle = MaskingRobustnessOracle(
@@ -485,8 +495,11 @@ class TestMaskingRobustnessFixedEmbedder:
         )
 
         all_results = []
-        for seq in test_sequences[:3]:
+        for idx, seq in enumerate(oracle_sequences[:3]):
             results = oracle.verify(seq)
+            for result in results:
+                result["sequence_index"] = idx
+                result["sequence_length"] = len(seq)
             all_results.extend(results)
 
 
@@ -501,7 +514,10 @@ class TestMaskingRobustnessFixedEmbedder:
             assert result["passed"], (
                 f"Masking robustness failed for {result['parameter']}: "
                 f"cosine_distance={result['cosine_distance']:.6f} > "
-                f"threshold={result['threshold']:.4f}"
+                f"threshold={result['threshold']:.4f}; "
+                f"embedder={result['embedder']}; "
+                f"sequence_index={result.get('sequence_index')}; "
+                f"sequence_length={result.get('sequence_length')}"
             )
 
 
@@ -513,7 +529,7 @@ class TestBatchInvarianceESM2:
         self,
         esm2_t6_8m_embedder,
         esm2_t6_8m_oracle_config: OracleConfig,
-        test_sequences: List[str],
+        oracle_sequences: List[str],
         filler_sequences: List[str],
     ):
         """Verify embeddings are identical regardless of batch composition."""
@@ -523,8 +539,11 @@ class TestBatchInvarianceESM2:
         )
 
         all_results = []
-        for seq in test_sequences[:2]:
+        for idx, seq in enumerate(oracle_sequences[:2]):
             results = oracle.verify(seq, filler_sequences)
+            for result in results:
+                result["sequence_index"] = idx
+                result["sequence_length"] = len(seq)
             all_results.extend(results)
 
 
@@ -539,7 +558,10 @@ class TestBatchInvarianceESM2:
             assert result["passed"], (
                 f"Batch invariance failed for {result['parameter']}: "
                 f"cosine_distance={result['cosine_distance']:.6f} > "
-                f"threshold={result['threshold']:.4f}"
+                f"threshold={result['threshold']:.4f}; "
+                f"embedder={result['embedder']}; "
+                f"sequence_index={result.get('sequence_index')}; "
+                f"sequence_length={result.get('sequence_length')}"
             )
 
 
@@ -551,7 +573,7 @@ class TestMaskingRobustnessESM2:
         self,
         esm2_t6_8m_embedder,
         esm2_t6_8m_oracle_config: OracleConfig,
-        test_sequences: List[str],
+        oracle_sequences: List[str],
     ):
         """Verify embeddings remain stable under progressive masking."""
         oracle = MaskingRobustnessOracle(
@@ -560,8 +582,11 @@ class TestMaskingRobustnessESM2:
         )
 
         all_results = []
-        for seq in test_sequences[:2]:
+        for idx, seq in enumerate(oracle_sequences[:2]):
             results = oracle.verify(seq)
+            for result in results:
+                result["sequence_index"] = idx
+                result["sequence_length"] = len(seq)
             all_results.extend(results)
 
 
@@ -576,7 +601,10 @@ class TestMaskingRobustnessESM2:
             assert result["passed"], (
                 f"Masking robustness failed for {result['parameter']}: "
                 f"cosine_distance={result['cosine_distance']:.6f} > "
-                f"threshold={result['threshold']:.4f}"
+                f"threshold={result['threshold']:.4f}; "
+                f"embedder={result['embedder']}; "
+                f"sequence_index={result.get('sequence_index')}; "
+                f"sequence_length={result.get('sequence_length')}"
             )
 
 

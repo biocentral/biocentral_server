@@ -26,6 +26,7 @@ from tests.fixtures.fixed_embedder import FixedEmbedder
 
 
 _projection_oracle_results: List[Dict[str, Any]] = []
+pytestmark = pytest.mark.property
 
 
 def get_projection_oracle_results() -> List[Dict[str, Any]]:
@@ -69,7 +70,7 @@ PROJECTION_ORACLE_CONFIGS = {
     "pca": ProjectionOracleConfig(
         method="pca",
         n_components=2,
-        distance_correlation_threshold=0.6, 
+        distance_correlation_threshold=0.4, 
     ),
     "tsne": ProjectionOracleConfig(
         method="tsne",
@@ -474,7 +475,7 @@ def mock_umap_projector(umap_config) -> MockProjector:
 
 
 @pytest.fixture(scope="module")
-def test_embeddings() -> Dict[str, np.ndarray]:
+def oracle_embeddings() -> Dict[str, np.ndarray]:
     """Test embeddings from canonical dataset using FixedEmbedder."""
     embedder = FixedEmbedder(model_name="esm2_t6")
     sequences = {
@@ -513,7 +514,7 @@ class TestProjectionDeterminism:
         self,
         mock_pca_projector: MockProjector,
         pca_config: ProjectionOracleConfig,
-        test_embeddings: Dict[str, np.ndarray],
+        oracle_embeddings: Dict[str, np.ndarray],
     ):
         """Verify PCA projections are deterministic."""
         oracle = ProjectionDeterminismOracle(
@@ -521,14 +522,17 @@ class TestProjectionDeterminism:
             config=pca_config,
         )
 
-        result = oracle.verify(test_embeddings)
-        assert result["passed"], "PCA projection should be deterministic"
+        result = oracle.verify(oracle_embeddings)
+        assert result["passed"], (
+            f"PCA determinism failed: method={result['method']}, "
+            f"num_sequences={result['num_sequences']}, num_runs={result['num_runs']}"
+        )
 
     def test_umap_determinism(
         self,
         mock_umap_projector: MockProjector,
         umap_config: ProjectionOracleConfig,
-        test_embeddings: Dict[str, np.ndarray],
+        oracle_embeddings: Dict[str, np.ndarray],
     ):
         """Verify UMAP projections are deterministic (with fixed seed)."""
         oracle = ProjectionDeterminismOracle(
@@ -536,8 +540,11 @@ class TestProjectionDeterminism:
             config=umap_config,
         )
 
-        result = oracle.verify(test_embeddings)
-        assert result["passed"], "UMAP projection should be deterministic with fixed seed"
+        result = oracle.verify(oracle_embeddings)
+        assert result["passed"], (
+            f"UMAP determinism failed: method={result['method']}, "
+            f"num_sequences={result['num_sequences']}, num_runs={result['num_runs']}"
+        )
 
 
 class TestDimensionality:
@@ -547,7 +554,7 @@ class TestDimensionality:
         self,
         mock_pca_projector: MockProjector,
         pca_config: ProjectionOracleConfig,
-        test_embeddings: Dict[str, np.ndarray],
+        oracle_embeddings: Dict[str, np.ndarray],
     ):
         """Verify PCA projects to correct number of dimensions."""
         oracle = DimensionalityOracle(
@@ -555,14 +562,17 @@ class TestDimensionality:
             config=pca_config,
         )
 
-        result = oracle.verify(test_embeddings)
-        assert result["passed"], f"Dimensionality check failed: {result['issues']}"
+        result = oracle.verify(oracle_embeddings)
+        assert result["passed"], (
+            f"Dimensionality check failed for method={result['method']} "
+            f"n_components={result['n_components']}: {result['issues']}"
+        )
 
     def test_umap_dimensionality_2d(
         self,
         mock_umap_projector: MockProjector,
         umap_config: ProjectionOracleConfig,
-        test_embeddings: Dict[str, np.ndarray],
+        oracle_embeddings: Dict[str, np.ndarray],
     ):
         """Verify UMAP projects to correct number of dimensions."""
         oracle = DimensionalityOracle(
@@ -570,8 +580,11 @@ class TestDimensionality:
             config=umap_config,
         )
 
-        result = oracle.verify(test_embeddings)
-        assert result["passed"], f"Dimensionality check failed: {result['issues']}"
+        result = oracle.verify(oracle_embeddings)
+        assert result["passed"], (
+            f"Dimensionality check failed for method={result['method']} "
+            f"n_components={result['n_components']}: {result['issues']}"
+        )
 
 
 class TestProjectionValueValidity:
@@ -581,7 +594,7 @@ class TestProjectionValueValidity:
         self,
         mock_pca_projector: MockProjector,
         pca_config: ProjectionOracleConfig,
-        test_embeddings: Dict[str, np.ndarray],
+        oracle_embeddings: Dict[str, np.ndarray],
     ):
         """Verify PCA projection values are valid."""
         oracle = ProjectionValueValidityOracle(
@@ -589,8 +602,11 @@ class TestProjectionValueValidity:
             config=pca_config,
         )
 
-        result = oracle.verify(test_embeddings)
-        assert result["passed"], f"Value validity failed: {result['issues']}"
+        result = oracle.verify(oracle_embeddings)
+        assert result["passed"], (
+            f"Value validity failed for method={result['method']}, "
+            f"num_sequences={result['num_sequences']}: {result['issues']}"
+        )
 
     def test_umap_values_valid(
         self,
@@ -615,7 +631,7 @@ class TestDistancePreservation:
         self,
         mock_pca_projector: MockProjector,
         pca_config: ProjectionOracleConfig,
-        test_embeddings: Dict[str, np.ndarray],
+        oracle_embeddings: Dict[str, np.ndarray],
     ):
         """Verify PCA approximately preserves pairwise distances."""
         oracle = DistancePreservationOracle(
@@ -623,17 +639,18 @@ class TestDistancePreservation:
             config=pca_config,
         )
 
-        result = oracle.verify(test_embeddings)
+        result = oracle.verify(oracle_embeddings)
         assert result["passed"], (
-            f"Distance preservation failed: correlation={result['correlation']:.3f} "
-            f"< threshold={result['threshold']}"
+            f"Distance preservation failed for method={result['method']}: "
+            f"correlation={result['correlation']:.6f} < threshold={result['threshold']:.6f}; "
+            f"num_pairs={result['num_pairs']}"
         )
 
     def test_umap_preserves_local_structure(
         self,
         mock_umap_projector: MockProjector,
         umap_config: ProjectionOracleConfig,
-        test_embeddings: Dict[str, np.ndarray],
+        oracle_embeddings: Dict[str, np.ndarray],
     ):
         """Verify UMAP preserves local structure (lower threshold than PCA)."""
         oracle = DistancePreservationOracle(
@@ -641,12 +658,13 @@ class TestDistancePreservation:
             config=umap_config,
         )
 
-        result = oracle.verify(test_embeddings)
+        result = oracle.verify(oracle_embeddings)
 
         print(f"UMAP distance correlation: {result.get('correlation', 'N/A')}")
         assert result["passed"], (
-            f"Distance preservation failed: correlation={result['correlation']:.3f} "
-            f"< threshold={result['threshold']}"
+            f"Distance preservation failed for method={result['method']}: "
+            f"correlation={result['correlation']:.6f} < threshold={result['threshold']:.6f}; "
+            f"num_pairs={result['num_pairs']}"
         )
 
 

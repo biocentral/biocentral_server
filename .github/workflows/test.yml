@@ -155,3 +155,46 @@ jobs:
         run: |
           docker compose -f docker-compose.dev.yml down -v
 
+  property-oracle-test:
+    runs-on: ubuntu-latest
+    needs: unit-test
+    if: ${{ github.event_name == 'pull_request' && (needs.unit-test.result == 'success' || needs.unit-test.result == 'skipped') }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Configure Git to use HTTPS for git dependencies
+        run: |
+          git config --global url."https://github.com/".insteadOf git@github.com:
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.9.26"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          cache-local-path: "/tmp/.uv-cache"
+
+      - name: Install dependencies (CPU-only PyTorch)
+        run: uv sync --no-install-project --index-strategy unsafe-best-match
+        env:
+          UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
+
+      - name: Run property oracle tests (non-slow)
+        run: uv run pytest tests/property/oracles -v -m "not slow" --durations=0 -W "ignore::DeprecationWarning"
+
+      - name: Upload oracle reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oracle-reports
+          path: tests/reports/*.csv
+          if-no-files-found: warn

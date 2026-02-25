@@ -9,11 +9,11 @@ import pytest
 
 from tests.fixtures.test_dataset import (
     CANONICAL_TEST_DATASET,
-    get_test_sequences,
 )
 
 
 _prediction_oracle_results: List[Dict[str, Any]] = []
+pytestmark = pytest.mark.property
 
 
 def get_prediction_oracle_results() -> List[Dict[str, Any]]:
@@ -426,7 +426,8 @@ class TestPredictionDeterminism:
         for seq in standard_test_sequences:
             result = oracle.verify(seq)
             assert result["passed"], (
-                f"Determinism failed for sequence of length {len(seq)}"
+                f"Determinism failed: model={result['model']}, "
+                f"sequence_length={len(seq)}, runs={result['num_runs']}"
             )
 
     def test_binding_site_determinism(
@@ -444,7 +445,8 @@ class TestPredictionDeterminism:
         for seq in standard_test_sequences:
             result = oracle.verify(seq)
             assert result["passed"], (
-                f"Determinism failed for sequence of length {len(seq)}"
+                f"Determinism failed: model={result['model']}, "
+                f"sequence_length={len(seq)}, runs={result['num_runs']}"
             )
 
     def test_disorder_determinism(
@@ -462,7 +464,8 @@ class TestPredictionDeterminism:
         for seq in standard_test_sequences:
             result = oracle.verify(seq)
             assert result["passed"], (
-                f"Determinism failed for sequence of length {len(seq)}"
+                f"Determinism failed: model={result['model']}, "
+                f"sequence_length={len(seq)}, runs={result['num_runs']}"
             )
 
 
@@ -484,7 +487,8 @@ class TestOutputValidity:
         for seq in standard_test_sequences:
             result = oracle.verify(seq)
             assert result["passed"], (
-                f"Output validity failed: {result['issues']}"
+                f"Output validity failed: model={result['model']}, "
+                f"sequence_length={len(seq)}, issues={result['issues']}"
             )
 
     def test_binding_site_output_validity(
@@ -502,7 +506,8 @@ class TestOutputValidity:
         for seq in standard_test_sequences:
             result = oracle.verify(seq)
             assert result["passed"], (
-                f"Output validity failed: {result['issues']}"
+                f"Output validity failed: model={result['model']}, "
+                f"sequence_length={len(seq)}, issues={result['issues']}"
             )
 
     def test_disorder_output_validity(
@@ -520,7 +525,8 @@ class TestOutputValidity:
         for seq in standard_test_sequences:
             result = oracle.verify(seq)
             assert result["passed"], (
-                f"Output validity failed: {result['issues']}"
+                f"Output validity failed: model={result['model']}, "
+                f"sequence_length={len(seq)}, issues={result['issues']}"
             )
 
 
@@ -541,7 +547,8 @@ class TestShapeInvariance:
 
         result = oracle.verify(varied_length_sequences)
         assert result["passed"], (
-            f"Shape invariance failed: {result['issues']}"
+            f"Shape invariance failed: model={result['model']}, "
+            f"num_sequences={result['num_sequences']}, issues={result['issues']}"
         )
 
     def test_binding_site_shape_invariance(
@@ -558,7 +565,8 @@ class TestShapeInvariance:
 
         result = oracle.verify(varied_length_sequences)
         assert result["passed"], (
-            f"Shape invariance failed: {result['issues']}"
+            f"Shape invariance failed: model={result['model']}, "
+            f"num_sequences={result['num_sequences']}, issues={result['issues']}"
         )
 
 

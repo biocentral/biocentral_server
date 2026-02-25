@@ -7,12 +7,28 @@ along with table formatting and CSV report generation.
 
 import csv
 import os
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 from scipy.special import softmax
+
+
+def _stable_sort_key(row: Dict[str, Any]) -> tuple:
+    return (
+        str(row.get("embedder", "")),
+        str(row.get("model", "")),
+        str(row.get("method", "")),
+        str(row.get("test_type", "")),
+        str(row.get("parameter", "")),
+    )
+
+
+def _format_float(value: Any, precision: int = 8) -> str:
+    try:
+        return f"{float(value):.{precision}f}"
+    except (TypeError, ValueError):
+        return ""
 
 
 def compute_cosine_distance(a: np.ndarray, b: np.ndarray) -> float:
@@ -167,7 +183,7 @@ def format_metrics_table(
     lines.append("-" * len(header_row))
 
 
-    for row in results:
+    for row in sorted(results, key=_stable_sort_key):
         values = [
             str(row.get("embedder", ""))[:15],
             str(row.get("test_type", ""))[:20],
@@ -222,17 +238,17 @@ def write_metrics_csv(
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
 
-        for row in results:
+        for row in sorted(results, key=_stable_sort_key):
 
             csv_row = {
-                "timestamp": row.get("timestamp", datetime.now().isoformat()),
+                "timestamp": row.get("timestamp", ""),
                 "embedder": row.get("embedder", ""),
                 "test_type": row.get("test_type", ""),
                 "parameter": row.get("parameter", ""),
-                "cosine_distance": row.get("cosine_distance", 0.0),
-                "l2_distance": row.get("l2_distance", 0.0),
-                "kl_divergence": row.get("kl_divergence", 0.0),
-                "threshold": row.get("threshold", 0.0),
+                "cosine_distance": _format_float(row.get("cosine_distance", 0.0)),
+                "l2_distance": _format_float(row.get("l2_distance", 0.0)),
+                "kl_divergence": _format_float(row.get("kl_divergence", 0.0)),
+                "threshold": _format_float(row.get("threshold", 0.0)),
                 "passed": row.get("passed", False),
             }
             writer.writerow(csv_row)
