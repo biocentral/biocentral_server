@@ -188,7 +188,7 @@ jobs:
           UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
       - name: Run property oracle tests (non-slow)
-        run: uv run pytest tests/property/oracles -v -m "not slow" --durations=0 -W "ignore::DeprecationWarning"
+        run: uv run pytest tests/property/oracles -v --durations=0 -W "ignore::DeprecationWarning"
 
       - name: Upload oracle reports
         if: always()
