@@ -11,10 +11,7 @@ from tests.integration.endpoints.conftest import (
 
 @pytest.mark.order(1)
 class TestCommonEmbeddersEndpoint:
-    """
-    Integration tests for GET /embeddings_service/common_embedders.
-    Lightweight: No embedding computation.
-    """
+    # Integration tests for GET /embeddings_service/common_embedders.
 
     @pytest.mark.integration
     def test_common_embedders_returns_list(self, client):
@@ -51,10 +48,7 @@ class TestCommonEmbeddersEndpoint:
 
 @pytest.mark.order(2)
 class TestEmbedEndpoint:
-    """
-    Integration tests for POST /embeddings_service/embed.
-    Validates request/response structure and error handling.
-    """
+    # Integration tests for POST /embeddings_service/embed.
 
     @pytest.mark.integration
     def test_embed_empty_sequences_rejected(
@@ -98,10 +92,7 @@ class TestEmbedEndpoint:
 
 @pytest.mark.order(2)
 class TestEndToEndEmbedFlow:
-    """
-    End-to-end tests for the complete embedding workflow.
-    Heavier: Waits for task completion.
-    """
+    # End-to-end tests for the complete embedding workflow.
 
     @pytest.mark.integration
     def test_embed_and_wait_for_completion(
@@ -112,12 +103,7 @@ class TestEndToEndEmbedFlow:
         shared_embedding_sequences,
         verify_embedding_cache,
     ):
-        """
-        Test complete embedding flow from request to completion.
-        
-        IMPORTANT: This test pre-computes reduced embeddings for sequences
-        that will be reused by projection tests.
-        """
+        # Test complete embedding flow from request to completion.
 
         print("\n[BEFORE EMBEDDING] Checking cache status...")
         verify_embedding_cache(expect_cached=False)

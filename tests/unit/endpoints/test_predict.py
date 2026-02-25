@@ -1,10 +1,4 @@
-"""
-Unit tests for predict endpoint.
-
-Tests endpoints:
-- GET /prediction_service/model_metadata
-- POST /prediction_service/predict
-"""
+# Unit tests for predict endpoint.
 
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
@@ -81,12 +75,7 @@ class TestModelMetadataEndpoint:
     def test_model_metadata_empty_when_no_models(
         self, mock_rate_limiter, mock_get_metadata, predict_client
     ):
-        """Test metadata endpoint raises error when no models available.
-        
-        ModelMetadataResponse requires min_length=1 for metadata, so an empty
-        list will cause a ResponseValidationError. We need to catch the exception
-        or configure the client not to raise.
-        """
+        # Test metadata endpoint raises error when no models available.
         import pydantic_core
 
         mock_rate_limiter.return_value = lambda: None
@@ -146,11 +135,7 @@ class TestPredictEndpoint:
     def test_predict_unknown_model(
         self, mock_rate_limiter, mock_get_metadata, predict_client
     ):
-        """Test prediction with invalid model name fails validation.
-        
-        Since model_names must be valid BiocentralPredictionModel enum values,
-        an unknown model name will cause a 422 Validation Error.
-        """
+        # Test prediction with invalid model name fails validation.
         mock_rate_limiter.return_value = lambda: None
         mock_get_metadata.return_value = []
 

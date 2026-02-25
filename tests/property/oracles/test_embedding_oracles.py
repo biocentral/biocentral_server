@@ -1,13 +1,4 @@
-"""
-Embedding Oracle Tests for Batch Invariance and Masking Robustness.
-
-This module implements test oracles that verify critical embedding properties:
-1. Batch Invariance: Embedding a sequence alone yields the same vector as
-   embedding it within a larger batch.
-2. Masking Robustness: Embeddings degrade gracefully under low masking ratios
-   (0-30%) when tokens are replaced with unknown token 'X'. Note: Higher
-   masking ratios are expected to cause significant divergence.
-"""
+# Embedding Oracle Tests for Batch Invariance and Masking Robustness.
 
 import random
 import hashlib
@@ -113,25 +104,14 @@ ORACLE_CONFIGS = {
 
 
 class BatchInvarianceOracle:
-    """
-    Oracle verifying that embeddings are invariant to batch composition.
-
-    Tests that embedding sequence A alone yields the same vector as
-    embedding A within a larger batch of sequences.
-    """
+    # Oracle verifying that embeddings are invariant to batch composition.
 
     def __init__(
         self,
         embedder: EmbedderProtocol,
         config: OracleConfig,
     ):
-        """
-        Initialize BatchInvarianceOracle.
-
-        Args:
-            embedder: Embedder instance implementing EmbedderProtocol
-            config: Oracle configuration with thresholds and batch sizes
-        """
+        # Initialize BatchInvarianceOracle.
         self.embedder = embedder
         self.config = config
 
@@ -140,16 +120,7 @@ class BatchInvarianceOracle:
         target_sequence: str,
         filler_sequences: List[str],
     ) -> List[Dict[str, Any]]:
-        """
-        Verify batch invariance for a target sequence.
-
-        Args:
-            target_sequence: The sequence to test for batch invariance
-            filler_sequences: Additional sequences to form batches
-
-        Returns:
-            List of result dictionaries with metrics for each batch size
-        """
+        # Verify batch invariance for a target sequence.
         results = []
 
 
@@ -218,13 +189,7 @@ class BatchInvarianceOracle:
 
 
 class MaskingRobustnessOracle:
-    """
-    Oracle verifying embedding behavior under progressive token masking.
-
-    Tests that embeddings degrade gracefully at low masking ratios (0-30%)
-    when tokens are replaced with unknown token 'X'. At higher masking ratios,
-    significant divergence is expected and not considered a failure.
-    """
+    # Oracle verifying embedding behavior under progressive token masking.
 
     MASK_TOKEN = "X"
 
@@ -233,13 +198,7 @@ class MaskingRobustnessOracle:
         embedder: EmbedderProtocol,
         config: OracleConfig,
     ):
-        """
-        Initialize MaskingRobustnessOracle.
-
-        Args:
-            embedder: Embedder instance implementing EmbedderProtocol
-            config: Oracle configuration with thresholds and masking ratios
-        """
+        # Initialize MaskingRobustnessOracle.
         self.embedder = embedder
         self.config = config
 
@@ -248,16 +207,7 @@ class MaskingRobustnessOracle:
         sequence: str,
         seed: int = 42,
     ) -> List[Dict[str, Any]]:
-        """
-        Verify masking robustness for a sequence.
-
-        Args:
-            sequence: The sequence to test for masking robustness
-            seed: Random seed for reproducible masking
-
-        Returns:
-            List of result dictionaries with metrics for each masking ratio
-        """
+        # Verify masking robustness for a sequence.
         results = []
 
 
@@ -297,17 +247,7 @@ class MaskingRobustnessOracle:
         ratio: float,
         seed: int,
     ) -> str:
-        """
-        Mask a portion of the sequence with unknown token 'X'.
-
-        Args:
-            sequence: Original sequence
-            ratio: Fraction of positions to mask (0.0 to 1.0)
-            seed: Random seed for position selection
-
-        Returns:
-            Masked sequence string
-        """
+        # Mask a portion of the sequence with unknown token 'X'.
         if ratio <= 0:
             return sequence
         if ratio >= 1:
@@ -345,11 +285,7 @@ def esm2_t6_8m_oracle_config() -> OracleConfig:
 
 @pytest.fixture(scope="module")
 def esm2_t6_8m_embedder():
-    """
-    Load real ESM2-T6-8M embedder.
-
-    Fails explicitly if the model cannot be loaded.
-    """
+    # Load real ESM2-T6-8M embedder.
     try:
         from biotrainer.embedders import get_embedding_service
 

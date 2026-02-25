@@ -1,12 +1,4 @@
-"""
-Unit tests for embeddings endpoint.
-
-Tests endpoints:
-- GET /embeddings_service/common_embedders
-- POST /embeddings_service/embed
-- POST /embeddings_service/get_missing_embeddings
-- POST /embeddings_service/add_embeddings
-"""
+# Unit tests for embeddings endpoint.
 
 import json
 import base64

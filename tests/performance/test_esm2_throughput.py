@@ -1,16 +1,4 @@
-"""
-Performance benchmarks for real ESM2-t6-8M model.
-
-These tests measure actual model performance, not mock embedder performance.
-All tests are marked as 'slow' since they require loading and running a real model.
-All tests use sequences from the canonical test dataset.
-
-Run with:
-    uv run pytest tests/performance/test_esm2_throughput.py -v -s
-    
-Skip slow tests:
-    uv run pytest tests/performance/ -m "not slow"
-"""
+# Performance benchmarks for real ESM2-t6-8M model.
 
 import pytest
 import time

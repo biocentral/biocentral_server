@@ -1,12 +1,4 @@
-"""
-Test scaling behavior with sequence length and batch size.
-
-Verifies that embedding generation scales linearly O(n) with:
-- Sequence length
-- Batch size
-
-All tests use sequences from the canonical test dataset.
-"""
+# Test scaling behavior with sequence length and batch size.
 
 import pytest
 import time

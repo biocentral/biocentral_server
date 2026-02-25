@@ -222,18 +222,7 @@ CANONICAL_TEST_DATASET = TestDataset(
 
 
 def get_test_sequences(categories: Optional[List[str]] = None) -> List[str]:
-    """
-    Get test sequences, optionally filtered by category.
-
-    Args:
-        categories: Optional list of category prefixes to filter by.
-                   Supported: "standard", "length", "unknown", "ambiguous",
-                   "homopolymer", "motif", "real", "edge_case".
-                   If None, returns all sequences.
-
-    Returns:
-        List of sequence strings
-    """
+    # Get test sequences, optionally filtered by category.
     if categories is None:
         return CANONICAL_TEST_DATASET.get_all_sequences()
 
@@ -267,12 +256,7 @@ def get_test_sequences(categories: Optional[List[str]] = None) -> List[str]:
 
 
 def get_test_sequences_dict() -> Dict[str, str]:
-    """
-    Get test sequences as dictionary (id -> sequence).
-
-    Returns:
-        Dictionary mapping sequence ID to sequence string
-    """
+    # Get test sequences as dictionary (id -> sequence).
     return CANONICAL_TEST_DATASET.get_sequences_dict()
 
 
@@ -280,18 +264,7 @@ def get_test_embeddings(
     model_name: str = "esm2_t6",
     pooled: bool = False,
 ) -> Tuple[Dict[str, str], Dict[str, np.ndarray]]:
-    """
-    Get test sequences and their embeddings ready for model testing.
-
-    This is the primary function for setting up integration tests.
-
-    Args:
-        model_name: Model to emulate for embeddings
-        pooled: Whether to return per-sequence (pooled) embeddings
-
-    Returns:
-        Tuple of (sequences_dict, embeddings_dict)
-    """
+    # Get test sequences and their embeddings ready for model testing.
     sequences_dict = get_test_sequences_dict()
     embedder = get_fixed_embedder(model_name)
     embeddings_dict = embedder.embed_dict(sequences_dict, pooled=pooled)

@@ -1,14 +1,4 @@
-"""
-Unit tests for custom models endpoint.
-
-Tests endpoints:
-- GET /custom_models_service/protocols
-- GET /custom_models_service/config_options/{protocol}
-- POST /custom_models_service/verify_config
-- POST /custom_models_service/start_training
-- POST /custom_models_service/model_files
-- POST /custom_models_service/start_inference
-"""
+# Unit tests for custom models endpoint.
 
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch

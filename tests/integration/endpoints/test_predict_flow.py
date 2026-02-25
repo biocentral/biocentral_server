@@ -1,13 +1,4 @@
-"""
-Integration tests for prediction endpoints.
-
-Requirements:
-    - Server running via docker-compose.dev.yml
-    - CI_SERVER_URL environment variable set
-
-Usage:
-    CI_SERVER_URL=http://localhost:9540 pytest tests/integration/endpoints/test_predict_flow.py -v
-"""
+# Integration tests for prediction endpoints.
 
 import pytest
 from typing import Dict
@@ -36,10 +27,7 @@ def boundary_length_sequences() -> Dict[str, str]:
 
 @pytest.mark.order(1)
 class TestModelMetadataEndpoint:
-    """
-    Integration tests for GET /prediction_service/model_metadata.
-    Lightweight: No model loading.
-    """
+    # Integration tests for GET /prediction_service/model_metadata.
 
     @pytest.mark.integration
     def test_get_model_metadata(self, client):
@@ -76,10 +64,7 @@ class TestModelMetadataEndpoint:
 
 @pytest.mark.order(2)
 class TestPredictEndpoint:
-    """
-    Integration tests for POST /prediction_service/predict.
-    Medium-heavy: Submits prediction tasks and waits for completion.
-    """
+    # Integration tests for POST /prediction_service/predict.
 
 
     @pytest.mark.integration

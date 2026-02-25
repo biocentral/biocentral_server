@@ -65,11 +65,7 @@ def server_url() -> str:
 
 @pytest.fixture(scope="session")
 def client(server_url) -> Generator[httpx.Client, None, None]:
-    """
-    Create an httpx client for the integration test server.
-    
-    This client connects to the real running server instance.
-    """
+    # Create an httpx client for the integration test server.
 
     transport = httpx.HTTPTransport(retries=5)
     http_client = httpx.Client(
@@ -369,9 +365,7 @@ def assert_prediction_result_schema(
 
 @pytest.fixture(scope="session")
 def poll_task(client):
-    """
-    Factory fixture to poll a task until completion with robust error handling.
-    """
+    # Factory fixture to poll a task until completion with robust error handling.
     def _poll(
         task_id: str,
         timeout: int = 120,
@@ -379,25 +373,7 @@ def poll_task(client):
         max_consecutive_errors: int = 10,
         require_success: bool = False,
     ) -> Dict[str, Any]:
-        """
-        Poll task status until completion or timeout.
-        
-        Handles transient connection errors gracefully - only fails after
-        multiple consecutive errors, not on the first hiccup.
-        
-        Args:
-            task_id: The task ID to poll
-            timeout: Maximum seconds to wait for task completion
-            poll_interval: Seconds between polls
-            max_consecutive_errors: Number of consecutive errors before giving up
-            
-        Returns:
-            The final task DTO with status and results
-            
-        Raises:
-            TimeoutError: If task doesn't complete within timeout
-            RuntimeError: If too many consecutive connection errors occur
-        """
+        # Poll task status until completion or timeout.
         start = time.time()
         consecutive_errors = 0
         last_status = "UNKNOWN"
@@ -535,13 +511,7 @@ def single_test_sequence() -> Dict[str, str]:
 
 @pytest.fixture(scope="session")
 def shared_embedding_sequences() -> Dict[str, str]:
-    """
-    Sequences shared between embedding and projection tests.
-    
-    These sequences are embedded with reduce=True in test_embed_flow.py
-    and then reused by projection tests, ensuring cache hits.
-    Must contain at least 2 sequences for PCA to work.
-    """
+    # Sequences shared between embedding and projection tests.
     return {
         "short_1": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
         "short_2": CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
@@ -661,11 +631,7 @@ def all_canonical_sequences() -> Dict[str, str]:
 
 @pytest.fixture(scope="session")
 def large_batch_sequences() -> Dict[str, str]:
-    """
-    Large batch of sequences for performance and batch handling tests.
-    
-    Creates 100 sequences using canonical sequences as templates.
-    """
+    # Large batch of sequences for performance and batch handling tests.
     base_sequences = [
         CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence, 
     ]
@@ -680,19 +646,7 @@ def large_batch_sequences() -> Dict[str, str]:
 
 
 def validate_task_response(response_json: Dict, expected_task_id_prefix: str = None) -> str:
-    """
-    Validate a task creation response and return the task_id.
-    
-    Args:
-        response_json: The JSON response from the endpoint
-        expected_task_id_prefix: Optional prefix to verify in task_id
-        
-    Returns:
-        The task_id from the response
-        
-    Raises:
-        AssertionError if validation fails
-    """
+    # Validate a task creation response and return the task_id.
     assert "task_id" in response_json, "Response missing 'task_id' field"
     task_id = response_json["task_id"]
     assert isinstance(task_id, str), f"task_id should be string, got {type(task_id)}"
@@ -706,19 +660,7 @@ def validate_task_response(response_json: Dict, expected_task_id_prefix: str = N
 
 
 def validate_error_response(response_json: Dict, expected_status: int = None) -> Dict:
-    """
-    Validate an error response structure.
-    
-    Args:
-        response_json: The JSON response from the endpoint
-        expected_status: Optional expected status code in response
-        
-    Returns:
-        The error details dict
-        
-    Raises:
-        AssertionError if validation fails
-    """
+    # Validate an error response structure.
     assert "detail" in response_json, "Error response missing 'detail' field"
     detail = response_json["detail"]
     
@@ -733,23 +675,13 @@ def validate_error_response(response_json: Dict, expected_status: int = None) ->
 
 @pytest.fixture(scope="session")
 def test_run_id() -> str:
-    """
-    Unique identifier for this test run.
-    
-    Useful for creating unique resources that won't conflict
-    between parallel test runs.
-    """
+    # Unique identifier for this test run.
     import uuid
     return str(uuid.uuid4())[:8]
 
 @pytest.fixture(scope="session")
 def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
-    """
-    Fixture to verify embeddings are cached in the database.
-    
-    Call this after embedding test to confirm cache is populated,
-    or before projection test to confirm cache will be hit.
-    """
+    # Fixture to verify embeddings are cached in the database.
     def _verify(expect_cached: bool = True):
 
         import json
@@ -877,12 +809,7 @@ def precache_prott5_embeddings(shared_embedding_sequences):
 
 @pytest.fixture(scope="session")
 def load_bindembed_onnx():
-    """
-    Download and upload BindEmbed ONNX model to SeaweedFS storage.
-    
-    The server's PredictInitializer is disabled, so we need to manually
-    upload the ONNX models to SeaweedFS for prediction tests to work.
-    """
+    # Download and upload BindEmbed ONNX model to SeaweedFS storage.
     import tempfile
     import zipfile
     import requests

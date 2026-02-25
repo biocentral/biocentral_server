@@ -221,23 +221,14 @@ def esm2_t36_model_input_batch(
 
 @pytest.fixture(autouse=True, scope="function")
 def reset_registry_for_isolated_tests(request):
-    """
-    Reset registry after tests that modify it.
-
-    Only applies to tests marked with @pytest.mark.modifies_registry
-    """
+    # Reset registry after tests that modify it.
     yield
     if request.node.get_closest_marker("modifies_registry"):
         FixedEmbedderRegistry.clear()
 
 
 def pytest_collection_modifyitems(session, config, items):
-    """
-    Ensure embed tests run before projection tests.
-    
-    This is critical for cache-sharing: test_embed_flow.py pre-caches
-    embeddings that test_project_flow.py depends on.
-    """
+    # Ensure embed tests run before projection tests.
     def get_test_priority(item):
 
         test_file = item.fspath.basename if hasattr(item, 'fspath') else ""
