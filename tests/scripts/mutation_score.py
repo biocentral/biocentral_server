@@ -67,7 +67,7 @@ def get_mutation_score() -> tuple[int, int, int, int, float]:
         total_from_summary = int(summary_match.group(2))
         survived = total_from_summary - killed
 
-    total = killed + survived + suspicious + timeout
+    total = killed + survived + suspicious + timeout + skipped
     score = (killed / total * 100) if total > 0 else 0.0
 
     return killed, survived, suspicious, total, score

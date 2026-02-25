@@ -1,4 +1,4 @@
-"""Fixed Embedder for deterministic, reproducible testing."""
+# Fixed Embedder for deterministic, reproducible testing.
 
 import hashlib
 import numpy as np
@@ -23,26 +23,8 @@ class FixedEmbedderConfig:
     )
 
 class FixedEmbedder:
-    """
-    Deterministic mock embedder for reproducible testing.
-
-    Generates high-dimensional, noise-based embeddings that are:
-    - Deterministic: Same sequence always produces same embedding
-    - Reproducible: Results are consistent across runs and machines
-    - Configurable: Supports different embedding dimensions
-    - Fast: No model loading or GPU required, which is convenient for tests
-
-    The embeddings are generated using a seeded random number generator
-    based on the SHA-256 hash of the input sequence.
-
-    Attributes:
-        model_name: Name of the model being emulated
-        embedding_dim: Dimension of the output embeddings
-        seed_base: Base seed for reproducibility
-        noise_scale: Scale factor for noise component
-        strict_dataset: If True, only accept sequences from canonical test dataset
-    """
-
+    # The embeddings are generated using a seeded random number generator
+    # based on the SHA-256 hash of the input sequence
 
     AMINO_ACIDS = set("ACDEFGHIKLMNPQRSTVWY")
     EXTENDED_AMINO_ACIDS = AMINO_ACIDS | set("BJOUXZ")
@@ -55,16 +37,6 @@ class FixedEmbedder:
         noise_scale: float = 0.1,
         strict_dataset: bool = True,
     ):
-        """
-        Initialize FixedEmbedder.
-
-        Args:
-            model_name: Name of the model to emulate (determines default dimension)
-            embedding_dim: Override embedding dimension (if None, uses model default)
-            seed_base: Base seed for reproducibility
-            noise_scale: Scale factor for noise component
-            strict_dataset: If True, only accept sequences from canonical test dataset
-        """
         self.model_name = model_name
         self.config = FixedEmbedderConfig(seed_base=seed_base, noise_scale=noise_scale)
 
@@ -89,20 +61,11 @@ class FixedEmbedder:
         self._aa_embeddings = self._generate_aa_base_embeddings()
 
     def _load_canonical_sequences(self) -> set:
-        """Load allowed sequences from canonical test dataset."""
+        # Load allowed sequences from canonical test dataset.
         from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
         return set(CANONICAL_TEST_DATASET.get_all_sequences())
 
     def _validate_sequence(self, sequence: str) -> None:
-        """
-        Validate that sequence is in the canonical dataset (if strict mode).
-
-        Args:
-            sequence: Protein sequence to validate
-
-        Raises:
-            ValueError: If strict_dataset=True and sequence not in canonical dataset
-        """
         if self.strict_dataset and self._allowed_sequences is not None:
             if sequence not in self._allowed_sequences:
                 raise ValueError(
@@ -114,16 +77,7 @@ class FixedEmbedder:
                 )
 
     def _sequence_to_seed(self, sequence: str) -> int:
-        """
-        Convert sequence to deterministic seed using SHA-256.
-
-        Args:
-            sequence: Protein sequence
-
-        Returns:
-            Integer seed derived from sequence hash
-        """
-
+        # Convert sequence to deterministic seed using SHA-256.
         normalized_sequence = sequence.upper()
 
         hash_input = f"{self.seed_base}:{normalized_sequence}".encode("utf-8")
@@ -133,16 +87,7 @@ class FixedEmbedder:
         return seed
 
     def _generate_aa_base_embeddings(self) -> Dict[str, np.ndarray]:
-        """
-        Generate base embeddings for each amino acid.
-
-        These provide a consistent "semantic" component to embeddings,
-        ensuring that positions with the same amino acid have similar
-        base patterns across different sequences.
-
-        Returns:
-            Dictionary mapping amino acid to base embedding vector
-        """
+        #Generate base embeddings for each amino acid.
         aa_embeddings = {}
         all_aas = sorted(self.EXTENDED_AMINO_ACIDS | {"X", "-", "*"})
 
@@ -157,7 +102,7 @@ class FixedEmbedder:
         return aa_embeddings
 
     def _get_aa_embedding(self, aa: str) -> np.ndarray:
-        """Get base embedding for amino acid, with fallback for unknown chars."""
+        # Get base embedding for amino acid, with fallback for unknown chars.
         if aa in self._aa_embeddings:
             return self._aa_embeddings[aa]
 
@@ -166,18 +111,7 @@ class FixedEmbedder:
         )
 
     def embed(self, sequence: str) -> np.ndarray:
-        """
-        Generate deterministic per-residue embedding for a sequence.
-
-        Args:
-            sequence: Protein sequence (string of amino acids)
-
-        Returns:
-            numpy array of shape (seq_len, embedding_dim) with dtype float32
-
-        Raises:
-            ValueError: If strict_dataset=True and sequence not in canonical dataset
-        """
+        # Generate deterministic per-residue embedding for a sequence.
         if not sequence:
             return np.zeros((0, self.embedding_dim), dtype=np.float32)
 
@@ -220,15 +154,7 @@ class FixedEmbedder:
         return embeddings
 
     def embed_pooled(self, sequence: str) -> np.ndarray:
-        """
-        Generate deterministic per-sequence (pooled) embedding.
-
-        Args:
-            sequence: Protein sequence
-
-        Returns:
-            numpy array of shape (embedding_dim,) with dtype float32
-        """
+        # Generate deterministic per-sequence (pooled) embedding.
         per_residue = self.embed(sequence)
         if len(per_residue) == 0:
             return np.zeros(self.embedding_dim, dtype=np.float32)
@@ -239,16 +165,7 @@ class FixedEmbedder:
         sequences: List[str],
         pooled: bool = False,
     ) -> List[np.ndarray]:
-        """
-        Generate embeddings for a batch of sequences.
-
-        Args:
-            sequences: List of protein sequences
-            pooled: If True, return per-sequence embeddings; else per-residue
-
-        Returns:
-            List of numpy arrays (shapes depend on pooled flag)
-        """
+        # Generate embeddings for a batch of sequences.
         if pooled:
             return [self.embed_pooled(seq) for seq in sequences]
         else:
@@ -259,16 +176,7 @@ class FixedEmbedder:
         sequences: Dict[str, str],
         pooled: bool = False,
     ) -> Dict[str, np.ndarray]:
-        """
-        Generate embeddings for sequences in dictionary format.
-
-        Args:
-            sequences: Dictionary mapping sequence IDs to sequences
-            pooled: If True, return per-sequence embeddings
-
-        Returns:
-            Dictionary mapping sequence IDs to embeddings
-        """
+        # Generate embeddings for sequences in dictionary format.
         result = {}
         for seq_id, seq in sequences.items():
             if pooled:
@@ -278,7 +186,7 @@ class FixedEmbedder:
         return result
 
     def get_embedding_dimension(self) -> int:
-        """Return the embedding dimension for this embedder."""
+        # Return the embedding dimension for this embedder.
         return self.embedding_dim
 
     def __repr__(self) -> str:
@@ -288,12 +196,7 @@ class FixedEmbedder:
         )
 
 class FixedEmbedderRegistry:
-    """
-    Registry for FixedEmbedder instances with different configurations.
-
-    Provides easy access to pre-configured embedders for testing.
-    Thread-safe singleton pattern for consistent embeddings across tests.
-    """
+    # Registry for FixedEmbedder instances with different configurations.
 
     _instances: Dict[str, FixedEmbedder] = {}
 
@@ -304,17 +207,7 @@ class FixedEmbedderRegistry:
         seed_base: int = 42,
         strict_dataset: bool = True,
     ) -> FixedEmbedder:
-        """
-        Get or create a FixedEmbedder instance.
-
-        Args:
-            model_name: Model to emulate
-            seed_base: Base seed for reproducibility
-            strict_dataset: If True, only accept sequences from canonical dataset
-
-        Returns:
-            FixedEmbedder instance
-        """
+        # Get or create a FixedEmbedder instance.
         key = f"{model_name}:{seed_base}:{strict_dataset}"
         if key not in cls._instances:
             cls._instances[key] = FixedEmbedder(
@@ -326,7 +219,7 @@ class FixedEmbedderRegistry:
 
     @classmethod
     def clear(cls):
-        """Clear the registry (useful for testing)."""
+        # Clear the registry (useful for testing).
         cls._instances.clear()
 
 
@@ -334,19 +227,7 @@ def get_fixed_embedder(
     model_name: str = "esm2_t6",
     strict_dataset: bool = True,
 ) -> FixedEmbedder:
-    """
-    Get a FixedEmbedder for the specified model.
-
-    This is the primary entry point for obtaining a FixedEmbedder instance.
-    Uses the registry to ensure consistent embeddings across multiple calls.
-
-    Args:
-        model_name: Name of the model to emulate (prot_t5, esm2_t33, esm2_t36)
-        strict_dataset: If True, only accept sequences from canonical test dataset
-
-    Returns:
-        FixedEmbedder instance configured for the specified model
-    """
+    # Get a FixedEmbedder for the specified model.
     return FixedEmbedderRegistry.get_embedder(model_name, strict_dataset=strict_dataset)
 
 def generate_test_embeddings(
@@ -354,17 +235,7 @@ def generate_test_embeddings(
     model_name: str = "esm2_t6",
     pooled: bool = False,
 ) -> List[np.ndarray]:
-    """
-    Convenience function to generate test embeddings.
-
-    Args:
-        sequences: List of protein sequences
-        model_name: Model to emulate
-        pooled: If True, return per-sequence embeddings
-
-    Returns:
-        List of embedding arrays
-    """
+    # Convenience function to generate test embeddings.
     embedder = get_fixed_embedder(model_name)
     return embedder.embed_batch(sequences, pooled=pooled)
 
@@ -373,17 +244,7 @@ def generate_test_embeddings_dict(
     model_name: str = "esm2_t6",
     pooled: bool = False,
 ) -> Dict[str, np.ndarray]:
-    """
-    Generate test embeddings in dictionary format (matching model input format).
-
-    Args:
-        sequences: Dictionary mapping IDs to sequences
-        model_name: Model to emulate
-        pooled: If True, return per-sequence embeddings
-
-    Returns:
-        Dictionary mapping IDs to embeddings
-    """
+    # Generate test embeddings in dictionary format (matching model input format).
     embedder = get_fixed_embedder(model_name)
     return embedder.embed_dict(sequences, pooled=pooled)
 
@@ -392,28 +253,14 @@ def convert_sequences_to_test_format(
     sequences: List[str],
     model_name: str = "esm2_t6",
 ) -> Tuple[Dict[str, str], Dict[str, np.ndarray]]:
-    """
-    Convert sequences to the format expected by prediction models.
-
-    This is the primary utility for setting up test data that mimics
-    the format used in production (sequences dict + embeddings dict).
-
-    Args:
-        sequences: List of protein sequences
-        model_name: Model to emulate for embeddings
-
-    Returns:
-        Tuple of (sequences_dict, embeddings_dict) where:
-        - sequences_dict maps seq_id -> sequence string
-        - embeddings_dict maps seq_id -> per-residue embedding array
-    """
+    # Convert sequences to the format expected by prediction models.
     sequences_dict = {f"seq{i}": seq for i, seq in enumerate(sequences)}
     embeddings_dict = generate_test_embeddings_dict(sequences_dict, model_name)
     return sequences_dict, embeddings_dict
 
 
 def get_expected_embedding_properties(model_name: str) -> Dict:
-    """Get expected properties for embeddings from a model."""
+    # Get expected properties for embeddings from a model.
     properties = {
         "prot_t5": {
             "dimension": 1024,
@@ -440,18 +287,7 @@ def validate_embedding_shape(
     model_name: str = "esm2_t6",
     pooled: bool = False,
 ) -> bool:
-    """
-    Validate that an embedding has the expected shape.
-
-    Args:
-        embedding: The embedding array to validate
-        expected_length: Expected sequence length
-        model_name: Model name (determines embedding dimension)
-        pooled: Whether this is a pooled embedding
-
-    Returns:
-        True if shape is valid
-    """
+    # Validate that an embedding has the expected shape.
     props = get_expected_embedding_properties(model_name)
     expected_dim = props["dimension"]
 
@@ -467,16 +303,7 @@ def validate_embedding_properties(
     embedding: np.ndarray,
     model_name: str = "esm2_t6",
 ) -> Dict[str, bool]:
-    """
-    Validate various properties of an embedding.
-
-    Args:
-        embedding: The embedding array to validate
-        model_name: Model name for expected properties
-
-    Returns:
-        Dictionary of validation results
-    """
+    # Validate various properties of an embedding.
     props = get_expected_embedding_properties(model_name)
 
     return {
@@ -495,19 +322,7 @@ def assert_embedding_valid(
     model_name: str = "esm2_t6",
     pooled: bool = False,
 ) -> None:
-    """
-    Assert that an embedding is valid, raising AssertionError if not.
-
-    Args:
-        embedding: The embedding array to validate
-        sequence_length: Expected sequence length
-        model_name: Model name for validation
-        pooled: Whether this is a pooled embedding
-
-    Raises:
-        AssertionError: If embedding is invalid
-    """
-
+    # Assert that an embedding is valid, raising AssertionError if not.
     assert validate_embedding_shape(
         embedding, sequence_length, model_name, pooled
     ), f"Invalid shape: {embedding.shape}"

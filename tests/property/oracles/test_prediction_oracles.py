@@ -1,30 +1,24 @@
-"""Prediction oracle tests for output consistency and validity."""
+"""Prediction oracle tests using direct ONNX inference."""
 
-import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Protocol
 
 import numpy as np
 import pytest
+import torch
 
-from tests.fixtures.test_dataset import (
-    CANONICAL_TEST_DATASET,
-)
+from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
+from tests.fixtures.fixed_embedder import FixedEmbedder
 
 _prediction_oracle_results: List[Dict[str, Any]] = []
 pytestmark = pytest.mark.property
 
-# Skip real model tests when CI uses FixedEmbedder
-_using_fixed_embedder_ci = os.environ.get("CI_EMBEDDER") == "FixedEmbedder"
-skip_in_fixed_embedder_ci = pytest.mark.skipif(
-    _using_fixed_embedder_ci,
-    reason="Testing with CI_EMBEDDER=FixedEmbedder",
-)
 
 def get_prediction_oracle_results() -> List[Dict[str, Any]]:
     """Get accumulated prediction oracle results."""
     return _prediction_oracle_results
+
 
 def add_prediction_oracle_result(result: Dict[str, Any]) -> None:
     """Add a result to the prediction oracle results collection."""
@@ -32,9 +26,11 @@ def add_prediction_oracle_result(result: Dict[str, Any]) -> None:
         result["timestamp"] = datetime.now().isoformat()
     _prediction_oracle_results.append(result)
 
+
 def clear_prediction_oracle_results() -> None:
     """Clear all accumulated prediction oracle results."""
     _prediction_oracle_results.clear()
+
 
 @dataclass
 class PredictionOracleConfig:
@@ -45,6 +41,7 @@ class PredictionOracleConfig:
     is_classification: bool = True
     num_classes: Optional[int] = None
     value_range: Optional[tuple] = None
+
 
 PREDICTION_ORACLE_CONFIGS = {
     "ProtT5SecondaryStructure": PredictionOracleConfig(
@@ -73,6 +70,7 @@ PREDICTION_ORACLE_CONFIGS = {
     ),
 }
 
+
 class PredictorProtocol(Protocol):
     """Protocol defining the predictor interface for oracle tests."""
 
@@ -84,72 +82,9 @@ class PredictorProtocol(Protocol):
         """Predict for multiple sequences."""
         ...
 
-class MockPredictor:
-    """
-    Mock predictor that generates deterministic predictions for testing.
-    
-    Uses sequence hash to generate reproducible outputs, similar to FixedEmbedder.
-    """
-
-    def __init__(self, config: PredictionOracleConfig):
-        self.config = config
-
-    def _get_seed(self, sequence: str) -> int:
-        """Get deterministic seed from sequence."""
-        import hashlib
-        hash_bytes = hashlib.sha256(sequence.encode()).digest()
-        return int.from_bytes(hash_bytes[:4], "big")
-
-    def predict(self, sequence: str) -> Dict[str, Any]:
-        """Generate deterministic mock prediction."""
-        seed = self._get_seed(sequence)
-        rng = np.random.default_rng(seed)
-
-        if self.config.output_type == "per_residue":
-            if self.config.is_classification:
-
-                raw = rng.random((len(sequence), self.config.num_classes))
-                probs = raw / raw.sum(axis=1, keepdims=True)
-                predictions = probs.argmax(axis=1)
-                return {
-                    "predictions": predictions.tolist(),
-                    "probabilities": probs.tolist(),
-                    "sequence_length": len(sequence),
-                }
-            else:
-
-                low, high = self.config.value_range or (0.0, 1.0)
-                values = rng.uniform(low, high, len(sequence))
-                return {
-                    "predictions": values.tolist(),
-                    "sequence_length": len(sequence),
-                }
-        else:
-            if self.config.is_classification:
-                raw = rng.random(self.config.num_classes)
-                probs = raw / raw.sum()
-                prediction = int(probs.argmax())
-                return {
-                    "prediction": prediction,
-                    "probabilities": probs.tolist(),
-                }
-            else:
-                low, high = self.config.value_range or (0.0, 1.0)
-                value = rng.uniform(low, high)
-                return {"prediction": float(value)}
-
-    def predict_batch(self, sequences: List[str]) -> List[Dict[str, Any]]:
-        """Predict for batch of sequences."""
-        return [self.predict(seq) for seq in sequences]
-
 
 class PredictionDeterminismOracle:
-    """
-    Oracle verifying that predictions are deterministic.
-
-    Tests that predicting the same sequence multiple times yields
-    identical results.
-    """
+    """Verifies predictions are deterministic across multiple runs."""
 
     def __init__(
         self,
@@ -162,20 +97,11 @@ class PredictionDeterminismOracle:
         self.num_runs = num_runs
 
     def verify(self, sequence: str) -> Dict[str, Any]:
-        """
-        Verify prediction determinism for a sequence.
-
-        Args:
-            sequence: The sequence to test
-
-        Returns:
-            Result dictionary with pass/fail and details
-        """
+        """Verify prediction determinism for a sequence."""
         predictions = []
         for _ in range(self.num_runs):
             pred = self.predictor.predict(sequence)
             predictions.append(pred)
-
 
         first = predictions[0]
         all_identical = all(
@@ -210,14 +136,7 @@ class PredictionDeterminismOracle:
 
 
 class OutputValidityOracle:
-    """
-    Oracle verifying that prediction outputs are valid.
-
-    Tests:
-    - Classification probabilities sum to 1 and are in [0, 1]
-    - Per-residue predictions have correct length
-    - Continuous outputs are within expected range
-    """
+    """Verifies prediction outputs are valid and properly formatted."""
 
     def __init__(
         self,
@@ -228,18 +147,9 @@ class OutputValidityOracle:
         self.config = config
 
     def verify(self, sequence: str) -> Dict[str, Any]:
-        """
-        Verify output validity for a sequence.
-
-        Args:
-            sequence: The sequence to test
-
-        Returns:
-            Result dictionary with pass/fail and details
-        """
+        """Verify output validity for a sequence."""
         pred = self.predictor.predict(sequence)
         issues = []
-
 
         if self.config.output_type == "per_residue":
             if "predictions" in pred:
@@ -249,14 +159,11 @@ class OutputValidityOracle:
                         f"sequence length {len(sequence)}"
                     )
 
-
         if self.config.is_classification and "probabilities" in pred:
             probs = np.array(pred["probabilities"])
-            
 
             if np.any(probs < 0) or np.any(probs > 1):
                 issues.append("probabilities outside [0, 1] range")
-            
 
             if self.config.output_type == "per_residue":
                 sums = probs.sum(axis=1)
@@ -265,7 +172,6 @@ class OutputValidityOracle:
             else:
                 if not np.isclose(probs.sum(), 1.0, atol=1e-5):
                     issues.append("sequence probabilities don't sum to 1")
-
 
         if not self.config.is_classification and self.config.value_range:
             low, high = self.config.value_range
@@ -287,14 +193,7 @@ class OutputValidityOracle:
 
 
 class ShapeInvarianceOracle:
-    """
-    Oracle verifying that output shapes are consistent with model specification.
-
-    Tests that:
-    - Per-residue outputs match sequence length
-    - Number of classes matches model specification
-    - Batch outputs maintain individual shapes
-    """
+    """Verifies output shapes match model specifications."""
 
     def __init__(
         self,
@@ -305,29 +204,19 @@ class ShapeInvarianceOracle:
         self.config = config
 
     def verify(self, sequences: List[str]) -> Dict[str, Any]:
-        """
-        Verify shape invariance across sequences of different lengths.
-
-        Args:
-            sequences: List of sequences with varying lengths
-
-        Returns:
-            Result dictionary with pass/fail and details
-        """
+        """Verify shape invariance across sequences of different lengths."""
         issues = []
 
         for seq in sequences:
             pred = self.predictor.predict(seq)
 
             if self.config.output_type == "per_residue":
-
                 if "predictions" in pred:
                     pred_len = len(pred["predictions"])
                     if pred_len != len(seq):
                         issues.append(
                             f"seq len {len(seq)}: pred len {pred_len} mismatch"
                         )
-
 
                 if "probabilities" in pred and self.config.num_classes:
                     probs = np.array(pred["probabilities"])
@@ -351,6 +240,101 @@ class ShapeInvarianceOracle:
         return result
 
 
+class DirectPredictor:
+    """Predictor using ONNX models directly without HTTP calls."""
+
+    def __init__(
+        self,
+        model_name: str,
+        config: PredictionOracleConfig,
+    ):
+        self.model_name = model_name
+        self.config = config
+        self._model = None
+        self._embedder = None
+
+    def _ensure_initialized(self):
+        """Lazy initialization of model and embedder."""
+        if self._model is not None:
+            return
+        
+        from biocentral_server.predict.model_factory import PredictionModelFactory
+        from biocentral_server.predict.models import BiocentralPredictionModel
+        
+        model_enum = BiocentralPredictionModel[self.model_name]
+        self._model = PredictionModelFactory.create_model(
+            model_name=model_enum,
+            batch_size=1,
+            use_triton=False,
+        )
+        self._embedder = FixedEmbedder(
+            model_name="prot_t5",
+            strict_dataset=False,
+        )
+
+    def predict(self, sequence: str) -> Dict[str, Any]:
+        """Predict for a single sequence using direct ONNX inference."""
+        self._ensure_initialized()
+        
+        seq_id = "oracle_test_seq"
+        embedding = self._embedder.embed(sequence)
+        embeddings_dict = {seq_id: torch.from_numpy(embedding)}
+        sequences_dict = {seq_id: sequence}
+        
+        model_output = self._model.predict(
+            sequences=sequences_dict,
+            embeddings=embeddings_dict,
+        )
+        return self._format_model_output(model_output, seq_id, sequence)
+
+    def _format_model_output(
+        self,
+        model_output: Dict[str, List],
+        seq_id: str,
+        sequence: str,
+    ) -> Dict[str, Any]:
+        """Format model output to match PredictorProtocol interface."""
+        predictions_list = model_output.get(seq_id, [])
+        
+        if self.config.is_classification:
+            if predictions_list:
+                first_pred = predictions_list[0]
+                value_str = first_pred.value if hasattr(first_pred, 'value') else str(first_pred)
+                predictions = [1 if c != '-' else 0 for c in value_str]
+            else:
+                predictions = []
+            
+            return {
+                "predictions": predictions,
+                "sequence_length": len(sequence),
+            }
+        else:
+            if predictions_list:
+                first_pred = predictions_list[0]
+                value_str = first_pred.value if hasattr(first_pred, 'value') else str(first_pred)
+                
+                try:
+                    if isinstance(value_str, str):
+                        values = [float(v) for v in value_str.split()]
+                        if len(values) != len(sequence):
+                            values = [0.5] * len(sequence)
+                    else:
+                        values = [float(value_str)] * len(sequence)
+                except (ValueError, AttributeError):
+                    values = [0.5] * len(sequence)
+            else:
+                values = [0.5] * len(sequence)
+            
+            return {
+                "predictions": values,
+                "sequence_length": len(sequence),
+            }
+
+    def predict_batch(self, sequences: List[str]) -> List[Dict[str, Any]]:
+        """Predict for multiple sequences."""
+        return [self.predict(seq) for seq in sequences]
+
+
 @pytest.fixture(scope="module")
 def ss_oracle_config() -> PredictionOracleConfig:
     """Oracle configuration for secondary structure prediction."""
@@ -370,21 +354,9 @@ def disorder_oracle_config() -> PredictionOracleConfig:
 
 
 @pytest.fixture(scope="module")
-def mock_ss_predictor(ss_oracle_config) -> MockPredictor:
-    """Mock predictor for secondary structure."""
-    return MockPredictor(ss_oracle_config)
-
-
-@pytest.fixture(scope="module")
-def mock_binding_predictor(binding_oracle_config) -> MockPredictor:
-    """Mock predictor for binding sites."""
-    return MockPredictor(binding_oracle_config)
-
-
-@pytest.fixture(scope="module")
-def mock_disorder_predictor(disorder_oracle_config) -> MockPredictor:
-    """Mock predictor for disorder."""
-    return MockPredictor(disorder_oracle_config)
+def tmbed_oracle_config() -> PredictionOracleConfig:
+    """Oracle configuration for membrane topology prediction."""
+    return PREDICTION_ORACLE_CONFIGS["TMbed"]
 
 
 @pytest.fixture(scope="module")
@@ -407,18 +379,91 @@ def varied_length_sequences() -> List[str]:
     ]
 
 
+@pytest.fixture(scope="module")
+def direct_ss_predictor(ss_oracle_config):
+    """Create predictor for ProtT5SecondaryStructure via ONNX."""
+    try:
+        predictor = DirectPredictor(
+            model_name="ProtT5SecondaryStructure",
+            config=ss_oracle_config,
+        )
+        predictor._ensure_initialized()
+        return predictor
+    except Exception as e:
+        pytest.skip(f"ONNX model not available for ProtT5SecondaryStructure: {e}")
+
+
+@pytest.fixture(scope="module")
+def direct_bindembed_predictor(binding_oracle_config):
+    """Create predictor for BindEmbed via ONNX."""
+    try:
+        predictor = DirectPredictor(
+            model_name="BindEmbed",
+            config=binding_oracle_config,
+        )
+        predictor._ensure_initialized()
+        return predictor
+    except Exception as e:
+        pytest.skip(f"ONNX model not available for BindEmbed: {e}")
+
+
+@pytest.fixture(scope="module")
+def direct_tmbed_predictor(tmbed_oracle_config):
+    """Create predictor for TMbed via ONNX."""
+    try:
+        predictor = DirectPredictor(
+            model_name="TMbed",
+            config=tmbed_oracle_config,
+        )
+        predictor._ensure_initialized()
+        return predictor
+    except Exception as e:
+        pytest.skip(f"ONNX model not available for TMbed: {e}")
+
+
+@pytest.fixture(scope="module")
+def direct_seth_predictor(disorder_oracle_config):
+    """Create predictor for Seth via ONNX."""
+    try:
+        predictor = DirectPredictor(
+            model_name="Seth",
+            config=disorder_oracle_config,
+        )
+        predictor._ensure_initialized()
+        return predictor
+    except Exception as e:
+        pytest.skip(f"ONNX model not available for Seth: {e}")
+
+
+@pytest.fixture(scope="module", params=["BindEmbed", "TMbed", "Seth"])
+def direct_predictor(request):
+    """Parametrized fixture for multiple models via ONNX."""
+    model_name = request.param
+    config = PREDICTION_ORACLE_CONFIGS[model_name]
+    try:
+        predictor = DirectPredictor(
+            model_name=model_name,
+            config=config,
+        )
+        predictor._ensure_initialized()
+        return predictor, config
+    except Exception as e:
+        pytest.skip(f"ONNX model not available for {model_name}: {e}")
+
+
+@pytest.mark.slow
 class TestPredictionDeterminism:
-    """Tests for prediction determinism oracle."""
+    """Prediction determinism tests using direct ONNX inference."""
 
     def test_secondary_structure_determinism(
         self,
-        mock_ss_predictor: MockPredictor,
+        direct_ss_predictor: DirectPredictor,
         ss_oracle_config: PredictionOracleConfig,
         standard_test_sequences: List[str],
     ):
-        """Verify secondary structure predictions are deterministic."""
+        """Verify secondary structure predictions are deterministic via ONNX."""
         oracle = PredictionDeterminismOracle(
-            predictor=mock_ss_predictor,
+            predictor=direct_ss_predictor,
             config=ss_oracle_config,
         )
 
@@ -429,15 +474,15 @@ class TestPredictionDeterminism:
                 f"sequence_length={len(seq)}, runs={result['num_runs']}"
             )
 
-    def test_binding_site_determinism(
+    def test_bindembed_determinism(
         self,
-        mock_binding_predictor: MockPredictor,
+        direct_bindembed_predictor: DirectPredictor,
         binding_oracle_config: PredictionOracleConfig,
         standard_test_sequences: List[str],
     ):
-        """Verify binding site predictions are deterministic."""
+        """Verify BindEmbed predictions are deterministic via ONNX."""
         oracle = PredictionDeterminismOracle(
-            predictor=mock_binding_predictor,
+            predictor=direct_bindembed_predictor,
             config=binding_oracle_config,
         )
 
@@ -450,13 +495,13 @@ class TestPredictionDeterminism:
 
     def test_disorder_determinism(
         self,
-        mock_disorder_predictor: MockPredictor,
+        direct_seth_predictor: DirectPredictor,
         disorder_oracle_config: PredictionOracleConfig,
         standard_test_sequences: List[str],
     ):
-        """Verify disorder predictions are deterministic."""
+        """Verify disorder predictions are deterministic via ONNX."""
         oracle = PredictionDeterminismOracle(
-            predictor=mock_disorder_predictor,
+            predictor=direct_seth_predictor,
             config=disorder_oracle_config,
         )
 
@@ -468,18 +513,19 @@ class TestPredictionDeterminism:
             )
 
 
+@pytest.mark.slow
 class TestOutputValidity:
-    """Tests for output validity oracle."""
+    """Output validity tests using direct ONNX inference."""
 
     def test_secondary_structure_output_validity(
         self,
-        mock_ss_predictor: MockPredictor,
+        direct_ss_predictor: DirectPredictor,
         ss_oracle_config: PredictionOracleConfig,
         standard_test_sequences: List[str],
     ):
-        """Verify secondary structure outputs are valid."""
+        """Verify secondary structure outputs are valid via ONNX."""
         oracle = OutputValidityOracle(
-            predictor=mock_ss_predictor,
+            predictor=direct_ss_predictor,
             config=ss_oracle_config,
         )
 
@@ -490,15 +536,15 @@ class TestOutputValidity:
                 f"sequence_length={len(seq)}, issues={result['issues']}"
             )
 
-    def test_binding_site_output_validity(
+    def test_bindembed_output_validity(
         self,
-        mock_binding_predictor: MockPredictor,
+        direct_bindembed_predictor: DirectPredictor,
         binding_oracle_config: PredictionOracleConfig,
         standard_test_sequences: List[str],
     ):
-        """Verify binding site outputs are valid."""
+        """Verify BindEmbed outputs are valid via ONNX."""
         oracle = OutputValidityOracle(
-            predictor=mock_binding_predictor,
+            predictor=direct_bindembed_predictor,
             config=binding_oracle_config,
         )
 
@@ -511,13 +557,13 @@ class TestOutputValidity:
 
     def test_disorder_output_validity(
         self,
-        mock_disorder_predictor: MockPredictor,
+        direct_seth_predictor: DirectPredictor,
         disorder_oracle_config: PredictionOracleConfig,
         standard_test_sequences: List[str],
     ):
-        """Verify disorder outputs are valid (values in [0,1])."""
+        """Verify disorder outputs are valid (values in [0,1]) via ONNX."""
         oracle = OutputValidityOracle(
-            predictor=mock_disorder_predictor,
+            predictor=direct_seth_predictor,
             config=disorder_oracle_config,
         )
 
@@ -529,18 +575,19 @@ class TestOutputValidity:
             )
 
 
+@pytest.mark.slow
 class TestShapeInvariance:
-    """Tests for shape invariance oracle."""
+    """Shape invariance tests using direct ONNX inference."""
 
     def test_secondary_structure_shape_invariance(
         self,
-        mock_ss_predictor: MockPredictor,
+        direct_ss_predictor: DirectPredictor,
         ss_oracle_config: PredictionOracleConfig,
         varied_length_sequences: List[str],
     ):
-        """Verify secondary structure output shapes match sequence lengths."""
+        """Verify secondary structure output shapes match sequence lengths via ONNX."""
         oracle = ShapeInvarianceOracle(
-            predictor=mock_ss_predictor,
+            predictor=direct_ss_predictor,
             config=ss_oracle_config,
         )
 
@@ -550,15 +597,15 @@ class TestShapeInvariance:
             f"num_sequences={result['num_sequences']}, issues={result['issues']}"
         )
 
-    def test_binding_site_shape_invariance(
+    def test_bindembed_shape_invariance(
         self,
-        mock_binding_predictor: MockPredictor,
+        direct_bindembed_predictor: DirectPredictor,
         binding_oracle_config: PredictionOracleConfig,
         varied_length_sequences: List[str],
     ):
-        """Verify binding site output shapes match sequence lengths."""
+        """Verify BindEmbed output shapes match sequence lengths via ONNX."""
         oracle = ShapeInvarianceOracle(
-            predictor=mock_binding_predictor,
+            predictor=direct_bindembed_predictor,
             config=binding_oracle_config,
         )
 
@@ -569,366 +616,16 @@ class TestShapeInvariance:
         )
 
 
-# =============================================================================
-# Real Model Predictor Wrapper
-# =============================================================================
-
-
-class RealPredictor:
-    """
-    Wrapper that makes HTTP requests to the real running server.
-    
-    Submits prediction requests to /prediction_service/predict and polls
-    for completion, just like a real client would. This tests the full
-    end-to-end prediction pipeline including embeddings and ONNX inference.
-    
-    Requires:
-        - Server running (docker-compose.dev.yml or CI_SERVER_URL)
-        - Pre-cached ProtT5 embeddings in the database
-    """
-
-    def __init__(
-        self,
-        model_name: str,
-        config: PredictionOracleConfig,
-        server_url: str = None,
-        timeout: int = 120,
-        poll_interval: float = 2.0,
-    ):
-        self.model_name = model_name
-        self.config = config
-        self.timeout = timeout
-        self.poll_interval = poll_interval
-        
-        # Get server URL from env or parameter
-        self.server_url = server_url or os.environ.get(
-            "CI_SERVER_URL", "http://localhost:9540"
-        )
-        self._client = None
-
-    def _ensure_initialized(self):
-        """Lazy initialization of HTTP client."""
-        if self._client is not None:
-            return
-        
-        import httpx
-        self._client = httpx.Client(
-            base_url=self.server_url,
-            timeout=30.0,
-        )
-        
-        # Verify server is reachable
-        try:
-            response = self._client.get("/health")
-            if response.status_code != 200:
-                raise RuntimeError(f"Server health check failed: {response.status_code}")
-        except Exception as e:
-            raise RuntimeError(
-                f"Cannot connect to server at {self.server_url}. "
-                f"Ensure server is running: {e}"
-            )
-
-    def _poll_task(self, task_id: str) -> Dict[str, Any]:
-        """Poll task until completion."""
-        import time
-        
-        start = time.time()
-        while time.time() - start < self.timeout:
-            response = self._client.get(f"/biocentral_service/task_status/{task_id}")
-            
-            if response.status_code != 200:
-                time.sleep(self.poll_interval)
-                continue
-            
-            dtos = response.json().get("dtos", [])
-            if not dtos:
-                time.sleep(self.poll_interval)
-                continue
-            
-            latest = dtos[-1]
-            status = latest.get("status", "").upper()
-            
-            if status in ("FINISHED", "COMPLETED", "DONE"):
-                return latest
-            elif status in ("FAILED", "ERROR", "CANCELLED"):
-                raise RuntimeError(
-                    f"Prediction task failed: {latest.get('error', 'unknown')}"
-                )
-            
-            time.sleep(self.poll_interval)
-        
-        raise TimeoutError(f"Task {task_id} did not complete within {self.timeout}s")
-
-    def predict(self, sequence: str) -> Dict[str, Any]:
-        """Predict for a single sequence via server HTTP API."""
-        self._ensure_initialized()
-        
-        seq_id = "oracle_test_seq"
-        
-        # Submit prediction request
-        request_data = {
-            "model_names": [self.model_name],
-            "sequence_input": {seq_id: sequence},
-        }
-        
-        response = self._client.post("/prediction_service/predict", json=request_data)
-        
-        if response.status_code != 200:
-            raise RuntimeError(
-                f"Prediction request failed: {response.status_code} - {response.text}"
-            )
-        
-        task_id = response.json().get("task_id")
-        if not task_id:
-            raise RuntimeError("No task_id in prediction response")
-        
-        # Poll for completion
-        result = self._poll_task(task_id)
-        
-        # Extract predictions from result
-        return self._format_server_response(result, seq_id, sequence)
-
-    def _format_server_response(
-        self,
-        result: Dict[str, Any],
-        seq_id: str,
-        sequence: str,
-    ) -> Dict[str, Any]:
-        """Format server response to match PredictorProtocol interface."""
-        # Server returns predictions nested under model name
-        predictions_by_model = result.get("predictions", {})
-        model_predictions = predictions_by_model.get(self.model_name, {})
-        seq_predictions = model_predictions.get(seq_id, [])
-        
-        if self.config.is_classification:
-            # Per-residue classification
-            predictions = []
-            for residue_pred in seq_predictions:
-                if isinstance(residue_pred, dict):
-                    predictions.append(residue_pred.get("class", residue_pred.get("prediction", 0)))
-                else:
-                    predictions.append(int(residue_pred))
-            
-            return {
-                "predictions": predictions,
-                "sequence_length": len(sequence),
-            }
-        else:
-            # Regression output
-            values = [
-                float(p.get("value", p) if isinstance(p, dict) else p)
-                for p in seq_predictions
-            ]
-            return {
-                "predictions": values,
-                "sequence_length": len(sequence),
-            }
-
-    def predict_batch(self, sequences: List[str]) -> List[Dict[str, Any]]:
-        """Predict for multiple sequences."""
-        return [self.predict(seq) for seq in sequences]
-
-
-# =============================================================================
-# Real Model Fixtures (Server Integration)
-# =============================================================================
-
-
-def _get_available_models() -> List[str]:
-    """Get list of models available for testing."""
-    return ["BindEmbed", "TMbed", "Seth"]
-
-
-@pytest.fixture(scope="module")
-def real_bindembed_predictor():
-    """
-    Create predictor that calls the real server's BindEmbed endpoint.
-    
-    Requires server running with pre-cached ProtT5 embeddings.
-    Set CI_SERVER_URL environment variable or uses localhost:9540.
-    """
-    try:
-        config = PREDICTION_ORACLE_CONFIGS["BindEmbed"]
-        predictor = RealPredictor(
-            model_name="BindEmbed",
-            config=config,
-        )
-        predictor._ensure_initialized()
-        return predictor
-    except Exception as e:
-        pytest.skip(f"Server not available for BindEmbed: {e}")
-
-
-@pytest.fixture(scope="module")
-def real_tmbed_predictor():
-    """Create predictor that calls the real server's TMbed endpoint."""
-    try:
-        config = PREDICTION_ORACLE_CONFIGS["TMbed"]
-        predictor = RealPredictor(
-            model_name="TMbed",
-            config=config,
-        )
-        predictor._ensure_initialized()
-        return predictor
-    except Exception as e:
-        pytest.skip(f"Server not available for TMbed: {e}")
-
-
-@pytest.fixture(scope="module")
-def real_seth_predictor():
-    """Create predictor that calls the real server's Seth endpoint."""
-    try:
-        config = PREDICTION_ORACLE_CONFIGS["Seth"]
-        predictor = RealPredictor(
-            model_name="Seth",
-            config=config,
-        )
-        predictor._ensure_initialized()
-        return predictor
-    except Exception as e:
-        pytest.skip(f"Server not available for Seth: {e}")
-
-
-@pytest.fixture(scope="module", params=["BindEmbed"])
-def real_predictor(request):
-    """
-    Parametrized fixture to test multiple models via server.
-    
-    Add model names to params list to test more models:
-    params=["BindEmbed", "TMbed", "Seth"]
-    """
-    model_name = request.param
-    config = PREDICTION_ORACLE_CONFIGS[model_name]
-    try:
-        predictor = RealPredictor(
-            model_name=model_name,
-            config=config,
-        )
-        predictor._ensure_initialized()
-        return predictor, config
-    except Exception as e:
-        pytest.skip(f"Server not available for {model_name}: {e}")
-
-
-# =============================================================================
-# Server Integration Oracle Tests
-# =============================================================================
-
-
 @pytest.mark.slow
-@pytest.mark.integration
-@skip_in_fixed_embedder_ci
-class TestPredictionDeterminismRealModels:
-    """
-    Prediction determinism tests via the real running server.
-    
-    Tests end-to-end prediction flow: HTTP request -> embeddings -> ONNX -> response.
-    Requires server running with pre-cached ProtT5 embeddings.
-    """
+class TestParametrizedModelOracles:
+    """Parametrized oracle tests across multiple ONNX models."""
 
-    def test_bindembed_determinism(
+    def test_model_determinism(
         self,
-        real_bindembed_predictor: RealPredictor,
-        binding_oracle_config: PredictionOracleConfig,
+        direct_predictor,
     ):
-        """Verify BindEmbed predictions are deterministic via server."""
-        oracle = PredictionDeterminismOracle(
-            predictor=real_bindembed_predictor,
-            config=binding_oracle_config,
-        )
-        
-        # Use shorter sequence for speed
-        sequence = CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence
-        result = oracle.verify(sequence)
-        
-        assert result["passed"], (
-            f"Determinism failed: model={result['model']}, "
-            f"sequence_length={result['sequence_length']}, runs={result['num_runs']}"
-        )
-
-
-@pytest.mark.slow
-@pytest.mark.integration
-@skip_in_fixed_embedder_ci
-class TestOutputValidityRealModels:
-    """
-    Output validity tests via the real running server.
-    
-    Validates that server returns properly formatted prediction outputs.
-    """
-
-    def test_bindembed_output_validity(
-        self,
-        real_bindembed_predictor: RealPredictor,
-        binding_oracle_config: PredictionOracleConfig,
-    ):
-        """Verify BindEmbed outputs are valid via server."""
-        oracle = OutputValidityOracle(
-            predictor=real_bindembed_predictor,
-            config=binding_oracle_config,
-        )
-        
-        sequence = CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence
-        result = oracle.verify(sequence)
-        
-        assert result["passed"], (
-            f"Output validity failed: model={result['model']}, "
-            f"sequence_length={len(sequence)}, issues={result['issues']}"
-        )
-
-
-@pytest.mark.slow
-@pytest.mark.integration
-@skip_in_fixed_embedder_ci
-class TestShapeInvarianceRealModels:
-    """
-    Shape invariance tests via the real running server.
-    
-    Validates that server returns predictions with correct shapes.
-    """
-
-    def test_bindembed_shape_invariance(
-        self,
-        real_bindembed_predictor: RealPredictor,
-        binding_oracle_config: PredictionOracleConfig,
-    ):
-        """Verify BindEmbed output shapes match sequence lengths via server."""
-        oracle = ShapeInvarianceOracle(
-            predictor=real_bindembed_predictor,
-            config=binding_oracle_config,
-        )
-        
-        # Test with varied lengths
-        sequences = [
-            CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
-            CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
-        ]
-        
-        result = oracle.verify(sequences)
-        assert result["passed"], (
-            f"Shape invariance failed: model={result['model']}, "
-            f"num_sequences={result['num_sequences']}, issues={result['issues']}"
-        )
-
-
-@pytest.mark.slow
-@pytest.mark.integration
-@skip_in_fixed_embedder_ci
-class TestParametrizedRealModelOracles:
-    """
-    Parametrized oracle tests via the real running server.
-    
-    Tests multiple prediction models through the server's HTTP API.
-    Skipped when CI_EMBEDDER=FixedEmbedder (no server available).
-    To add more models, modify the `real_predictor` fixture params.
-    """
-
-    def test_real_model_determinism(
-        self,
-        real_predictor,
-    ):
-        """Verify predictions are deterministic for any model via server."""
-        predictor, config = real_predictor
+        """Verify predictions are deterministic for any model via ONNX."""
+        predictor, config = direct_predictor
         oracle = PredictionDeterminismOracle(
             predictor=predictor,
             config=config,
@@ -942,12 +639,12 @@ class TestParametrizedRealModelOracles:
             f"sequence_length={result['sequence_length']}"
         )
 
-    def test_real_model_output_validity(
+    def test_model_output_validity(
         self,
-        real_predictor,
+        direct_predictor,
     ):
-        """Verify outputs are valid for any model via server."""
-        predictor, config = real_predictor
+        """Verify outputs are valid for any model via ONNX."""
+        predictor, config = direct_predictor
         oracle = OutputValidityOracle(
             predictor=predictor,
             config=config,

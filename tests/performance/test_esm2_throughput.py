@@ -12,10 +12,8 @@ Skip slow tests:
     uv run pytest tests/performance/ -m "not slow"
 """
 
-from os import times
 import pytest
 import time
-from typing import List, Dict
 import numpy as np
 
 
@@ -187,13 +185,13 @@ class TestESM2ScalingWithLength:
         throughput = 1000 / mean_ms if mean_ms > 0 else 0
             
         results.append({
-            "length": length,
+            "length": len(variable_length_sequences),
             "mean_ms": mean_ms,
             "std_ms": std_ms,
             "throughput": throughput,
         })
         
-        print(f"{length:<10} {mean_ms:<15.3f} {std_ms:<15.3f} {throughput:<20.1f}")
+        print(f"{len(variable_length_sequences):<10} {mean_ms:<15.3f} {std_ms:<15.3f} {throughput:<20.1f}")
         
         print(f"{'='*60}")
         

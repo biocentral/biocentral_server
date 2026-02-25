@@ -238,7 +238,7 @@ def explore_reversal(embedder, sequences: List[str], verbose: bool = True) -> Di
     
     findings["average_distance"] = np.mean(findings["all_distances"]) if findings["all_distances"] else 0
     
-    print(f"\n  FINDINGS:")
+    print("\n  FINDINGS:")
     print(f"    Average reversal distance: {findings['average_distance']:.4f}")
     print(f"    This suggests {'high' if findings['average_distance'] > 0.3 else 'moderate' if findings['average_distance'] > 0.1 else 'low'} sensitivity to sequence direction")
     
@@ -303,12 +303,12 @@ def explore_progressive_masking(embedder, sequences: List[str], verbose: bool = 
     
     avg_threshold = np.mean(findings["divergence_thresholds"]) if findings["divergence_thresholds"] else None
     
-    print(f"\n  FINDINGS:")
+    print("\n  FINDINGS:")
     if avg_threshold:
         print(f"    Average divergence threshold: {avg_threshold*100:.1f}% masking")
         print(f"    Interpretation: Embeddings remain meaningful up to ~{int(avg_threshold*100)}% unknown residues")
     else:
-        print(f"    No significant divergence detected - embeddings are robust to masking")
+        print("    No significant divergence detected - embeddings are robust to masking")
     
     return findings
 

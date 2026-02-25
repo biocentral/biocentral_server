@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 import pytest
-
+import importlib.util
 from tests.scripts.metamorphic_relations import (
     BatchVarianceRelation,
     IdempotencyRelation,
@@ -404,9 +404,7 @@ class TestProjectionDeterminismRelation:
         if len(standard_sequences) < min_umap_samples or seq_count < min_umap_samples:
             pytest.skip(f"UMAP requires at least {min_umap_samples} sequences")
         
-        try:
-            import umap
-        except ImportError:
+        if importlib.util.find_spec("umap") is None:
             pytest.skip("UMAP not installed")
         
         relation = ProjectionDeterminismRelation(
@@ -461,7 +459,7 @@ class TestReversalRelation:
         assert len(distances) > 0, "No reversal results generated"
         
         avg_distance = np.mean(distances)
-        print(f"\nReversal analysis:")
+        print("\nReversal analysis:")
         print(f"  Average cosine distance: {avg_distance:.4f}")
         print(f"  Min distance: {np.min(distances):.4f}")
         print(f"  Max distance: {np.max(distances):.4f}")
@@ -531,7 +529,7 @@ class TestProgressiveMaskingRelation:
         seq = standard_sequences[0]
         threshold_info = relation.find_divergence_threshold(seq, granularity=0.1)
         
-        print(f"\nDivergence threshold analysis:")
+        print("\nDivergence threshold analysis:")
         print(f"  Sequence length: {threshold_info['sequence_length']}")
         print(f"  Threshold ratio: {threshold_info['threshold_ratio']}")
         
@@ -596,7 +594,7 @@ class TestMetamorphicIntegration:
         
         summary = summarize_results(results)
         
-        print(f"\nFundamental invariants summary:")
+        print("\nFundamental invariants summary:")
         print(f"  Total tests: {summary['total_tests']}")
         print(f"  Passed: {summary['passed']}")
         print(f"  Failed: {summary['failed']}")
@@ -619,7 +617,7 @@ class TestMetamorphicIntegration:
         
         summary = summarize_results(results)
         
-        print(f"\nAll relations summary:")
+        print("\nAll relations summary:")
         for rel_name, rel_summary in summary["by_relation"].items():
             status = "✓" if rel_summary["failed"] == 0 else "✗"
             print(f"  {status} {rel_name}: {rel_summary['passed']}/{rel_summary['total']}")
