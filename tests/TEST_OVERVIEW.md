@@ -4,12 +4,13 @@
 
 | Metric | Count |
 |--------|-------|
-| **Total Test Files** | 18 |
-| **Total Test Cases** | ~95 |
+| **Total Test Files** | 23 |
+| **Total Test Cases** | ~115 |
 | **Unit Tests** | 43 |
 | **Integration Tests** | 28 |
 | **Property-Based Tests** | 16 |
 | **Performance Tests** | 18 |
+| **Experiment Scripts** | 20 |
 
 ### Notable Coverage Areas
 
@@ -18,6 +19,7 @@
 - **Projections**: PCA/UMAP/t-SNE configuration and execution
 - **Custom Models**: Training and inference lifecycle, config validation
 - **Oracles**: Batch invariance, masking robustness, determinism, output validity
+- **Experiment Scripts**: Idempotency, batch invariance, projection determinism, X-masking MR, reversed-sequence 
 
 ---
 
@@ -282,6 +284,57 @@ Performance tests measure throughput, latency, memory usage, and scaling behavio
 
 ---
 
+## Experiment Scripts (Invariants & Metamorphic Relations)
+
+Small-scale experiments in `tests/scripts/` exploring invariants and metamorphic relations of pLM embedding services. Each script has fast FixedEmbedder tests and optional `@pytest.mark.slow` real ESM2 tests. CSV reports are written to `tests/reports/`.
+
+### test_idempotency.py
+
+| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
+|-----------|------------------|-------------------|----------------|
+| `test_pooled_embedding_idempotent` (FixedEmbedder) | Same sequence → identical pooled embedding across 5 repeated calls | FixedEmbedder | Cosine distance ≤ 1e-6 for all repeats |
+| `test_per_residue_embedding_idempotent` (FixedEmbedder) | Same sequence → identical per-residue embedding across 5 repeated calls | FixedEmbedder | Cosine distance ≤ 1e-6 for all repeats |
+| `test_pooled_embedding_idempotent` (ESM2) | Same sequence → near-identical pooled embedding with real model | ESM2 via biotrainer | Cosine distance ≤ 1e-5 (GPU non-determinism tolerance) |
+
+### test_batch_invariance.py
+
+| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
+|-----------|------------------|-------------------|----------------|
+| `test_batch_invariance_pooled` (FixedEmbedder) | Embedding alone vs. in batches of 2/5/10/20 yields identical result | FixedEmbedder | Cosine distance ≤ 1e-6 across all batch sizes |
+| `test_batch_invariance_pooled` (ESM2) | Batch composition invisible to real model output | ESM2 via biotrainer | Cosine distance ≤ 0.01 across all batch sizes |
+
+### test_projection_determinism.py
+
+| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
+|-----------|------------------|-------------------|----------------|
+| `test_pca_deterministic` | PCA 2D projection identical across two runs | FixedEmbedder, protspace | Max absolute diff < 1e-10 |
+| `test_pca_3d_deterministic` | PCA 3D projection identical across two runs | FixedEmbedder, protspace | Max absolute diff < 1e-10 |
+| `test_umap_consistency` | UMAP produces structurally similar point clouds | FixedEmbedder, protspace | Procrustes distance ≤ 0.3 |
+| `test_tsne_consistency` | t-SNE produces structurally similar point clouds | FixedEmbedder, protspace | Procrustes distance ≤ 0.3 |
+
+### test_progressive_x_masking.py
+
+| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
+|-----------|------------------|-------------------|----------------|
+| `test_masking_divergence_profile` (FixedEmbedder) | Divergence curve as 0–100% residues replaced with 'X' | FixedEmbedder | Reports cosine/L2/KL at 13 masking ratios, finds critical ratio r* |
+| `test_masking_with_diverse_sequences` (FixedEmbedder) | X-masking profile on diverse sequence set | FixedEmbedder | CSV report with per-sequence critical ratios |
+| `test_monotonicity_mostly_holds` (FixedEmbedder) | Divergence increases monotonically with masking ratio | FixedEmbedder | Monotonicity violations < 20% of steps |
+| `test_masking_divergence_profile` (ESM2) | Real model divergence curve under X-masking | ESM2 via biotrainer | Reports critical ratio r* for real pLM |
+| `test_monotonicity_mostly_holds` (ESM2) | Monotonicity of real model under X-masking | ESM2 via biotrainer | Monotonicity violations < 30% of steps |
+
+### test_reversed_sequence.py
+
+| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
+|-----------|------------------|-------------------|----------------|
+| `test_reversal_produces_different_embedding` (FixedEmbedder) | Reversed sequence ≠ original embedding (position-awareness) | FixedEmbedder | Cosine distance > 1e-8 |
+| `test_double_reversal_is_identity` (FixedEmbedder) | rev(rev(s)) yields same embedding as s | FixedEmbedder | Cosine distance ≤ 1e-6 |
+| `test_reversal_with_diverse_sequences` (FixedEmbedder) | Reversal sensitivity across diverse sequences | FixedEmbedder | Reports min/max/mean cosine distance |
+| `test_reversal_significantly_different` (ESM2) | Real Transformer is order-sensitive | ESM2 via biotrainer | Cosine distance > 0.001 |
+| `test_double_reversal_is_identity` (ESM2) | Double reversal identity with real model | ESM2 via biotrainer | Cosine distance ≤ 1e-5 |
+| `test_reversal_summary_and_report` (ESM2) | Full reversal + double-reversal report | ESM2 via biotrainer | CSV report written |
+
+---
+
 ## Test Markers
 
 | Marker | Description |
@@ -289,7 +342,7 @@ Performance tests measure throughput, latency, memory usage, and scaling behavio
 | `@pytest.mark.property` | Property-based oracle tests |
 | `@pytest.mark.integration` | Integration tests requiring live server |
 | `@pytest.mark.performance` | Performance benchmark tests |
-| `@pytest.mark.slow` | Long-running tests (ESM2 model, full training) |
+| `@pytest.mark.slow` | Long-running tests (ESM2 model, full training, stochastic projections) |
 
 ## Running Tests
 
@@ -311,4 +364,10 @@ uv run pytest tests/performance/ -v -m performance
 
 # Skip slow tests
 uv run pytest tests/ -m "not slow"
+
+# Run experiment scripts (invariants & metamorphic relations)
+uv run pytest tests/scripts/ -v -s
+
+# Run experiment scripts including real ESM2 tests
+uv run pytest tests/scripts/ -v -s --run-slow
 ```
