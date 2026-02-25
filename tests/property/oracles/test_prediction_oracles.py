@@ -1,6 +1,6 @@
 """Prediction oracle tests for output consistency and validity."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Protocol
 
@@ -567,6 +567,354 @@ class TestShapeInvariance:
         assert result["passed"], (
             f"Shape invariance failed: model={result['model']}, "
             f"num_sequences={result['num_sequences']}, issues={result['issues']}"
+        )
+
+
+# =============================================================================
+# Real Model Predictor Wrapper
+# =============================================================================
+
+
+class RealPredictor:
+    """
+    Wrapper to run real prediction models (BindEmbed, TMbed, etc.).
+    
+    Handles embedding generation and model inference for oracle tests.
+    Requires ProtT5 embeddings for most models.
+    """
+
+    def __init__(
+        self,
+        model_name: str,
+        config: PredictionOracleConfig,
+        device: str = "cpu",
+        batch_size: int = 1,
+    ):
+        self.model_name = model_name
+        self.config = config
+        self.device = device
+        self.batch_size = batch_size
+        self._model = None
+        self._embedding_service = None
+
+    def _ensure_initialized(self):
+        """Lazy initialization of model and embedding service."""
+        if self._model is not None:
+            return
+
+        from biocentral_server.predict.models import MODEL_MAP
+        from biotrainer.embedders import get_embedding_service
+
+        # Get model class from MODEL_MAP
+        model_class = MODEL_MAP.get(self.model_name)
+        if model_class is None:
+            raise ValueError(f"Unknown model: {self.model_name}")
+
+        # Initialize model with ONNX backend
+        self._model = model_class(batch_size=self.batch_size, backend="onnx")
+        
+        # Get embedder name from model metadata
+        embedder_name = self._model.get_metadata().embedder
+        
+        # Initialize embedding service
+        self._embedding_service = get_embedding_service(
+            embedder_name=embedder_name,
+            use_half_precision=False,
+            custom_tokenizer_config=None,
+            device=self.device,
+        )
+
+    def predict(self, sequence: str) -> Dict[str, Any]:
+        """Predict for a single sequence."""
+        self._ensure_initialized()
+        
+        # Generate embedding
+        results = list(
+            self._embedding_service.generate_embeddings(
+                input_data=[sequence],
+                reduce=False,  # Per-residue embeddings for BindEmbed
+            )
+        )
+        
+        if not results:
+            raise RuntimeError("Embedding generation failed")
+        
+        seq_id, embedding = results[0]
+        embeddings = {seq_id: np.array(embedding)}
+        sequences = {seq_id: sequence}
+        
+        # Run prediction
+        predictions = self._model.predict(sequences=sequences, embeddings=embeddings)
+        
+        # Convert to oracle-expected format
+        pred_result = predictions.get(seq_id, [])
+        return self._format_prediction(pred_result, sequence)
+
+    def _format_prediction(
+        self,
+        model_output: List,
+        sequence: str,
+    ) -> Dict[str, Any]:
+        """Format model output to match PredictorProtocol interface."""
+        if self.config.is_classification:
+            # Per-residue classification (e.g., BindEmbed returns list of Prediction objects)
+            predictions = []
+            probabilities = []
+            
+            for residue_pred in model_output:
+                # Each residue_pred should have class index and probabilities
+                if hasattr(residue_pred, 'output_value'):
+                    # Prediction object format
+                    predictions.append(residue_pred.output_value)
+                elif isinstance(residue_pred, dict):
+                    predictions.append(residue_pred.get('class', 0))
+                    if 'probabilities' in residue_pred:
+                        probabilities.append(residue_pred['probabilities'])
+                else:
+                    predictions.append(int(residue_pred))
+            
+            result = {
+                "predictions": predictions,
+                "sequence_length": len(sequence),
+            }
+            if probabilities:
+                result["probabilities"] = probabilities
+            return result
+        else:
+            # Regression output
+            values = [
+                float(p.output_value) if hasattr(p, 'output_value') else float(p)
+                for p in model_output
+            ]
+            return {
+                "predictions": values,
+                "sequence_length": len(sequence),
+            }
+
+    def predict_batch(self, sequences: List[str]) -> List[Dict[str, Any]]:
+        """Predict for multiple sequences."""
+        return [self.predict(seq) for seq in sequences]
+
+
+# =============================================================================
+# Real Model Fixtures
+# =============================================================================
+
+
+def _get_available_models() -> List[str]:
+    """Get list of models available for testing."""
+    return ["BindEmbed", "TMbed", "Seth"]
+
+
+@pytest.fixture(scope="module")
+def real_bindembed_predictor():
+    """
+    Load real BindEmbed model with ProtT5 embedder.
+    
+    Fails explicitly if dependencies cannot be loaded.
+    """
+    try:
+        config = PREDICTION_ORACLE_CONFIGS["BindEmbed"]
+        predictor = RealPredictor(
+            model_name="BindEmbed",
+            config=config,
+            device="cpu",
+        )
+        # Force initialization to fail fast if model unavailable
+        predictor._ensure_initialized()
+        return predictor
+    except ImportError as e:
+        pytest.fail(
+            f"Failed to import prediction model dependencies. "
+            f"Ensure biotrainer and model files are available: {e}"
+        )
+    except Exception as e:
+        pytest.fail(
+            f"Failed to load BindEmbed model. "
+            f"Model must be available for oracle tests: {e}"
+        )
+
+
+@pytest.fixture(scope="module")
+def real_tmbed_predictor():
+    """Load real TMbed model with ProtT5 embedder."""
+    try:
+        config = PREDICTION_ORACLE_CONFIGS["TMbed"]
+        predictor = RealPredictor(
+            model_name="TMbed",
+            config=config,
+            device="cpu",
+        )
+        predictor._ensure_initialized()
+        return predictor
+    except Exception as e:
+        pytest.fail(f"Failed to load TMbed model: {e}")
+
+
+@pytest.fixture(scope="module")
+def real_seth_predictor():
+    """Load real Seth (disorder) model with ProtT5 embedder."""
+    try:
+        config = PREDICTION_ORACLE_CONFIGS["Seth"]
+        predictor = RealPredictor(
+            model_name="Seth",
+            config=config,
+            device="cpu",
+        )
+        predictor._ensure_initialized()
+        return predictor
+    except Exception as e:
+        pytest.fail(f"Failed to load Seth model: {e}")
+
+
+@pytest.fixture(scope="module", params=["BindEmbed"])
+def real_predictor(request):
+    """
+    Parametrized fixture to test multiple real models.
+    
+    Add model names to params list to test more models:
+    params=["BindEmbed", "TMbed", "Seth"]
+    """
+    model_name = request.param
+    config = PREDICTION_ORACLE_CONFIGS[model_name]
+    try:
+        predictor = RealPredictor(
+            model_name=model_name,
+            config=config,
+            device="cpu",
+        )
+        predictor._ensure_initialized()
+        return predictor, config
+    except Exception as e:
+        pytest.skip(f"Model {model_name} not available: {e}")
+
+
+# =============================================================================
+# Real Model Oracle Tests
+# =============================================================================
+
+
+@pytest.mark.slow
+class TestPredictionDeterminismRealModels:
+    """Prediction determinism tests using real models."""
+
+    def test_bindembed_determinism(
+        self,
+        real_bindembed_predictor: RealPredictor,
+        binding_oracle_config: PredictionOracleConfig,
+    ):
+        """Verify BindEmbed predictions are deterministic."""
+        oracle = PredictionDeterminismOracle(
+            predictor=real_bindembed_predictor,
+            config=binding_oracle_config,
+        )
+        
+        # Use shorter sequence for speed
+        sequence = CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence
+        result = oracle.verify(sequence)
+        
+        assert result["passed"], (
+            f"Determinism failed: model={result['model']}, "
+            f"sequence_length={result['sequence_length']}, runs={result['num_runs']}"
+        )
+
+
+@pytest.mark.slow
+class TestOutputValidityRealModels:
+    """Output validity tests using real models."""
+
+    def test_bindembed_output_validity(
+        self,
+        real_bindembed_predictor: RealPredictor,
+        binding_oracle_config: PredictionOracleConfig,
+    ):
+        """Verify BindEmbed outputs are valid."""
+        oracle = OutputValidityOracle(
+            predictor=real_bindembed_predictor,
+            config=binding_oracle_config,
+        )
+        
+        sequence = CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence
+        result = oracle.verify(sequence)
+        
+        assert result["passed"], (
+            f"Output validity failed: model={result['model']}, "
+            f"sequence_length={len(sequence)}, issues={result['issues']}"
+        )
+
+
+@pytest.mark.slow
+class TestShapeInvarianceRealModels:
+    """Shape invariance tests using real models."""
+
+    def test_bindembed_shape_invariance(
+        self,
+        real_bindembed_predictor: RealPredictor,
+        binding_oracle_config: PredictionOracleConfig,
+    ):
+        """Verify BindEmbed output shapes match sequence lengths."""
+        oracle = ShapeInvarianceOracle(
+            predictor=real_bindembed_predictor,
+            config=binding_oracle_config,
+        )
+        
+        # Test with varied lengths
+        sequences = [
+            CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
+            CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
+        ]
+        
+        result = oracle.verify(sequences)
+        assert result["passed"], (
+            f"Shape invariance failed: model={result['model']}, "
+            f"num_sequences={result['num_sequences']}, issues={result['issues']}"
+        )
+
+
+@pytest.mark.slow
+class TestParametrizedRealModelOracles:
+    """
+    Parametrized oracle tests that run against multiple real models.
+    
+    To add more models, modify the `real_predictor` fixture params.
+    """
+
+    def test_real_model_determinism(
+        self,
+        real_predictor,
+    ):
+        """Verify predictions are deterministic for any real model."""
+        predictor, config = real_predictor
+        oracle = PredictionDeterminismOracle(
+            predictor=predictor,
+            config=config,
+        )
+        
+        sequence = CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence
+        result = oracle.verify(sequence)
+        
+        assert result["passed"], (
+            f"Determinism failed: model={result['model']}, "
+            f"sequence_length={result['sequence_length']}"
+        )
+
+    def test_real_model_output_validity(
+        self,
+        real_predictor,
+    ):
+        """Verify outputs are valid for any real model."""
+        predictor, config = real_predictor
+        oracle = OutputValidityOracle(
+            predictor=predictor,
+            config=config,
+        )
+        
+        sequence = CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence
+        result = oracle.verify(sequence)
+        
+        assert result["passed"], (
+            f"Output validity failed: model={result['model']}, "
+            f"issues={result['issues']}"
         )
 
 

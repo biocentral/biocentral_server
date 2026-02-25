@@ -170,7 +170,7 @@ class TestEndToEndEmbedFlow:
                 "embedder_name": embedder,
                 "reduce": True,
                 "sequence_data": single_test_sequence,
-                "use_half_precision": True,
+                "use_half_precision": False, 
             }
 
             response = client.post("/embeddings_service/embed", json=request_data)
