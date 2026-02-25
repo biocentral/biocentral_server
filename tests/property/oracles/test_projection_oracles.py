@@ -10,19 +10,15 @@ This module implements test oracles that verify critical projection properties:
 Uses the canonical test dataset for reproducible testing.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Dict, List, Protocol
 
 import numpy as np
 import pytest
 
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 from tests.fixtures.fixed_embedder import FixedEmbedder
-
-
-
-
 
 
 _projection_oracle_results: List[Dict[str, Any]] = []
@@ -44,11 +40,6 @@ def add_projection_oracle_result(result: Dict[str, Any]) -> None:
 def clear_projection_oracle_results() -> None:
     """Clear all accumulated projection oracle results."""
     _projection_oracle_results.clear()
-
-
-
-
-
 
 
 @dataclass
@@ -79,12 +70,6 @@ PROJECTION_ORACLE_CONFIGS = {
     ),
 }
 
-
-
-
-
-
-
 class ProjectorProtocol(Protocol):
     """Protocol defining the projector interface for oracle tests."""
 
@@ -96,12 +81,6 @@ class ProjectorProtocol(Protocol):
     ) -> Dict[str, np.ndarray]:
         """Project embeddings to lower dimensions."""
         ...
-
-
-
-
-
-
 
 class MockProjector:
     """
@@ -155,12 +134,6 @@ class MockProjector:
             projections[seq_id] = proj.astype(np.float32)
 
         return projections
-
-
-
-
-
-
 
 class ProjectionDeterminismOracle:
     """
