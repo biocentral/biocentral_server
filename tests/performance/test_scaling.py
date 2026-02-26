@@ -11,16 +11,9 @@ import numpy as np
 
 
 def get_memory_mb() -> float:
-    """Get current process memory in MB (macOS/Linux)."""
-    try:
-        import resource
-        usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        if sys.platform == "darwin":
-            return usage / (1024 * 1024)
-        else:
-            return usage / 1024
-    except ImportError:
-        return 0.0
+    """Get current process memory (RSS) in MB using psutil."""
+    import psutil
+    return psutil.Process().memory_info().rss / (1024 * 1024)
 
 
 def _append_memory_results(key: str, data: list | dict):
