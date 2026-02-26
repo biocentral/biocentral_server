@@ -374,6 +374,8 @@ def oracle_embeddings() -> Dict[str, np.ndarray]:
 
 @pytest.fixture(scope="module")
 def diverse_test_embeddings() -> Dict[str, np.ndarray]:
+    # Test embeddings with diverse properties.
+    # Uses 16 sequences to ensure UMAP has enough data points (> n_neighbors=15).
     embedder = FixedEmbedder(model_name="esm2_t6")
     sequences = {
         "short": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
@@ -381,6 +383,17 @@ def diverse_test_embeddings() -> Dict[str, np.ndarray]:
         "standard": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
         "charged": CANONICAL_TEST_DATASET.get_by_id("charged_rich").sequence,
         "hydrophobic": CANONICAL_TEST_DATASET.get_by_id("hydrophobic_rich").sequence,
+        "standard_002": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+        "standard_003": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
+        "proline_rich": CANONICAL_TEST_DATASET.get_by_id("proline_rich").sequence,
+        "alpha_helix": CANONICAL_TEST_DATASET.get_by_id("motif_alpha_helix").sequence,
+        "beta_sheet": CANONICAL_TEST_DATASET.get_by_id("motif_beta_sheet").sequence,
+        "glycine_loop": CANONICAL_TEST_DATASET.get_by_id("motif_glycine_loop").sequence,
+        "cysteine_rich": CANONICAL_TEST_DATASET.get_by_id("cysteine_rich").sequence,
+        "long": CANONICAL_TEST_DATASET.get_by_id("length_long_200").sequence,
+        "all_aa": CANONICAL_TEST_DATASET.get_by_id("all_standard_aa").sequence,
+        "insulin": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+        "ubiquitin": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
     }
     return embedder.embed_dict(sequences, pooled=True)
 
