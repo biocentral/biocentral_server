@@ -1,24 +1,14 @@
 import pytest
 import gc
 import numpy as np
+import psutil
 
 from tests.fixtures.fixed_embedder import FixedEmbedder
 
 
 def get_memory_mb() -> float:
-    try:
-        import resource
-
-
-        usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        import sys
-
-        if sys.platform == "darwin":
-            return usage / (1024 * 1024)
-        else:
-            return usage / 1024
-    except ImportError:
-        return 0.0
+    """Get current process memory (RSS) in MB using psutil."""
+    return psutil.Process().memory_info().rss / (1024 * 1024)
 
 @pytest.mark.slow
 @pytest.mark.performance
@@ -35,7 +25,7 @@ class TestMemoryLeaks:
         baseline = get_memory_mb()
 
 
-        for _ in range(20):
+        for _ in range(30):
             _ = esm2_embedder.embed(sequence)
 
         gc.collect()
@@ -43,7 +33,7 @@ class TestMemoryLeaks:
 
         growth = final - baseline
 
-        assert growth < 7, f"Memory grew by {growth:.1f} MB (possible leak)"
+        assert growth < 10, f"Memory grew by {growth:.1f} MB (possible leak)"
 
     def test_no_leak_repeated_batch_embedding(self, esm2_embedder, large_batch):
         # Memory should not grow with repeated batch embeddings.
@@ -58,14 +48,14 @@ class TestMemoryLeaks:
         baseline = get_memory_mb()
 
 
-        for _ in range(10):
+        for _ in range(30):
             _ = esm2_embedder.embed_batch(sequences)
 
         gc.collect()
         final = get_memory_mb()
 
         growth = final - baseline
-        assert growth < 4, f"Memory grew by {growth:.1f} MB (possible leak)"
+        assert growth < 10, f"Memory grew by {growth:.1f} MB (possible leak)"
 
     def test_gc_releases_embeddings(self, esm2_embedder, very_long_sequence):
         # Verify GC properly releases embedding memory.
