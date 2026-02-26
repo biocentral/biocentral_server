@@ -1,4 +1,4 @@
-"""Shared fixtures for endpoint integration tests."""
+# Shared fixtures for endpoint integration tests.
 
 import os
 import time
@@ -22,20 +22,16 @@ TERMINAL_FAILURE_STATUSES = {"FAILED", "ERROR"}
 
 
 def get_redis_port() -> int:
-    """Get Redis port from environment, accounting for CI port mapping."""
-
     return int(os.environ.get("REDIS_JOBS_PORT", "6379"))
 
 
 @pytest.fixture(scope="session")
 def flush_redis():
-    """Factory fixture to flush Redis job queue on demand."""
     def _flush():
         redis_port = get_redis_port()
         try:
             r = redis.Redis(host="localhost", port=redis_port, db=0)
             r.flushdb()
-
             time.sleep(0.5)
         except redis.ConnectionError:
             pass
@@ -43,14 +39,12 @@ def flush_redis():
 
 
 def get_server_url() -> str:
-    """Get the server URL from environment variable."""
     url = os.environ.get("CI_SERVER_URL")
     if not url:
         msg = (
             "CI_SERVER_URL environment variable not set. Start the server and set "
             "CI_SERVER_URL=http://localhost:9540"
         )
-
         logging.warning(msg)
         print(f"SKIPPING integration tests: {msg}", file=sys.stderr)
         pytest.skip(msg)
@@ -59,21 +53,17 @@ def get_server_url() -> str:
 
 @pytest.fixture(scope="session")
 def server_url() -> str:
-    """Get the server URL, skip tests if not available."""
     return get_server_url()
 
 
 @pytest.fixture(scope="session")
 def client(server_url) -> Generator[httpx.Client, None, None]:
-    # Create an httpx client for the integration test server.
-
     transport = httpx.HTTPTransport(retries=5)
     http_client = httpx.Client(
         base_url=f"{server_url}/api/v1",
         timeout=httpx.Timeout(500.0, connect=10.0),
         transport=transport,
     )
-    
 
     try:
         response = httpx.get(f"{server_url}/health", timeout=10.0)
@@ -81,7 +71,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
             pytest.fail(f"Server at {server_url} returned status {response.status_code}")
     except httpx.RequestError as e:
         pytest.fail(f"Cannot connect to server at {server_url}: {e}")
-    
+
 
     if os.environ.get("CI_EMBEDDER", "").lower() == "fixed":
         import uuid
@@ -102,7 +92,6 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
         _fake_tasks: Dict[str, Dict] = {}
 
         def _save_embeddings_to_db(sequences: Dict[str, str], embedder_name: str, reduced: bool, fe):
-            """Save fixed embedder results to PostgreSQL database."""
             import psycopg
             import blosc2
             from datetime import datetime
@@ -124,8 +113,6 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                     for _, sequence in sequences.items():
                         seq_hash = calculate_sequence_hash(sequence)
                         seq_len = len(sequence)
-                        
-
 
                         if reduced:
                             emb_array = fe.embed_pooled(sequence)
@@ -155,14 +142,12 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 print(f"[FIXED EMBEDDER] Warning: Failed to save to DB: {e}")
 
         def _fake_post(url, *args, **kwargs):
-
             try:
                 path = urlparse(str(url)).path
             except Exception:
                 path = str(url)
 
             if path.startswith("/embeddings_service/embed"):
-
                 data = kwargs.get("json") or {}
 
                 if not data.get("embedder_name"):
@@ -170,21 +155,16 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 if not data.get("sequence_data"):
                     return FakeResponse(422, {"detail": "sequence_data empty"})
 
-
                 embedder_name = data.get("embedder_name")
                 seqs = data.get("sequence_data")
                 reduced = bool(data.get("reduce", False))
-                
 
                 fe = get_fixed_embedder(model_name=embedder_name, strict_dataset=False)
 
-
                 if isinstance(seqs, list):
                     seqs = {f"seq_{i}": seq for i, seq in enumerate(seqs)}
-                
 
                 _save_embeddings_to_db(seqs, embedder_name, reduced, fe)
-
 
                 task_id = f"local-{uuid.uuid4().hex[:8]}"
                 _fake_tasks[task_id] = {
@@ -207,14 +187,11 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 method = data.get("method", "pca")
                 n_components = data.get("config", {}).get("n_components", 2)
 
-
                 valid_methods = {"pca", "umap", "tsne", "pacmap", "trimap"}
                 if method.lower() not in valid_methods:
                     return FakeResponse(400, {"detail": f"Unknown method: {method}"})
 
-
                 task_id = f"local-{uuid.uuid4().hex[:8]}"
-
 
                 seq_ids = list(seqs.keys()) if isinstance(seqs, dict) else [f"seq_{i}" for i in range(len(seqs))]
                 projection_result = {
@@ -235,14 +212,12 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
             return original_post(url, *args, **kwargs)
 
         def _fake_get(url, *args, **kwargs):
-
             try:
                 path = urlparse(str(url)).path
             except Exception:
                 path = str(url)
 
             if path.startswith("/biocentral_service/task_status/local-"):
-
                 try:
                     task_id = path.rstrip("/").split("/")[-1]
                 except Exception:
@@ -262,7 +237,6 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
 
 
 def _make_request_with_retry(client, method: str, url: str, max_retries: int = 5, **kwargs) -> httpx.Response:
-    """Make an HTTP request with retry logic for transient errors."""
     last_error = None
     for attempt in range(max_retries):
         try:
@@ -293,7 +267,6 @@ def _make_request_with_retry(client, method: str, url: str, max_retries: int = 5
 
 
 def validate_task_dto(task_dto: Dict[str, Any]) -> Dict[str, Any]:
-    """Validate minimal task DTO schema shared across endpoint integration tests."""
     assert isinstance(task_dto, dict), f"Task DTO must be dict, got {type(task_dto)}"
     assert "status" in task_dto, "Task DTO missing 'status'"
     assert isinstance(task_dto["status"], str), "Task DTO 'status' must be string"
@@ -301,7 +274,6 @@ def validate_task_dto(task_dto: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def assert_task_success(task_dto: Dict[str, Any], context: str = "task") -> Dict[str, Any]:
-    """Assert that a task DTO is terminal-success and does not carry an error payload."""
     validate_task_dto(task_dto)
     status = task_dto["status"].upper()
     assert status in TERMINAL_SUCCESS_STATUSES, (
@@ -319,7 +291,6 @@ def assert_projection_result_schema(
     method: str,
     expected_sequence_count: int,
 ) -> Dict[str, Any]:
-    """Assert projection task result payload contains expected schema for a method."""
     projection_result = task_dto.get("projection_result")
     assert isinstance(projection_result, dict), "Task DTO missing 'projection_result' dict"
 
@@ -346,7 +317,6 @@ def assert_prediction_result_schema(
     task_dto: Dict[str, Any],
     expected_sequence_ids,
 ) -> Dict[str, Any]:
-    """Assert prediction task result contains predictions aligned with input sequence ids."""
     if isinstance(task_dto.get("predictions"), dict):
         predictions = task_dto.get("predictions")
         prediction_result = {"predictions": predictions}
@@ -365,7 +335,6 @@ def assert_prediction_result_schema(
 
 @pytest.fixture(scope="session")
 def poll_task(client):
-    # Factory fixture to poll a task until completion with robust error handling.
     def _poll(
         task_id: str,
         timeout: int = 120,
@@ -373,7 +342,6 @@ def poll_task(client):
         max_consecutive_errors: int = 10,
         require_success: bool = False,
     ) -> Dict[str, Any]:
-        # Poll task status until completion or timeout.
         start = time.time()
         consecutive_errors = 0
         last_status = "UNKNOWN"
@@ -426,23 +394,21 @@ def poll_task(client):
             if not dtos:
                 time.sleep(poll_interval)
                 continue
-            
 
             latest_dto = dtos[-1]
             latest_dto = validate_task_dto(latest_dto)
             task_status = latest_dto.get("status", "").upper()
             last_status = task_status
-            
 
             if elapsed % 30 == 0 and elapsed > 0:
                 logging.info(f"[POLL] Task {task_id}: {task_status} ({elapsed}s elapsed)")
-            
 
             if task_status in TERMINAL_SUCCESS_STATUSES:
                 logging.info(f"[POLL] Task {task_id} completed successfully in {elapsed}s")
                 if require_success:
                     assert_task_success(latest_dto, context=f"task {task_id}")
                 return latest_dto
+            
             elif task_status in TERMINAL_FAILURE_STATUSES:
                 err = latest_dto.get("error", "unknown")
                 logging.warning(f"[POLL] Task {task_id} failed: {err}")
@@ -467,7 +433,6 @@ EMBEDDER_MAP = {
     "fixed": EMBEDDER_FIXED,
 }
 
-
 def get_embedder_name() -> str:
     ci_embedder = os.environ.get("CI_EMBEDDER", "esm2_t6_8m").lower()
     
@@ -476,25 +441,21 @@ def get_embedder_name() -> str:
         pytest.fail(f"Invalid CI_EMBEDDER='{ci_embedder}'. Valid options: {valid_options}")
     
     embedder_name = EMBEDDER_MAP[ci_embedder]
-    
 
     return embedder_name
 
 
 def is_fixed_embedder() -> bool:
-    """Check if we're using the FixedEmbedder mode."""
     return os.environ.get("CI_EMBEDDER", "esm2_t6_8m").lower() == "fixed"
 
 
 @pytest.fixture(scope="session")
 def embedder_name() -> str:
-    """Get the embedder name to use for tests."""
     return get_embedder_name()
 
 
 @pytest.fixture(scope="session")
 def test_sequences() -> Dict[str, str]:
-    """Standard test sequences from canonical dataset."""
     return {
         "protein_1": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
     }
@@ -502,50 +463,41 @@ def test_sequences() -> Dict[str, str]:
 
 @pytest.fixture(scope="session")
 def single_test_sequence() -> Dict[str, str]:
-    """Single sequence from canonical dataset."""
     return {
         "test_seq": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
     }
 
 
-
 @pytest.fixture(scope="session")
 def shared_embedding_sequences() -> Dict[str, str]:
-    # Sequences shared between embedding and projection tests.
-    return {
-        "short_1": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
-        "short_2": CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
-    }
-@pytest.fixture(scope="session")
-def short_test_sequences() -> Dict[str, str]:
-    """Short sequences from canonical dataset."""
     return {
         "short_1": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
         "short_2": CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
     }
 
+@pytest.fixture(scope="session")
+def short_test_sequences() -> Dict[str, str]:
+    return {
+        "short_1": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
+        "short_2": CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
+    }
 
 @pytest.fixture(scope="session")
 def minimum_length_sequences() -> Dict[str, str]:
-    """Sequences at minimum length boundaries."""
     return {
         "min_1": CANONICAL_TEST_DATASET.get_by_id("length_min_1").sequence,
         "min_2": CANONICAL_TEST_DATASET.get_by_id("length_min_2").sequence,
         "short_5": CANONICAL_TEST_DATASET.get_by_id("length_short_5").sequence,
     }
 
-
 @pytest.fixture(scope="session")
 def long_sequences() -> Dict[str, str]:
-    """Long sequences for performance and boundary testing."""
     return {
-        "long_200": CANONICAL_TEST_DATASET.get_by_id("length_long_200").sequence, 
+        "long_200": CANONICAL_TEST_DATASET.get_by_id("length_long_200").sequence,
     }
-
 
 @pytest.fixture(scope="session")
 def unknown_token_sequences() -> Dict[str, str]:
-    """Sequences containing unknown (X) residues."""
     return {
         "unknown_single": CANONICAL_TEST_DATASET.get_by_id("unknown_single").sequence,
         "unknown_multiple": CANONICAL_TEST_DATASET.get_by_id("unknown_multiple").sequence,
@@ -556,44 +508,33 @@ def unknown_token_sequences() -> Dict[str, str]:
         "unknown_high_ratio": CANONICAL_TEST_DATASET.get_by_id("unknown_high_ratio").sequence,
     }
 
-
 @pytest.fixture(scope="session")
 def ambiguous_code_sequences() -> Dict[str, str]:
-    """Sequences containing ambiguous amino acid codes (B, Z, J, U, O)."""
     return {
         "ambiguous_B": CANONICAL_TEST_DATASET.get_by_id("ambiguous_B").sequence,
         "ambiguous_Z": CANONICAL_TEST_DATASET.get_by_id("ambiguous_Z").sequence,
         "ambiguous_J": CANONICAL_TEST_DATASET.get_by_id("ambiguous_J").sequence,
     }
 
-
 @pytest.fixture(scope="session")
 def composition_edge_sequences() -> Dict[str, str]:
-    """Sequences with unusual amino acid compositions."""
     return {
         "all_standard_aa": CANONICAL_TEST_DATASET.get_by_id("all_standard_aa").sequence,
-        "homopolymer_A": CANONICAL_TEST_DATASET.get_by_id("homopolymer_A").sequence, 
+        "homopolymer_A": CANONICAL_TEST_DATASET.get_by_id("homopolymer_A").sequence,
     }
-
 
 @pytest.fixture(scope="session")
 def structural_motif_sequences() -> Dict[str, str]:
-    """Sequences with structural motifs."""
     return {
         "alpha_helix": CANONICAL_TEST_DATASET.get_by_id("motif_alpha_helix").sequence,
-        "beta_sheet": CANONICAL_TEST_DATASET.get_by_id("motif_beta_sheet").sequence, 
+        "beta_sheet": CANONICAL_TEST_DATASET.get_by_id("motif_beta_sheet").sequence,
     }
-
 
 @pytest.fixture(scope="session")
 def real_world_sequences() -> Dict[str, str]:
-    """Real-world representative protein sequences."""
     return {
         "insulin_b": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
     }
-
- 
-
 
 CANONICAL_STANDARD_IDS = ["standard_001", "standard_002", "standard_003"]
 CANONICAL_LENGTH_EDGE_IDS = [
@@ -617,23 +558,17 @@ ALL_CANONICAL_IDS = (
     + CANONICAL_REAL_WORLD_IDS
 )
 
-
 def get_sequence_by_id(seq_id: str) -> str:
-    """Helper to get a sequence by its canonical ID."""
     return CANONICAL_TEST_DATASET.get_by_id(seq_id).sequence
-
 
 @pytest.fixture(scope="session")
 def all_canonical_sequences() -> Dict[str, str]:
-    """All sequences from canonical dataset for comprehensive testing."""
     return {seq_id: get_sequence_by_id(seq_id) for seq_id in ALL_CANONICAL_IDS}
-
 
 @pytest.fixture(scope="session")
 def large_batch_sequences() -> Dict[str, str]:
-    # Large batch of sequences for performance and batch handling tests.
     base_sequences = [
-        CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence, 
+        CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
     ]
     
     sequences = {}
@@ -644,9 +579,7 @@ def large_batch_sequences() -> Dict[str, str]:
     
     return sequences
 
-
 def validate_task_response(response_json: Dict, expected_task_id_prefix: str = None) -> str:
-    # Validate a task creation response and return the task_id.
     assert "task_id" in response_json, "Response missing 'task_id' field"
     task_id = response_json["task_id"]
     assert isinstance(task_id, str), f"task_id should be string, got {type(task_id)}"
@@ -660,7 +593,6 @@ def validate_task_response(response_json: Dict, expected_task_id_prefix: str = N
 
 
 def validate_error_response(response_json: Dict, expected_status: int = None) -> Dict:
-    # Validate an error response structure.
     assert "detail" in response_json, "Error response missing 'detail' field"
     detail = response_json["detail"]
     
@@ -675,15 +607,13 @@ def validate_error_response(response_json: Dict, expected_status: int = None) ->
 
 @pytest.fixture(scope="session")
 def test_run_id() -> str:
-    # Unique identifier for this test run.
     import uuid
     return str(uuid.uuid4())[:8]
 
+
 @pytest.fixture(scope="session")
 def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
-    # Fixture to verify embeddings are cached in the database.
     def _verify(expect_cached: bool = True):
-
         import json
         from biotrainer.utilities import calculate_sequence_hash
     
@@ -760,15 +690,12 @@ def precache_prott5_embeddings(shared_embedding_sequences):
         for seq_id, sequence in shared_embedding_sequences.items():
             seq_hash = calculate_sequence_hash(sequence)
             seq_len = len(sequence)
-
             seed_bytes = hashlib.sha256(seq_hash.encode("utf-8")).digest()[:8]
             seed = int.from_bytes(seed_bytes, "big")
             rng = np.random.default_rng(seed)
-            
 
             per_residue = rng.standard_normal((seq_len, 1024)).astype(np.float32)
             per_sequence = per_residue.mean(axis=0)
-            
 
             per_seq_compressed = blosc2.pack_array(per_sequence)
             per_res_compressed = blosc2.pack_array(per_residue)
@@ -809,7 +736,6 @@ def precache_prott5_embeddings(shared_embedding_sequences):
 
 @pytest.fixture(scope="session")
 def load_bindembed_onnx():
-    # Download and upload BindEmbed ONNX model to SeaweedFS storage.
     import tempfile
     import zipfile
     import requests
@@ -819,15 +745,12 @@ def load_bindembed_onnx():
     seaweedfs_host = os.environ.get("SEAWEEDFS_FILER_HOST", "localhost")
     seaweedfs_port = os.environ.get("SEAWEEDFS_FILER_PORT", "8888")
     seaweedfs_url = f"http://{seaweedfs_host}:{seaweedfs_port}"
-    
 
     model_url = "https://nextcloud.in.tum.de/index.php/s/kxJ64RcRi7g6p6r/download"
-    
 
     target_base = "PREDICT"
-    
-    try:
 
+    try:
         check_response = requests.head(f"{seaweedfs_url}/{target_base}/bindembed/", timeout=5)
         print(f"\n[ONNX] Check response: {check_response.status_code}")
     except Exception as e:
@@ -837,7 +760,6 @@ def load_bindembed_onnx():
         print(f"\n[ONNX] Downloading prediction models from {model_url}...")
         
         with tempfile.TemporaryDirectory() as tmpdir:
-
             response = requests.get(model_url, stream=True, timeout=300)
             response.raise_for_status()
             
@@ -847,12 +769,10 @@ def load_bindembed_onnx():
                     f.write(chunk)
             
             print(f"[ONNX] Downloaded {zip_path.stat().st_size / 1024 / 1024:.1f} MB")
-            
 
             extract_dir = Path(tmpdir) / "extracted"
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_dir)
-            
 
             extracted_items = list(extract_dir.iterdir())
             print(f"[ONNX] Top-level extracted: {[item.name for item in extracted_items]}")
@@ -862,13 +782,11 @@ def load_bindembed_onnx():
             if len(extracted_items) == 1 and extracted_items[0].is_dir():
                 model_root = extracted_items[0]
                 print(f"[ONNX] Using nested root: {model_root.name}")
-            
 
             for item in model_root.iterdir():
                 if item.is_dir():
                     files = list(item.iterdir())[:3]
                     print(f"[ONNX] Dir {item.name}/: {[f.name for f in files]}...")
-            
 
             uploaded_count = 0
             failed_count = 0
@@ -876,13 +794,11 @@ def load_bindembed_onnx():
             for file_path in model_root.rglob("*"):
                 if file_path.is_file():
                     rel_path = file_path.relative_to(model_root)
-
                     seaweed_path = f"/{target_base}/{rel_path}"
                     
                     try:
                         with open(file_path, "rb") as f:
                             file_data = f.read()
-                        
 
                         files = {"file": (file_path.name, file_data, "application/octet-stream")}
                         upload_response = requests.post(
@@ -903,7 +819,6 @@ def load_bindembed_onnx():
                             print(f"[ONNX] Error uploading {seaweed_path}: {e}")
             
             print(f"[ONNX] Uploaded {uploaded_count} files, {failed_count} failed")
-            
 
             try:
                 verify_response = requests.get(

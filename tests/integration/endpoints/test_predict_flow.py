@@ -11,14 +11,11 @@ from tests.integration.endpoints.conftest import (
 
 @pytest.fixture
 def prediction_sequences(shared_embedding_sequences) -> Dict[str, str]:
-    """Use the shared sequences that have pre-cached ProtT5 embeddings."""
     return shared_embedding_sequences
-
 
 
 @pytest.fixture
 def boundary_length_sequences() -> Dict[str, str]:
-    """Sequences at or near the minimum length boundary for prediction."""
     return {
         "short_5": CANONICAL_TEST_DATASET.get_by_id("length_short_5").sequence,
         "short_10": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
@@ -27,11 +24,9 @@ def boundary_length_sequences() -> Dict[str, str]:
 
 @pytest.mark.order(1)
 class TestModelMetadataEndpoint:
-    # Integration tests for GET /prediction_service/model_metadata.
 
     @pytest.mark.integration
     def test_get_model_metadata(self, client):
-        """Test retrieving available model metadata."""
         response = client.get("/prediction_service/model_metadata")
 
         assert response.status_code == 200
@@ -42,7 +37,6 @@ class TestModelMetadataEndpoint:
 
     @pytest.mark.integration
     def test_model_metadata_structure(self, client):
-        """Test that model metadata has expected structure."""
         response = client.get("/prediction_service/model_metadata")
         metadata = response.json()["metadata"]
 
@@ -53,7 +47,6 @@ class TestModelMetadataEndpoint:
 
     @pytest.mark.integration
     def test_model_metadata_consistent(self, client):
-        """Test that metadata is consistent across calls."""
         response1 = client.get("/prediction_service/model_metadata")
         response2 = client.get("/prediction_service/model_metadata")
 
@@ -64,8 +57,6 @@ class TestModelMetadataEndpoint:
 
 @pytest.mark.order(2)
 class TestPredictEndpoint:
-    # Integration tests for POST /prediction_service/predict.
-
 
     @pytest.mark.integration
     def test_predict_invalid_model_rejected(
@@ -73,7 +64,6 @@ class TestPredictEndpoint:
         client,
         prediction_sequences,
     ):
-        """Test that invalid model name returns error."""
         request_data = {
             "model_names": ["invalid_model_xyz_123"],
             "sequence_input": prediction_sequences,
@@ -81,12 +71,10 @@ class TestPredictEndpoint:
 
         response = client.post("/prediction_service/predict", json=request_data)
 
-
         assert response.status_code == 422
 
     @pytest.mark.integration
     def test_predict_empty_sequences_rejected(self, client):
-        """Test that empty sequence input is rejected with proper error."""
         request_data = {
             "model_names": ["BindEmbed"],
             "sequence_input": {},
@@ -103,7 +91,6 @@ class TestPredictEndpoint:
         client,
         boundary_length_sequences,
     ):
-        """Test that sequences shorter than minimum length are rejected with proper error."""
         short_seq = boundary_length_sequences["short_5"]
         request_data = {
             "model_names": ["BindEmbed"],
@@ -121,7 +108,6 @@ class TestPredictEndpoint:
         client,
         prediction_sequences,
     ):
-        """Test that empty model names list is rejected with proper error."""
         request_data = {
             "model_names": [],
             "sequence_input": prediction_sequences,
@@ -132,7 +118,6 @@ class TestPredictEndpoint:
         assert response.status_code == 422
         validate_error_response(response.json())
 
-     
     @pytest.mark.integration
     def test_predict_task_completes(
         self,
@@ -142,10 +127,8 @@ class TestPredictEndpoint:
         precache_prott5_embeddings,
         load_bindembed_onnx,
     ):
-        """Test that prediction task completes successfully."""
-
         request_data = {
-            "model_names": ["BindEmbed"],   
+            "model_names": ["BindEmbed"],
             "sequence_input": prediction_sequences,
         }
 
@@ -154,9 +137,6 @@ class TestPredictEndpoint:
 
         task_id = response.json()["task_id"]
         print(f"[PREDICT] Submitted task {task_id}, waiting for completion...")
-    
         result = poll_task(task_id, timeout=280, max_consecutive_errors=15)
-       
         assert result["status"].upper() == "FINISHED", f"Prediction failed: {result.get('error', 'unknown')}"
-        print(f"[PREDICT] Task {task_id} completed successfully")   
- 
+        print(f"[PREDICT] Task {task_id} completed successfully")

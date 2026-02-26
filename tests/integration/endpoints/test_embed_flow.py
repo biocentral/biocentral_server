@@ -1,4 +1,4 @@
-"""Integration tests for embeddings endpoints."""
+# Integration tests for embeddings endpoints.
 
 import pytest
 
@@ -11,11 +11,9 @@ from tests.integration.endpoints.conftest import (
 
 @pytest.mark.order(1)
 class TestCommonEmbeddersEndpoint:
-    # Integration tests for GET /embeddings_service/common_embedders.
 
     @pytest.mark.integration
     def test_common_embedders_returns_list(self, client):
-        """Test that common_embedders endpoint returns a list."""
         response = client.get("/embeddings_service/common_embedders")
 
         assert response.status_code == 200
@@ -25,7 +23,6 @@ class TestCommonEmbeddersEndpoint:
 
     @pytest.mark.integration
     def test_common_embedders_includes_baseline_models(self, client):
-        """Test that baseline embedders are available."""
         response = client.get("/embeddings_service/common_embedders")
 
         assert response.status_code == 200
@@ -37,7 +34,6 @@ class TestCommonEmbeddersEndpoint:
 
     @pytest.mark.integration
     def test_common_embedders_response_is_consistent(self, client):
-        """Test that multiple calls return the same list."""
         response1 = client.get("/embeddings_service/common_embedders")
         response2 = client.get("/embeddings_service/common_embedders")
 
@@ -48,7 +44,6 @@ class TestCommonEmbeddersEndpoint:
 
 @pytest.mark.order(2)
 class TestEmbedEndpoint:
-    # Integration tests for POST /embeddings_service/embed.
 
     @pytest.mark.integration
     def test_embed_empty_sequences_rejected(
@@ -56,7 +51,6 @@ class TestEmbedEndpoint:
         client,
         embedder_name,
     ):
-        """Test that empty sequence data is rejected with proper error."""
         request_data = {
             "embedder_name": embedder_name,
             "reduce": False,
@@ -75,9 +69,7 @@ class TestEmbedEndpoint:
         client,
         short_test_sequences,
     ):
-        """Test that missing embedder name is rejected with proper error."""
         request_data = {
-
             "reduce": False,
             "sequence_data": short_test_sequences,
             "use_half_precision": True,
@@ -92,7 +84,6 @@ class TestEmbedEndpoint:
 
 @pytest.mark.order(2)
 class TestEndToEndEmbedFlow:
-    # End-to-end tests for the complete embedding workflow.
 
     @pytest.mark.integration
     def test_embed_and_wait_for_completion(
@@ -103,8 +94,6 @@ class TestEndToEndEmbedFlow:
         shared_embedding_sequences,
         verify_embedding_cache,
     ):
-        # Test complete embedding flow from request to completion.
-
         print("\n[BEFORE EMBEDDING] Checking cache status...")
         verify_embedding_cache(expect_cached=False)
        
@@ -148,7 +137,6 @@ class TestEndToEndEmbedFlow:
         poll_task,
         single_test_sequence,
     ):
-        """Test that different embedders can be used."""
         embedders = ["one_hot_encoding", "blosum62"]
         
         for embedder in embedders:
@@ -156,7 +144,7 @@ class TestEndToEndEmbedFlow:
                 "embedder_name": embedder,
                 "reduce": True,
                 "sequence_data": single_test_sequence,
-                "use_half_precision": False, 
+                "use_half_precision": False,
             }
 
             response = client.post("/embeddings_service/embed", json=request_data)
