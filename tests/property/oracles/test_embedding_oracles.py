@@ -288,13 +288,14 @@ def esm2_t6_8m_oracle_config() -> OracleConfig:
 def esm2_t6_8m_embedder():
     # Load real ESM2-T6-8M embedder.
     try:
+        import torch
         from biotrainer.embedders import get_embedding_service
 
         embedding_service = get_embedding_service(
             embedder_name="facebook/esm2_t6_8M_UR50D",
             use_half_precision=False,
             custom_tokenizer_config=None,
-            device="cpu",
+            device=torch.device("cpu"),
         )
 
 
