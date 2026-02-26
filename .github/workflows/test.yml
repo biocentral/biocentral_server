@@ -10,7 +10,7 @@ on:
       skip_unit_tests:
         description: 'Skip unit tests'
         required: false
-        default: true
+        default: false
         type: boolean
       reason:
         description: 'Why are you running this?'
