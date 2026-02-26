@@ -330,13 +330,19 @@ class DirectProjector:
             dims=n_components,
         )
 
-        # Extract coordinates - handle both dict (new API) and Reduction object (old API)
-        if isinstance(reduction, dict):
-            # New protspace API returns dict with D1, D2, etc. keys
-            coords = np.column_stack([
-                reduction[f"D{d+1}"]
-                for d in range(n_components)
-            ])
+        # Extract coordinates from reduction - protspace returns dict with 'data' key
+        if isinstance(reduction, dict) and 'data' in reduction:
+            # Current protspace API returns {'name': ..., 'data': np.ndarray, ...}
+            coords = np.array(reduction['data'])
+        elif isinstance(reduction, dict):
+            # Try D1, D2 keys format (alternative API)
+            try:
+                coords = np.column_stack([
+                    reduction[f"D{d+1}"]
+                    for d in range(n_components)
+                ])
+            except KeyError:
+                raise ValueError(f"Cannot extract coordinates from reduction: {reduction.keys()}")
         else:
             # Old API: Reduction object with .result Arrow table
             coords = np.column_stack([

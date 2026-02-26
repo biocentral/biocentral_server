@@ -74,7 +74,7 @@ PREDICTION_ORACLE_CONFIGS = {
         model_name="Seth",
         output_type="per_residue",
         is_classification=False,
-        value_range=(0.0, 1.0),
+        value_range=None,  # Seth outputs CheZOD Z-scores (unbounded)
     ),
 }
 
@@ -133,7 +133,11 @@ class PredictionDeterminismOracle:
         for key in p1:
             v1, v2 = p1[key], p2[key]
             if isinstance(v1, (list, np.ndarray)):
-                if not np.allclose(v1, v2, rtol=1e-5):
+                # Handle string lists (classification labels)
+                if isinstance(v1, list) and v1 and isinstance(v1[0], str):
+                    if v1 != v2:
+                        return False
+                elif not np.allclose(v1, v2, rtol=1e-5):
                     return False
             elif isinstance(v1, float):
                 if not np.isclose(v1, v2, rtol=1e-5):
@@ -349,6 +353,15 @@ class DirectPredictor:
         # Shape: (seq_len, embedding_dim) -> (1, seq_len, embedding_dim)
         embedding_input = np.expand_dims(embedding.astype(np.float32), axis=0)
         
+        # Model-specific input preparation
+        if self.model_name == "BindEmbed":
+            # BindEmbed expects (B, E, L) - transpose from (B, L, E)
+            embedding_input = np.transpose(embedding_input, (0, 2, 1))
+        elif self.model_name == "TMbed":
+            # TMbed requires a mask input - all 1s for non-padding positions
+            seq_len = embedding_input.shape[1]
+            self._mask = np.ones((1, seq_len), dtype=np.float32)
+        
         # Run inference
         if len(self._models) == 1:
             # Single model
@@ -361,21 +374,41 @@ class DirectPredictor:
     
     def _run_single_model(self, embedding_input: np.ndarray) -> np.ndarray:
         """Run inference with a single model."""
-        input_name = self._models[0].get_inputs()[0].name
-        outputs = self._models[0].run(None, {input_name: embedding_input})
+        input_feed = self._build_input_feed(embedding_input, self._models[0])
+        outputs = self._models[0].run(None, input_feed)
         return outputs[0]  # Return first output
     
     def _run_ensemble(self, embedding_input: np.ndarray) -> np.ndarray:
         """Run ensemble inference and average predictions."""
         all_outputs = []
         for model in self._models:
-            input_name = model.get_inputs()[0].name
-            outputs = model.run(None, {input_name: embedding_input})
+            input_feed = self._build_input_feed(embedding_input, model)
+            outputs = model.run(None, input_feed)
             all_outputs.append(outputs[0])
         
         # Average all predictions
         stacked = np.stack(all_outputs, axis=0)
         return np.mean(stacked, axis=0)
+    
+    def _build_input_feed(self, embedding_input: np.ndarray, model) -> Dict[str, np.ndarray]:
+        """Build the input feed dict for ONNX model."""
+        # Get all required input names
+        input_names = [inp.name for inp in model.get_inputs()]
+        
+        # Start with the embedding input (first input)
+        input_feed = {input_names[0]: embedding_input}
+        
+        # Add mask if required (TMbed)
+        if 'mask' in input_names:
+            # Create mask of 1s for all non-padding positions
+            if self.model_name == "TMbed":
+                seq_len = embedding_input.shape[1]  # (B, L, E) format
+            else:
+                seq_len = embedding_input.shape[2] if len(embedding_input.shape) == 3 else embedding_input.shape[1]
+            mask = np.ones((1, seq_len), dtype=np.float32)
+            input_feed['mask'] = mask
+        
+        return input_feed
     
     def _format_output(self, raw_output: np.ndarray, sequence: str) -> Dict[str, Any]:
         """Format raw ONNX output to match PredictorProtocol interface."""

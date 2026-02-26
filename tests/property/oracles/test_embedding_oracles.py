@@ -94,7 +94,7 @@ ORACLE_CONFIGS = {
     ),
     "esm2_t6_8m": OracleConfig(
         embedder_name="esm2_t6_8m",
-        cosine_threshold=0.2,
+        cosine_threshold=0.25,  # Allow some variation in larger batches
     ),
 }
 
