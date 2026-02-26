@@ -251,7 +251,6 @@ jobs:
       - name: Run performance benchmarks
         run: |
           uv run pytest tests/performance/ -v -m "performance" \
-            --benchmark-only \
             --benchmark-json=benchmark_results.json \
             --benchmark-columns=min,max,mean,stddev,rounds \
             -W "ignore::DeprecationWarning"

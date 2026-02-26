@@ -43,7 +43,7 @@ def _append_memory_results(key: str, data: list | dict):
 class TestSequenceLengthScaling:
     # Verify embedding time scales linearly with sequence length.
 
-    def test_linear_scaling_with_length(self, perf_embedder, variable_length_sequences):
+    def test_linear_scaling_with_length(self, esm2_embedder, variable_length_sequences):
         times = []
         lengths = []
         iterations = 5
@@ -52,7 +52,7 @@ class TestSequenceLengthScaling:
             lengths.append(len(sequence))
             start = time.perf_counter()
             for _ in range(iterations):
-                perf_embedder.embed(sequence)
+                esm2_embedder.embed(sequence)
             elapsed = time.perf_counter() - start
             times.append(elapsed / iterations)
 
@@ -67,7 +67,7 @@ class TestSequenceLengthScaling:
                 f"expected ~{length_ratio:.1f}x, got {time_ratio:.1f}x"
             )
 
-    def test_collect_scaling_data(self, perf_embedder, variable_length_sequences):
+    def test_collect_scaling_data(self, esm2_embedder, variable_length_sequences):
         # Collect scaling data for analysis.
         results = []
         gc.collect()
@@ -77,7 +77,7 @@ class TestSequenceLengthScaling:
             mem_before = get_memory_mb()
             for _ in range(10):
                 start = time.perf_counter()
-                embedding = perf_embedder.embed(sequence)
+                embedding = esm2_embedder.embed(sequence)
                 times.append(time.perf_counter() - start)
             mem_after = get_memory_mb()
             embedding_mb = embedding.nbytes / (1024 * 1024)
@@ -112,7 +112,7 @@ class TestSequenceLengthScaling:
 class TestBatchSizeScaling:
     # Verify embedding time scales linearly with batch size.
 
-    def test_linear_scaling_with_batch_size(self, perf_embedder, canonical_sequences):
+    def test_linear_scaling_with_batch_size(self, esm2_embedder, canonical_sequences):
         # Time should scale O(n) with batch size.
 
         batch_sizes = [2, 5, 10, 15, len(canonical_sequences)]
@@ -122,7 +122,7 @@ class TestBatchSizeScaling:
             sequences = canonical_sequences[:size]
 
             start = time.perf_counter()
-            perf_embedder.embed_batch(sequences)
+            esm2_embedder.embed_batch(sequences)
             elapsed = time.perf_counter() - start
 
             times.append(elapsed)
@@ -137,7 +137,7 @@ class TestBatchSizeScaling:
                 f"expected ~{size_ratio:.1f}x, got {time_ratio:.1f}x"
             )
 
-    def test_collect_batch_scaling_data(self, perf_embedder, canonical_sequences):
+    def test_collect_batch_scaling_data(self, esm2_embedder, canonical_sequences):
         # Collect batch scaling data for analysis.
         gc.collect()
 
@@ -153,7 +153,7 @@ class TestBatchSizeScaling:
             times = []
             for _ in range(5):
                 start = time.perf_counter()
-                embeddings = perf_embedder.embed_batch(sequences)
+                embeddings = esm2_embedder.embed_batch(sequences)
                 times.append(time.perf_counter() - start)
 
             mem_after = get_memory_mb()
@@ -187,13 +187,13 @@ class TestBatchSizeScaling:
 class TestSequentialVsBatch:
     # Compare sequential vs batch embedding performance.
 
-    def test_batch_vs_sequential(self, perf_embedder, medium_batch):
+    def test_batch_vs_sequential(self, esm2_embedder, medium_batch):
         # Compare batch vs sequential performance.
         gc.collect()
         mem_start = get_memory_mb()
 
         start = time.perf_counter()
-        sequential_results = [perf_embedder.embed(seq) for seq in medium_batch]
+        sequential_results = [esm2_embedder.embed(seq) for seq in medium_batch]
         sequential_time = time.perf_counter() - start
         mem_after_seq = get_memory_mb()
         seq_emb_mb = sum(e.nbytes for e in sequential_results) / (1024 * 1024)
@@ -201,7 +201,7 @@ class TestSequentialVsBatch:
         gc.collect()
         mem_before_batch = get_memory_mb()
         start = time.perf_counter()
-        batch_results = perf_embedder.embed_batch(medium_batch)
+        batch_results = esm2_embedder.embed_batch(medium_batch)
         batch_time = time.perf_counter() - start
         mem_after_batch = get_memory_mb()
         batch_emb_mb = sum(e.nbytes for e in batch_results) / (1024 * 1024)
