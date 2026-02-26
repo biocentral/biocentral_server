@@ -751,13 +751,13 @@ def load_bindembed_onnx():
     target_base = "PREDICT"
 
     try:
-        check_response = requests.head(f"{seaweedfs_url}/{target_base}/bindembed/", timeout=5)
-        print(f"\n[ONNX] Check response: {check_response.status_code}")
+        _ = requests.head(f"{seaweedfs_url}/{target_base}/bindembed/", timeout=5) 
+        #print(f"\n[ONNX] Check response: {check_response.status_code}")
     except Exception as e:
         print(f"\n[ONNX] Check failed: {e}")
     
-    try:
-        print(f"\n[ONNX] Downloading prediction models from {model_url}...")
+    try: 
+        # print(f"\n[ONNX] Downloading prediction models from {model_url}...")
         
         with tempfile.TemporaryDirectory() as tmpdir:
             response = requests.get(model_url, stream=True, timeout=300)
@@ -768,25 +768,25 @@ def load_bindembed_onnx():
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
             
-            print(f"[ONNX] Downloaded {zip_path.stat().st_size / 1024 / 1024:.1f} MB")
+            # print(f"[ONNX] Downloaded {zip_path.stat().st_size / 1024 / 1024:.1f} MB")
 
             extract_dir = Path(tmpdir) / "extracted"
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_dir)
 
             extracted_items = list(extract_dir.iterdir())
-            print(f"[ONNX] Top-level extracted: {[item.name for item in extracted_items]}")
+            # print(f"[ONNX] Top-level extracted: {[item.name for item in extracted_items]}")
             
 
             model_root = extract_dir
             if len(extracted_items) == 1 and extracted_items[0].is_dir():
                 model_root = extracted_items[0]
-                print(f"[ONNX] Using nested root: {model_root.name}")
+                # print(f"[ONNX] Using nested root: {model_root.name}")
 
             for item in model_root.iterdir():
                 if item.is_dir():
                     files = list(item.iterdir())[:3]
-                    print(f"[ONNX] Dir {item.name}/: {[f.name for f in files]}...")
+                    # print(f"[ONNX] Dir {item.name}/: {[f.name for f in files]}...")
 
             uploaded_count = 0
             failed_count = 0
@@ -818,7 +818,7 @@ def load_bindembed_onnx():
                         if failed_count <= 3:
                             print(f"[ONNX] Error uploading {seaweed_path}: {e}")
             
-            print(f"[ONNX] Uploaded {uploaded_count} files, {failed_count} failed")
+            #print(f"[ONNX] Uploaded {uploaded_count} files, {failed_count} failed")
 
             try:
                 verify_response = requests.get(
@@ -826,11 +826,11 @@ def load_bindembed_onnx():
                     headers={"Accept": "application/json"},
                     timeout=10
                 )
-                print(f"[ONNX] Verify bindembed dir: {verify_response.status_code}")
-                if verify_response.status_code == 200:
-                    print(f"[ONNX] Directory contents: {verify_response.text[:200]}")
+                #print(f"[ONNX] Verify bindembed dir: {verify_response.status_code}")
+                #if verify_response.status_code == 200:
+                   # print(f"[ONNX] Directory contents: {verify_response.text[:200]}")
             except Exception as e:
-                print(f"[ONNX] Verify failed: {e}")
+               # print(f"[ONNX] Verify failed: {e}")
             
             return uploaded_count > 0
             
