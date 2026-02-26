@@ -58,7 +58,7 @@ jobs:
           UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
       - name: Run pytest (unit tests)
-        run: uv run pytest tests/unit/ -v -W "ignore::DeprecationWarning"
+        run: uv run pytest tests/unit/ -v -n auto -W "ignore::DeprecationWarning"
 
   integration-test:
     runs-on: ubuntu-latest
