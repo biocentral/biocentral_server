@@ -77,7 +77,6 @@ class BatchInvarianceOracle:
         # Verify batch invariance for a target sequence.
         results = []
 
-
         single_embedding = self.embedder.embed_pooled(target_sequence)
 
         for batch_size in self.config.batch_sizes:
@@ -85,13 +84,10 @@ class BatchInvarianceOracle:
             batch = self._create_batch(target_sequence, filler_sequences, batch_size)
             target_idx = batch.index(target_sequence)
 
-
             batch_embeddings = self.embedder.embed_batch(batch, pooled=True)
             batched_embedding = batch_embeddings[target_idx]
 
-
             metrics = compute_all_metrics(single_embedding, batched_embedding)
-
 
             passed = metrics["cosine_distance"] <= self.config.cosine_threshold
 
@@ -296,7 +292,6 @@ class ESM2EmbedderWrapper:
 def oracle_sequences() -> List[str]:
     return get_test_sequences(categories=["standard"])
 
-
 @pytest.fixture(scope="module")
 def filler_sequences() -> List[str]:
     return get_test_sequences(categories=["edge_case"])
@@ -341,7 +336,6 @@ class TestBatchInvarianceESM2:
                 f"sequence_length={result.get('sequence_length')}"
             )
 
-
 class TestMaskingRobustnessESM2:
 
     def test_embedding_stable_under_progressive_masking(
@@ -381,16 +375,9 @@ class TestMaskingRobustnessESM2:
                 f"sequence_length={result.get('sequence_length')}"
             )
 
-
-
-
-
-
-
 @pytest.fixture(scope="module", autouse=True)
 def write_oracle_report(request):
     yield
-
 
     results = get_oracle_results()
     if results:
