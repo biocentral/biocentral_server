@@ -1,16 +1,13 @@
 # MR: Reversed sequence — reverse amino-acid order and compare embeddings to the original.
 
 import numpy as np
-import pytest
 from typing import Any, Dict, List
 
-from tests.fixtures.fixed_embedder import FixedEmbedder
 from tests.property.oracles.embedding_metrics import (
     compute_all_metrics,
     format_metrics_table,
     write_metrics_csv,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -119,77 +116,9 @@ def _summarise_reversal(results: List[Dict[str, Any]], label: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# FixedEmbedder experiments
+# ESM2 experiments
 # ---------------------------------------------------------------------------
 
-class TestReversedSequenceFixedEmbedder:
-    # FixedEmbedder uses positional noise, so reversal should differ. Double-reversal must be identity.
-
-    def test_reversal_produces_different_embedding(
-        self,
-        fixed_embedder: FixedEmbedder,
-        standard_sequences: List[str],
-        reports_dir,
-    ):
-        results = _run_reversal_experiment(
-            embedder=fixed_embedder,
-            embedder_label="fixed_embedder",
-            sequences=standard_sequences,
-        )
-
-        table = format_metrics_table(results, title="Reversed Sequence — FixedEmbedder")
-        print(table)
-        write_metrics_csv(results, reports_dir / "reversed_sequence_fixed.csv")
-
-        # FixedEmbedder *does* use positional seeds, so reversal should differ
-        for r in results:
-            assert r["cosine_distance"] > 1e-8, (
-                f"Expected different embedding for reversed sequence "
-                f"({r['parameter']}), but cosine_dist={r['cosine_distance']:.10f}"
-            )
-
-    def test_double_reversal_is_identity(
-        self,
-        fixed_embedder: FixedEmbedder,
-        standard_sequences: List[str],
-        reports_dir,
-    ):
-        results = _run_double_reversal_experiment(
-            embedder=fixed_embedder,
-            embedder_label="fixed_embedder",
-            sequences=standard_sequences,
-        )
-
-        table = format_metrics_table(results, title="Double Reversal — FixedEmbedder")
-        print(table)
-
-        for r in results:
-            assert r["passed"], (
-                f"Double-reversal identity FAILED for {r['parameter']}: "
-                f"cosine_dist={r['cosine_distance']:.10f}"
-            )
-
-    def test_reversal_with_diverse_sequences(
-        self,
-        fixed_embedder: FixedEmbedder,
-        diverse_sequences: List[str],
-        reports_dir,
-    ):
-        results = _run_reversal_experiment(
-            embedder=fixed_embedder,
-            embedder_label="fixed_embedder",
-            sequences=diverse_sequences,
-        )
-
-        print(_summarise_reversal(results, "fixed_embedder (diverse)"))
-        write_metrics_csv(results, reports_dir / "reversed_sequence_fixed_diverse.csv")
-
-
-# ---------------------------------------------------------------------------
-# Real ESM2 experiments
-# ---------------------------------------------------------------------------
-
-@pytest.mark.slow
 class TestReversedSequenceESM2:
     # Real ESM2-T6-8M: Transformer positional encodings should make the model order-sensitive.
 

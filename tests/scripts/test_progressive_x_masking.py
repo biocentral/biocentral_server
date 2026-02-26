@@ -1,10 +1,8 @@
 # MR: Progressive X-masking — replace residues with 'X' and measure embedding divergence.
 
 import random
-import pytest
 from typing import Any, Dict, List, Optional
 
-from tests.fixtures.fixed_embedder import FixedEmbedder
 from tests.property.oracles.embedding_metrics import (
     compute_all_metrics,
     format_metrics_table,
@@ -130,71 +128,9 @@ def _summarise_experiment(results: List[Dict[str, Any]], embedder_label: str) ->
 
 
 # ---------------------------------------------------------------------------
-# FixedEmbedder experiments
+# ESM2 experiments
 # ---------------------------------------------------------------------------
 
-class TestProgressiveXMaskingFixedEmbedder:
-    # Characterise FixedEmbedder's sensitivity to progressive X-masking.
-
-    def test_masking_divergence_profile(
-        self,
-        fixed_embedder: FixedEmbedder,
-        standard_sequences: List[str],
-        reports_dir,
-    ):
-        results = _run_masking_experiment(
-            embedder=fixed_embedder,
-            embedder_label="fixed_embedder",
-            sequences=standard_sequences,
-        )
-
-        table = format_metrics_table(results, title="X-Masking — FixedEmbedder")
-        print(table)
-        print(_summarise_experiment(results, "fixed_embedder"))
-        write_metrics_csv(results, reports_dir / "x_masking_fixed.csv")
-
-    def test_masking_with_diverse_sequences(
-        self,
-        fixed_embedder: FixedEmbedder,
-        diverse_sequences: List[str],
-        reports_dir,
-    ):
-        results = _run_masking_experiment(
-            embedder=fixed_embedder,
-            embedder_label="fixed_embedder",
-            sequences=diverse_sequences,
-        )
-
-        print(_summarise_experiment(results, "fixed_embedder (diverse)"))
-        write_metrics_csv(results, reports_dir / "x_masking_fixed_diverse.csv")
-
-    def test_monotonicity_mostly_holds(
-        self,
-        fixed_embedder: FixedEmbedder,
-        standard_sequences: List[str],
-    ):
-        # Soft check: monotonicity violations should be rare (< 20 % of steps).
-        results = _run_masking_experiment(
-            embedder=fixed_embedder,
-            embedder_label="fixed_embedder",
-            sequences=standard_sequences,
-        )
-        total = len([r for r in results if r["masking_ratio"] > 0])
-        violations = sum(1 for r in results if r["masking_ratio"] > 0 and not r["monotonic"])
-        ratio = violations / total if total > 0 else 0
-
-        print(f"\n[Monotonicity] violations = {violations}/{total} ({ratio:.1%})")
-        # Soft assertion: we report but allow up to 20 % violations
-        assert ratio <= 0.20, (
-            f"Monotonicity violated too often: {violations}/{total} ({ratio:.1%})"
-        )
-
-
-# ---------------------------------------------------------------------------
-# Real ESM2 experiments
-# ---------------------------------------------------------------------------
-
-@pytest.mark.slow
 class TestProgressiveXMaskingESM2:
     # Characterise real ESM2-T6-8M's sensitivity to progressive X-masking.
 

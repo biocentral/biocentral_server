@@ -8,7 +8,7 @@
 | 4 | `test_progressive_x_masking.py` | **MR: X-masking** | Progressively replace residues with 'X'; measure divergence |
 | 5 | `test_reversed_sequence.py` | **MR: Reversed sequence** | Reverse order; measure sensitivity to position |
 
-CSV reports are written to `tests/reports/`.
+All experiments use ESM2-T6-8M for meaningful results. CSV reports are written to `tests/reports/`.
 
 ## Experiment Details
 
@@ -18,7 +18,6 @@ calling `embed(seq)` multiple times must
 return identical results (for a deterministic embedder) or results within a
 very tight tolerance (for GPU models with non-deterministic kernels).
 
-- **FixedEmbedder**: expects exact equality (cosine distance ≤ 1e-6)
 - **ESM2**: tolerates cosine distance ≤ 1e-5
 
 ### 2. Batch Invariance

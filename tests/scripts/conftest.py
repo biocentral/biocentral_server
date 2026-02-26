@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import List
 
 from biotrainer.input_files import BiotrainerSequenceRecord
-from tests.fixtures.fixed_embedder import FixedEmbedder
 from tests.fixtures.test_dataset import get_test_sequences
 
 
@@ -21,8 +20,10 @@ def pytest_configure(config):
 def pytest_collection_modifyitems(config, items):
     if not config.getoption("--run-slow", default=False):
         skip_slow = pytest.mark.skip(reason="needs --run-slow option to run")
+        scripts_dir = str(Path(__file__).parent)
         for item in items:
-            if "slow" in item.keywords:
+            # Only apply skip to tests in this directory (tests/scripts/)
+            if "slow" in item.keywords and scripts_dir in str(item.fspath):
                 item.add_marker(skip_slow)
 
 
@@ -44,22 +45,17 @@ def reports_dir() -> Path:
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="session")
-def fixed_embedder() -> FixedEmbedder:
-    # Lightweight deterministic embedder (no GPU).
-    return FixedEmbedder(model_name="esm2_t6", seed_base=42, strict_dataset=False)
-
-
-@pytest.fixture(scope="session")
 def esm2_embedder():
     # Real ESM2-T6-8M embedder. Skipped when model unavailable.
     try:
+        import torch
         from biotrainer.embedders import get_embedding_service
 
         svc = get_embedding_service(
             embedder_name="facebook/esm2_t6_8M_UR50D",
             use_half_precision=False,
             custom_tokenizer_config=None,
-            device="cpu",
+            device=torch.device("cpu"),
         )
         return _ESM2Wrapper(svc)
     except Exception as exc:
