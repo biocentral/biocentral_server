@@ -55,14 +55,12 @@ tests/
 │   ├── test_esm2_throughput.py      # Real ESM2 benchmarks
 │   ├── test_memory_usage.py         # Memory leak detection
 │   └── test_scaling.py              # Scaling behavior tests
-├── scripts/                         # Experiment scripts (MRs & invariants)
+├── scripts/                         # Experiment scripts
 │   ├── test_idempotency.py          # Idempotency invariant
 │   ├── test_batch_invariance.py     # Batch invariance MR
 │   ├── test_projection_determinism.py   # Projection determinism
 │   ├── test_progressive_x_masking.py    # X-masking MR
-│   └── test_reversed_sequence.py    # Sequence reversal MR
-├── server_management/               # Server management tests
-│   └── test_embeddings_database.py  # Embedding database tests
+│   └── test_reversed_sequence.py    # Sequence reversal 
 └── reports/                         # Generated test reports (CSV)
 ```
 
@@ -177,7 +175,7 @@ Unit tests verify isolated components with mocked dependencies.
 
 ## Integration Tests
 
-Integration tests verify end-to-end flows against a running server.
+To verify end-to-end flows against a running server.
 
 ### test_embed_flow.py
 
@@ -373,38 +371,4 @@ Small-scale experiments in `tests/scripts/` exploring invariants and metamorphic
 | `test_double_reversal_is_identity` | Double reversal identity with real model | Cosine distance ≤ 1e-5 |
 | `test_reversal_summary_and_report` | Full reversal + double-reversal report | CSV report written |
 
----
-
-## Test Markers
-
-| Marker | Description |
-|--------|-------------|
-| `@pytest.mark.property` | Property-based oracle tests |
-| `@pytest.mark.integration` | Integration tests requiring live server |
-| `@pytest.mark.performance` | Performance benchmark tests |
-| `@pytest.mark.slow` | Long-running tests (ESM2 model, full training, stochastic projections) |
-
-## Running Tests
-
-```bash
-# Run all tests
-uv run pytest tests/ -v
-
-# Run unit tests only
-uv run pytest tests/unit/ -v
-
-# Run integration tests (requires server)
-CI_SERVER_URL=http://localhost:9540 uv run pytest tests/integration/ -v -m integration
-
-# Run property tests
-uv run pytest tests/property/ -v -m property
-
-# Run performance benchmarks
-uv run pytest tests/performance/ -v -m performance
-
-# Skip slow tests
-uv run pytest tests/ -m "not slow"
-
-# Run experiment scripts (invariants & metamorphic relations)
-uv run pytest tests/scripts/ -v -s
-```
+ 
