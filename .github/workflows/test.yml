@@ -62,8 +62,6 @@ jobs:
 
   integration-test:
     runs-on: ubuntu-latest
-    needs: unit-test
-    if: ${{ always() && (needs.unit-test.result == 'success' || needs.unit-test.result == 'skipped') }}
 
     env:
       CI_SERVER_URL: http://localhost:9540
@@ -157,8 +155,6 @@ jobs:
 
   property-oracle-test:
     runs-on: ubuntu-latest
-    needs: unit-test
-    if: ${{ always() && (needs.unit-test.result == 'success' || needs.unit-test.result == 'skipped') }}
 
     env:
       ONNX_MODELS_PATH: ${{ github.workspace }}/onnx_models
