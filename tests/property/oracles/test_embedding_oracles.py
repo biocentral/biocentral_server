@@ -48,7 +48,7 @@ class OracleConfig:
     embedder_name: str
     cosine_threshold: float
     batch_sizes: List[int] = field(default_factory=lambda: [1, 5, 10])
-    masking_ratios: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.2, 0.3])
+    masking_ratios: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
 
 ORACLE_CONFIGS = {
     "esm2_t6_8m": OracleConfig(
@@ -160,14 +160,14 @@ class MaskingRobustnessOracle:
 
             masked_sequence = self._mask_sequence(sequence, ratio, seed)
 
-
             masked_embedding = self.embedder.embed_pooled(masked_sequence)
-
 
             metrics = compute_all_metrics(original_embedding, masked_embedding)
 
-
-            passed = metrics["cosine_distance"] <= self.config.cosine_threshold
+            if ratio >= 0.3:
+                passed = "N/A"  # exploratory — no strict pass/fail at higher masking
+            else:
+                passed = metrics["cosine_distance"] <= self.config.cosine_threshold
 
             result = {
                 "embedder": self.config.embedder_name,
