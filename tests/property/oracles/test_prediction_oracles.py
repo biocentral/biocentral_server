@@ -1,14 +1,21 @@
-"""Prediction oracle tests using direct ONNX inference."""
+"""Prediction oracle tests using direct ONNX inference.
 
+These tests load ONNX models directly from local filesystem, bypassing
+all server infrastructure (SeaweedFS, Triton, etc.).
+
+Configure model path with ONNX_MODELS_PATH environment variable.
+Models can be downloaded from the TUM Nextcloud links in .env.example.
+"""
+
+import os
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
 
 import numpy as np
 import pytest
-import torch
 
-from biocentral_server.server_management.file_management.storage_backend import StorageError
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 from tests.fixtures.fixed_embedder import FixedEmbedder
 
@@ -55,13 +62,13 @@ PREDICTION_ORACLE_CONFIGS = {
         model_name="BindEmbed",
         output_type="per_residue",
         is_classification=True,
-        num_classes=2,
+        num_classes=3,  # metal, nucleic, small binding types
     ),
     "TMbed": PredictionOracleConfig(
         model_name="TMbed",
         output_type="per_residue",
         is_classification=True,
-        num_classes=4,
+        num_classes=7,  # B, b, H, h, S, i, o topology classes
     ),
     "Seth": PredictionOracleConfig(
         model_name="Seth",
@@ -241,8 +248,41 @@ class ShapeInvarianceOracle:
         return result
 
 
+# Model name mapping to ONNX directory names (uses model_name.value.lower())
+# Files are auto-discovered within each directory
+MODEL_DIRECTORIES = {
+    "ProtT5SecondaryStructure": "prott5secondarystructure",
+    "Seth": "seth",
+    "BindEmbed": "bindembed",
+    "TMbed": "tmbed",
+}
+
+# Label mappings for classification models
+LABEL_MAPPINGS = {
+    "ProtT5SecondaryStructure": {0: "H", 1: "E", 2: "L"},
+    # BindEmbed predicts 3 binding types: argmax gives dominant type
+    "BindEmbed": {0: "M", 1: "N", 2: "S"},  # Metal, Nucleic, Small molecule
+    # TMbed transmembrane topology classes
+    "TMbed": {0: "B", 1: "b", 2: "H", 3: "h", 4: "S", 5: "i", 6: "o"},
+}
+
+
+def get_onnx_models_path() -> Optional[Path]:
+    """Get the path to ONNX models directory from env var."""
+    path_str = os.environ.get("ONNX_MODELS_PATH")
+    if path_str:
+        path = Path(path_str)
+        if path.exists():
+            return path
+    return None
+
+
 class DirectPredictor:
-    """Predictor using ONNX models directly without HTTP calls."""
+    """Predictor using ONNX models directly from local filesystem.
+    
+    This class loads ONNX models without any server dependencies.
+    Configure model path with ONNX_MODELS_PATH environment variable.
+    """
 
     def __init__(
         self,
@@ -251,85 +291,127 @@ class DirectPredictor:
     ):
         self.model_name = model_name
         self.config = config
-        self._model = None
+        self._models: List[Any] = []  # List of ONNX sessions (for ensemble models)
         self._embedder = None
+        self._initialized = False
 
     def _ensure_initialized(self):
         """Lazy initialization of model and embedder."""
-        if self._model is not None:
+        if self._initialized:
             return
         
-        from biocentral_server.predict.model_factory import PredictionModelFactory
-        from biocentral_server.predict.models import BiocentralPredictionModel
+        import onnxruntime as ort
         
-        model_enum = BiocentralPredictionModel[self.model_name]
-        self._model = PredictionModelFactory.create_model(
-            model_name=model_enum,
-            batch_size=1,
-            use_triton=False,
-        )
+        models_path = get_onnx_models_path()
+        if models_path is None:
+            raise FileNotFoundError(
+                "ONNX_MODELS_PATH not set or directory not found. "
+                "Set ONNX_MODELS_PATH to directory containing model files."
+            )
+        
+        model_dir_name = MODEL_DIRECTORIES.get(self.model_name)
+        if not model_dir_name:
+            raise ValueError(f"No directory configured for model: {self.model_name}")
+        
+        model_dir = models_path / model_dir_name
+        if not model_dir.exists():
+            raise FileNotFoundError(
+                f"Model directory not found: {model_dir}. "
+                f"Download models and set ONNX_MODELS_PATH correctly."
+            )
+        
+        # Auto-discover ONNX files in the model directory
+        onnx_files = sorted(model_dir.glob("*.onnx"))
+        if not onnx_files:
+            raise FileNotFoundError(
+                f"No .onnx files found in {model_dir}. "
+                f"Ensure models are properly extracted."
+            )
+        
+        # Load all ONNX models (single model or ensemble)
+        for onnx_file in onnx_files:
+            session = ort.InferenceSession(str(onnx_file))
+            self._models.append(session)
+        
+        # Initialize embedder
         self._embedder = FixedEmbedder(
             model_name="prot_t5",
             strict_dataset=False,
         )
+        self._initialized = True
 
     def predict(self, sequence: str) -> Dict[str, Any]:
         """Predict for a single sequence using direct ONNX inference."""
         self._ensure_initialized()
         
-        seq_id = "oracle_test_seq"
+        # Get embedding
         embedding = self._embedder.embed(sequence)
-        embeddings_dict = {seq_id: torch.from_numpy(embedding)}
-        sequences_dict = {seq_id: sequence}
+        # Shape: (seq_len, embedding_dim) -> (1, seq_len, embedding_dim)
+        embedding_input = np.expand_dims(embedding.astype(np.float32), axis=0)
         
-        model_output = self._model.predict(
-            sequences=sequences_dict,
-            embeddings=embeddings_dict,
-        )
-        return self._format_model_output(model_output, seq_id, sequence)
-
-    def _format_model_output(
-        self,
-        model_output: Dict[str, List],
-        seq_id: str,
-        sequence: str,
-    ) -> Dict[str, Any]:
-        """Format model output to match PredictorProtocol interface."""
-        predictions_list = model_output.get(seq_id, [])
-        
-        if self.config.is_classification:
-            if predictions_list:
-                first_pred = predictions_list[0]
-                value_str = first_pred.value if hasattr(first_pred, 'value') else str(first_pred)
-                predictions = [1 if c != '-' else 0 for c in value_str]
-            else:
-                predictions = []
-            
-            return {
-                "predictions": predictions,
-                "sequence_length": len(sequence),
-            }
+        # Run inference
+        if len(self._models) == 1:
+            # Single model
+            output = self._run_single_model(embedding_input)
         else:
-            if predictions_list:
-                first_pred = predictions_list[0]
-                value_str = first_pred.value if hasattr(first_pred, 'value') else str(first_pred)
-                
-                try:
-                    if isinstance(value_str, str):
-                        values = [float(v) for v in value_str.split()]
-                        if len(values) != len(sequence):
-                            values = [0.5] * len(sequence)
-                    else:
-                        values = [float(value_str)] * len(sequence)
-                except (ValueError, AttributeError):
-                    values = [0.5] * len(sequence)
-            else:
-                values = [0.5] * len(sequence)
+            # Ensemble - average predictions
+            output = self._run_ensemble(embedding_input)
+        
+        return self._format_output(output, sequence)
+    
+    def _run_single_model(self, embedding_input: np.ndarray) -> np.ndarray:
+        """Run inference with a single model."""
+        input_name = self._models[0].get_inputs()[0].name
+        outputs = self._models[0].run(None, {input_name: embedding_input})
+        return outputs[0]  # Return first output
+    
+    def _run_ensemble(self, embedding_input: np.ndarray) -> np.ndarray:
+        """Run ensemble inference and average predictions."""
+        all_outputs = []
+        for model in self._models:
+            input_name = model.get_inputs()[0].name
+            outputs = model.run(None, {input_name: embedding_input})
+            all_outputs.append(outputs[0])
+        
+        # Average all predictions
+        stacked = np.stack(all_outputs, axis=0)
+        return np.mean(stacked, axis=0)
+    
+    def _format_output(self, raw_output: np.ndarray, sequence: str) -> Dict[str, Any]:
+        """Format raw ONNX output to match PredictorProtocol interface."""
+        # raw_output shape: (1, seq_len, num_classes) or (1, seq_len) or (1, seq_len, 1)
+        
+        # Handle 3D output
+        if len(raw_output.shape) == 3:
+            predictions_raw = raw_output[0]  # (seq_len, num_classes) or (seq_len, 1)
             
-            return {
-                "predictions": values,
-                "sequence_length": len(sequence),
-            }
+            # Check if it's regression with single output dim (e.g., Seth: seq_len x 1)
+            if not self.config.is_classification and predictions_raw.shape[-1] == 1:
+                # Squeeze the last dimension for regression
+                predictions = predictions_raw.squeeze(-1).tolist()  # (seq_len,)
+            elif self.config.is_classification:
+                # Classification with logits - argmax to get predicted class index
+                pred_indices = np.argmax(predictions_raw, axis=-1)  # (seq_len,)
+                label_map = LABEL_MAPPINGS.get(self.model_name, {})
+                predictions = [label_map.get(int(idx), "?") for idx in pred_indices]
+            else:
+                # Regression with multiple outputs per residue - take mean or first
+                predictions = predictions_raw.mean(axis=-1).tolist()
+        else:
+            # 2D output: (1, seq_len) - direct values
+            predictions = raw_output[0].tolist()  # (seq_len,)
+        
+        # Ensure predictions match sequence length
+        if isinstance(predictions, list) and len(predictions) != len(sequence):
+            if self.config.is_classification:
+                predictions = [0] * len(sequence)
+            else:
+                predictions = [0.5] * len(sequence)
+        
+        return {
+            "predictions": predictions,
+            "sequence_length": len(sequence),
+        }
 
     def predict_batch(self, sequences: List[str]) -> List[Dict[str, Any]]:
         """Predict for multiple sequences."""
@@ -390,8 +472,8 @@ def direct_ss_predictor(ss_oracle_config):
         )
         predictor._ensure_initialized()
         return predictor
-    except StorageError as e:
-        pytest.skip(f"SeaweedFS storage not available for ProtT5SecondaryStructure: {e}")
+    except FileNotFoundError as e:
+        pytest.skip(f"ONNX model not found for ProtT5SecondaryStructure: {e}")
     except Exception as e:
         pytest.skip(f"ONNX model not available for ProtT5SecondaryStructure: {e}")
 
@@ -406,8 +488,8 @@ def direct_bindembed_predictor(binding_oracle_config):
         )
         predictor._ensure_initialized()
         return predictor
-    except StorageError as e:
-        pytest.skip(f"SeaweedFS storage not available for BindEmbed: {e}")
+    except FileNotFoundError as e:
+        pytest.skip(f"ONNX model not found for BindEmbed: {e}")
     except Exception as e:
         pytest.skip(f"ONNX model not available for BindEmbed: {e}")
 
@@ -422,8 +504,8 @@ def direct_tmbed_predictor(tmbed_oracle_config):
         )
         predictor._ensure_initialized()
         return predictor
-    except StorageError as e:
-        pytest.skip(f"SeaweedFS storage not available for TMbed: {e}")
+    except FileNotFoundError as e:
+        pytest.skip(f"ONNX model not found for TMbed: {e}")
     except Exception as e:
         pytest.skip(f"ONNX model not available for TMbed: {e}")
 
@@ -438,8 +520,8 @@ def direct_seth_predictor(disorder_oracle_config):
         )
         predictor._ensure_initialized()
         return predictor
-    except StorageError as e:
-        pytest.skip(f"SeaweedFS storage not available for Seth: {e}")
+    except FileNotFoundError as e:
+        pytest.skip(f"ONNX model not found for Seth: {e}")
     except Exception as e:
         pytest.skip(f"ONNX model not available for Seth: {e}")
 
@@ -456,8 +538,8 @@ def direct_predictor(request):
         )
         predictor._ensure_initialized()
         return predictor, config
-    except StorageError as e:
-        pytest.skip(f"SeaweedFS storage not available for {model_name}: {e}")
+    except FileNotFoundError as e:
+        pytest.skip(f"ONNX model not found for {model_name}: {e}")
     except Exception as e:
         pytest.skip(f"ONNX model not available for {model_name}: {e}")
 
