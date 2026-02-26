@@ -250,7 +250,7 @@ jobs:
 
       - name: Run performance benchmarks
         run: |
-          uv run pytest tests/performance/ -v -n auto -m "performance" \
+          uv run pytest tests/performance/ -v -m "performance" \
             --benchmark-json=benchmark_results.json \
             --benchmark-columns=min,max,mean,stddev,rounds \
             -W "ignore::DeprecationWarning"
@@ -261,7 +261,7 @@ jobs:
         run: |
           echo "## Performance Benchmark Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f benchmark_results.json ]; then
+          if [ -s benchmark_results.json ]; then
             uv run python -c "
           import json
           with open('benchmark_results.json') as f:
@@ -285,7 +285,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Memory Usage Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f memory_results.json ]; then
+          if [ -s memory_results.json ]; then
             uv run python -c "
           import json
           with open('memory_results.json') as f:
