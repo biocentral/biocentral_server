@@ -1,16 +1,49 @@
 # Test scaling behavior with sequence length and batch size.
 
+import gc
+import json
+import sys
+from pathlib import Path
+
 import pytest
 import time
 import numpy as np
 
 
+def get_memory_mb() -> float:
+    """Get current process memory in MB (macOS/Linux)."""
+    try:
+        import resource
+        usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        if sys.platform == "darwin":
+            return usage / (1024 * 1024)
+        else:
+            return usage / 1024
+    except ImportError:
+        return 0.0
+
+
+def _append_memory_results(key: str, data: list | dict):
+    """Append memory results to a shared JSON file for CI reporting."""
+    results_file = Path("memory_results.json")
+    
+    if results_file.exists():
+        with open(results_file) as f:
+            all_results = json.load(f)
+    else:
+        all_results = {}
+    
+    all_results[key] = data
+    
+    with open(results_file, "w") as f:
+        json.dump(all_results, f, indent=2)
+
+@pytest.mark.slow
 @pytest.mark.performance
 class TestSequenceLengthScaling:
-    """Verify embedding time scales linearly with sequence length."""
+    # Verify embedding time scales linearly with sequence length.
 
     def test_linear_scaling_with_length(self, perf_embedder, variable_length_sequences):
-        """Time should scale O(n) with sequence length."""
         times = []
         lengths = []
         iterations = 5
@@ -35,15 +68,19 @@ class TestSequenceLengthScaling:
             )
 
     def test_collect_scaling_data(self, perf_embedder, variable_length_sequences):
-        """Collect scaling data for analysis."""
+        # Collect scaling data for analysis.
         results = []
+        gc.collect()
 
         for sequence in variable_length_sequences:
             times = []
+            mem_before = get_memory_mb()
             for _ in range(10):
                 start = time.perf_counter()
-                perf_embedder.embed(sequence)
+                embedding = perf_embedder.embed(sequence)
                 times.append(time.perf_counter() - start)
+            mem_after = get_memory_mb()
+            embedding_mb = embedding.nbytes / (1024 * 1024)
 
             results.append(
                 {
@@ -52,27 +89,31 @@ class TestSequenceLengthScaling:
                     "std_ms": np.std(times) * 1000,
                     "min_ms": np.min(times) * 1000,
                     "max_ms": np.max(times) * 1000,
+                    "embedding_mb": embedding_mb,
+                    "mem_delta_mb": mem_after - mem_before,
                 }
             )
 
 
         print("\n\nSequence Length Scaling:")
-        print("-" * 60)
-        print(f"{'Length':>8} {'Mean (ms)':>12} {'Std (ms)':>12} {'Min-Max (ms)':>16}")
-        print("-" * 60)
+        print("-" * 85)
+        print(f"{'Length':>8} {'Mean (ms)':>12} {'Std (ms)':>12} {'Min-Max (ms)':>16} {'Emb (MB)':>10} {'Mem Δ (MB)':>12}")
+        print("-" * 85)
         for r in results:
             print(
                 f"{r['length']:>8} {r['mean_ms']:>12.3f} {r['std_ms']:>12.3f} "
-                f"{r['min_ms']:>7.3f}-{r['max_ms']:.3f}"
+                f"{r['min_ms']:>7.3f}-{r['max_ms']:.3f} {r['embedding_mb']:>10.4f} {r['mem_delta_mb']:>12.2f}"
             )
+        
+        _append_memory_results("sequence_length_scaling", results)
 
-
+@pytest.mark.slow
 @pytest.mark.performance
 class TestBatchSizeScaling:
-    """Verify embedding time scales linearly with batch size."""
+    # Verify embedding time scales linearly with batch size.
 
     def test_linear_scaling_with_batch_size(self, perf_embedder, canonical_sequences):
-        """Time should scale O(n) with batch size."""
+        # Time should scale O(n) with batch size.
 
         batch_sizes = [2, 5, 10, 15, len(canonical_sequences)]
         times = []
@@ -97,7 +138,8 @@ class TestBatchSizeScaling:
             )
 
     def test_collect_batch_scaling_data(self, perf_embedder, canonical_sequences):
-        """Collect batch scaling data for analysis."""
+        # Collect batch scaling data for analysis.
+        gc.collect()
 
         total = len(canonical_sequences)
         batch_sizes = [1, 5, 10, 15, total]
@@ -105,53 +147,88 @@ class TestBatchSizeScaling:
 
         for size in batch_sizes:
             sequences = canonical_sequences[:size]
+            gc.collect()
+            mem_before = get_memory_mb()
 
             times = []
             for _ in range(5):
                 start = time.perf_counter()
-                perf_embedder.embed_batch(sequences)
+                embeddings = perf_embedder.embed_batch(sequences)
                 times.append(time.perf_counter() - start)
+
+            mem_after = get_memory_mb()
+            total_emb_mb = sum(e.nbytes for e in embeddings) / (1024 * 1024)
 
             results.append(
                 {
                     "batch_size": size,
                     "mean_ms": np.mean(times) * 1000,
                     "per_seq_ms": np.mean(times) * 1000 / size,
+                    "total_emb_mb": total_emb_mb,
+                    "mem_delta_mb": mem_after - mem_before,
                 }
             )
 
 
         print("\n\nBatch Size Scaling:")
-        print("-" * 50)
-        print(f"{'Batch Size':>12} {'Total (ms)':>12} {'Per Seq (ms)':>14}")
-        print("-" * 50)
+        print("-" * 80)
+        print(f"{'Batch Size':>12} {'Total (ms)':>12} {'Per Seq (ms)':>14} {'Emb (MB)':>12} {'Mem Δ (MB)':>12}")
+        print("-" * 80)
         for r in results:
             print(
-                f"{r['batch_size']:>12} {r['mean_ms']:>12.3f} {r['per_seq_ms']:>14.4f}"
+                f"{r['batch_size']:>12} {r['mean_ms']:>12.3f} {r['per_seq_ms']:>14.4f} "
+                f"{r['total_emb_mb']:>12.4f} {r['mem_delta_mb']:>12.2f}"
             )
+        
+        _append_memory_results("batch_size_scaling", results)
 
-
+@pytest.mark.slow
 @pytest.mark.performance
 class TestSequentialVsBatch:
-    """Compare sequential vs batch embedding performance."""
+    # Compare sequential vs batch embedding performance.
 
     def test_batch_vs_sequential(self, perf_embedder, medium_batch):
-        """Compare batch vs sequential performance."""
+        # Compare batch vs sequential performance.
+        gc.collect()
+        mem_start = get_memory_mb()
 
         start = time.perf_counter()
         sequential_results = [perf_embedder.embed(seq) for seq in medium_batch]
         sequential_time = time.perf_counter() - start
+        mem_after_seq = get_memory_mb()
+        seq_emb_mb = sum(e.nbytes for e in sequential_results) / (1024 * 1024)
 
-
+        gc.collect()
+        mem_before_batch = get_memory_mb()
         start = time.perf_counter()
         batch_results = perf_embedder.embed_batch(medium_batch)
         batch_time = time.perf_counter() - start
+        mem_after_batch = get_memory_mb()
+        batch_emb_mb = sum(e.nbytes for e in batch_results) / (1024 * 1024)
 
 
         for seq_result, batch_result in zip(sequential_results, batch_results):
             np.testing.assert_array_equal(seq_result, batch_result)
 
         print(f"\n\nSequential vs Batch ({len(medium_batch)} sequences):")
-        print(f"  Sequential: {sequential_time*1000:.2f} ms")
-        print(f"  Batch:      {batch_time*1000:.2f} ms")
-        print(f"  Ratio:      {sequential_time/batch_time:.2f}x")
+        print(f"  {'':20} {'Time (ms)':>12} {'Emb (MB)':>12} {'Mem Δ (MB)':>12}")
+        print(f"  {'-'*56}")
+        print(f"  {'Sequential:':20} {sequential_time*1000:>12.2f} {seq_emb_mb:>12.4f} {mem_after_seq - mem_start:>12.2f}")
+        print(f"  {'Batch:':20} {batch_time*1000:>12.2f} {batch_emb_mb:>12.4f} {mem_after_batch - mem_before_batch:>12.2f}")
+        print(f"  {'-'*56}")
+        print(f"  Time ratio: {sequential_time/batch_time:.2f}x")
+        
+        _append_memory_results("sequential_vs_batch", {
+            "num_sequences": len(medium_batch),
+            "sequential": {
+                "time_ms": sequential_time * 1000,
+                "emb_mb": seq_emb_mb,
+                "mem_delta_mb": mem_after_seq - mem_start,
+            },
+            "batch": {
+                "time_ms": batch_time * 1000,
+                "emb_mb": batch_emb_mb,
+                "mem_delta_mb": mem_after_batch - mem_before_batch,
+            },
+            "time_ratio": sequential_time / batch_time,
+        })
