@@ -209,7 +209,7 @@ jobs:
         timeout-minutes: 15
 
       - name: Run property oracle tests
-        run: uv run pytest tests/property/oracles -v --durations=0 -W "ignore::DeprecationWarning"
+        run: uv run pytest tests/property/oracles -v -n auto --durations=0 -W "ignore::DeprecationWarning"
       
       - name: Upload oracle reports
         if: always()

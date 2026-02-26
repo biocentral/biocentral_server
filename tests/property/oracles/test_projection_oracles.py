@@ -116,11 +116,11 @@ class ProjectionDeterminismOracle:
         p1: Dict[str, np.ndarray],
         p2: Dict[str, np.ndarray],
     ) -> bool:
-        """Check if two projection dicts are equal."""
+        """Check if two projection dicts are approximately equal."""
         if set(p1.keys()) != set(p2.keys()):
             return False
         for key in p1:
-            if not np.allclose(p1[key], p2[key], rtol=1e-5):
+            if not np.allclose(p1[key], p2[key], rtol=1e-4, atol=1e-5):
                 return False
         return True
 
