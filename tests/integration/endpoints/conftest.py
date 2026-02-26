@@ -821,7 +821,7 @@ def load_bindembed_onnx():
             #print(f"[ONNX] Uploaded {uploaded_count} files, {failed_count} failed")
 
             try:
-                verify_response = requests.get(
+                _ = requests.get(
                     f"{seaweedfs_url}/{target_base}/bindembed/?pretty=y",
                     headers={"Accept": "application/json"},
                     timeout=10
@@ -830,7 +830,7 @@ def load_bindembed_onnx():
                 #if verify_response.status_code == 200:
                    # print(f"[ONNX] Directory contents: {verify_response.text[:200]}")
             except Exception as e:
-               # print(f"[ONNX] Verify failed: {e}")
+                print(f"[ONNX] Verify failed: {e}")
             
             return uploaded_count > 0
             
