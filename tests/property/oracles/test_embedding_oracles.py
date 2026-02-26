@@ -10,7 +10,6 @@ import numpy as np
 import pytest
 from biotrainer.input_files import BiotrainerSequenceRecord
 
-from tests.fixtures.fixed_embedder import FixedEmbedder
 from tests.fixtures.test_dataset import (
     get_test_sequences,
 )
@@ -88,10 +87,6 @@ class OracleConfig:
 
 
 ORACLE_CONFIGS = {
-    "fixed_embedder": OracleConfig(
-        embedder_name="fixed_embedder",
-        cosine_threshold=1.0, # since it should produce identical embeddings regardless of batch or masking
-    ),
     "esm2_t6_8m": OracleConfig(
         embedder_name="esm2_t6_8m",
         cosine_threshold=0.25,  # Allow some variation in larger batches
@@ -273,12 +268,6 @@ class MaskingRobustnessOracle:
 
 
 @pytest.fixture(scope="module")
-def fixed_embedder_oracle_config() -> OracleConfig:
-    """Oracle configuration for FixedEmbedder."""
-    return ORACLE_CONFIGS["fixed_embedder"]
-
-
-@pytest.fixture(scope="module")
 def esm2_t6_8m_oracle_config() -> OracleConfig:
     """Oracle configuration for ESM2-T6-8M."""
     return ORACLE_CONFIGS["esm2_t6_8m"]
@@ -377,98 +366,6 @@ def filler_sequences() -> List[str]:
 
     return get_test_sequences(categories=["edge_case"])
 
-
-
-
-
-
-
-class TestBatchInvarianceFixedEmbedder:
-    """Batch invariance tests using FixedEmbedder."""
-
-    def test_embedding_matches_across_batch_sizes(
-        self,
-        fixed_embedder_esm2_t6: FixedEmbedder,
-        fixed_embedder_oracle_config: OracleConfig,
-        oracle_sequences: List[str],
-        filler_sequences: List[str],
-    ):
-        """Verify embeddings are identical regardless of batch composition."""
-        oracle = BatchInvarianceOracle(
-            embedder=fixed_embedder_esm2_t6,
-            config=fixed_embedder_oracle_config,
-        )
-
-        all_results = []
-        for idx, seq in enumerate(oracle_sequences[:3]):
-            results = oracle.verify(seq, filler_sequences)
-            for result in results:
-                result["sequence_index"] = idx
-                result["sequence_length"] = len(seq)
-            all_results.extend(results)
-
-
-        table = format_metrics_table(
-            all_results,
-            title="Batch Invariance Oracle - FixedEmbedder",
-        )
-        print(table)
-
-
-        for result in all_results:
-            assert result["passed"], (
-                f"Batch invariance failed for {result['parameter']}: "
-                f"cosine_distance={result['cosine_distance']:.6f} > "
-                f"threshold={result['threshold']:.4f}; "
-                f"embedder={result['embedder']}; "
-                f"sequence_index={result.get('sequence_index')}; "
-                f"sequence_length={result.get('sequence_length')}"
-            )
-
-
-class TestMaskingRobustnessFixedEmbedder:
-    """Masking robustness tests using FixedEmbedder."""
-
-    def test_embedding_stable_under_progressive_masking(
-        self,
-        fixed_embedder_esm2_t6: FixedEmbedder,
-        fixed_embedder_oracle_config: OracleConfig,
-        oracle_sequences: List[str],
-    ):
-        """Verify embeddings remain stable under progressive masking."""
-        oracle = MaskingRobustnessOracle(
-            embedder=fixed_embedder_esm2_t6,
-            config=fixed_embedder_oracle_config,
-        )
-
-        all_results = []
-        for idx, seq in enumerate(oracle_sequences[:3]):
-            results = oracle.verify(seq)
-            for result in results:
-                result["sequence_index"] = idx
-                result["sequence_length"] = len(seq)
-            all_results.extend(results)
-
-
-        table = format_metrics_table(
-            all_results,
-            title="Masking Robustness Oracle - FixedEmbedder",
-        )
-        print(table)
-
-
-        for result in all_results:
-            assert result["passed"], (
-                f"Masking robustness failed for {result['parameter']}: "
-                f"cosine_distance={result['cosine_distance']:.6f} > "
-                f"threshold={result['threshold']:.4f}; "
-                f"embedder={result['embedder']}; "
-                f"sequence_index={result.get('sequence_index')}; "
-                f"sequence_length={result.get('sequence_length')}"
-            )
-
-
-@pytest.mark.slow
 class TestBatchInvarianceESM2:
     """Batch invariance tests using real ESM2-T6-8M model."""
 
@@ -512,7 +409,6 @@ class TestBatchInvarianceESM2:
             )
 
 
-@pytest.mark.slow
 class TestMaskingRobustnessESM2:
     """Masking robustness tests using real ESM2-T6-8M model."""
 
