@@ -5,6 +5,7 @@ import numpy as np
 from pathlib import Path
 from typing import List
 
+from biotrainer.input_files import BiotrainerSequenceRecord
 from tests.fixtures.fixed_embedder import FixedEmbedder
 from tests.fixtures.test_dataset import get_test_sequences
 
@@ -71,16 +72,26 @@ class _ESM2Wrapper:
     def __init__(self, service):
         self._svc = service
 
+    def _to_records(self, sequences: List[str]) -> List[BiotrainerSequenceRecord]:
+        """Convert sequences to BiotrainerSequenceRecord objects."""
+        return [
+            BiotrainerSequenceRecord(seq_id=f"seq_{i}", seq=seq)
+            for i, seq in enumerate(sequences)
+        ]
+
     def embed(self, sequence: str) -> np.ndarray:
-        results = list(self._svc.generate_embeddings(input_data=[sequence], reduce=False))
+        records = self._to_records([sequence])
+        results = list(self._svc.generate_embeddings(records, reduce=False))
         return np.array(results[0][1]) if results else np.array([])
 
     def embed_pooled(self, sequence: str) -> np.ndarray:
-        results = list(self._svc.generate_embeddings(input_data=[sequence], reduce=True))
+        records = self._to_records([sequence])
+        results = list(self._svc.generate_embeddings(records, reduce=True))
         return np.array(results[0][1]) if results else np.array([])
 
     def embed_batch(self, sequences: List[str], pooled: bool = False) -> List[np.ndarray]:
-        results = list(self._svc.generate_embeddings(input_data=sequences, reduce=pooled))
+        records = self._to_records(sequences)
+        results = list(self._svc.generate_embeddings(records, reduce=pooled))
         return [np.array(emb) for _, emb in results]
 
 

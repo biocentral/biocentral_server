@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 from typing import List
 
-
+from biotrainer.input_files import BiotrainerSequenceRecord
 from tests.fixtures.fixed_embedder import FixedEmbedder
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET, get_test_sequences
 
@@ -15,12 +15,18 @@ class ESM2EmbedderAdapter:
     def __init__(self, embedding_service):
         self._service = embedding_service
     
+    def _to_records(self, sequences: List[str]) -> List[BiotrainerSequenceRecord]:
+        """Convert sequences to BiotrainerSequenceRecord objects."""
+        return [
+            BiotrainerSequenceRecord(seq_id=f"seq_{i}", seq=seq)
+            for i, seq in enumerate(sequences)
+        ]
+    
     def embed(self, sequence: str) -> np.ndarray:
         # Embed a single sequence, returning per-residue embeddings.
-
-
+        records = self._to_records([sequence])
         results = list(self._service.generate_embeddings(
-            input_data={sequence: sequence},
+            records,
             reduce=False,
         ))
         if results:
@@ -30,8 +36,9 @@ class ESM2EmbedderAdapter:
     
     def embed_pooled(self, sequence: str) -> np.ndarray:
         # Embed a single sequence, returning pooled (reduced) embedding.
+        records = self._to_records([sequence])
         results = list(self._service.generate_embeddings(
-            input_data={sequence: sequence},
+            records,
             reduce=True,
         ))
         if results:
@@ -41,9 +48,9 @@ class ESM2EmbedderAdapter:
     
     def embed_batch(self, sequences: List[str], pooled: bool = False) -> List[np.ndarray]:
         # Embed multiple sequences.
-        input_data = {seq: seq for seq in sequences}
+        records = self._to_records(sequences)
         results = list(self._service.generate_embeddings(
-            input_data=input_data,
+            records,
             reduce=pooled,
         ))
         return [np.array(emb) for _, emb in results]

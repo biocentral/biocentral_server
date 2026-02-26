@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Protocol
 
 import numpy as np
 import pytest
+from biotrainer.input_files import BiotrainerSequenceRecord
 
 from tests.fixtures.fixed_embedder import FixedEmbedder
 from tests.fixtures.test_dataset import (
@@ -317,12 +318,19 @@ class ESM2EmbedderWrapper:
     def __init__(self, embedding_service):
         self.embedding_service = embedding_service
 
+    def _to_records(self, sequences: List[str]) -> List[BiotrainerSequenceRecord]:
+        """Convert sequences to BiotrainerSequenceRecord objects."""
+        return [
+            BiotrainerSequenceRecord(seq_id=f"seq_{i}", seq=seq)
+            for i, seq in enumerate(sequences)
+        ]
+
     def embed(self, sequence: str) -> np.ndarray:
         """Embed single sequence, returning per-residue embeddings."""
-
+        records = self._to_records([sequence])
         results = list(
             self.embedding_service.generate_embeddings(
-                input_data=[sequence], reduce=False
+                records, reduce=False
             )
         )
         if results:
@@ -332,9 +340,10 @@ class ESM2EmbedderWrapper:
 
     def embed_pooled(self, sequence: str) -> np.ndarray:
         """Embed single sequence, returning pooled embedding."""
+        records = self._to_records([sequence])
         results = list(
             self.embedding_service.generate_embeddings(
-                input_data=[sequence], reduce=True
+                records, reduce=True
             )
         )
         if results:
@@ -346,9 +355,10 @@ class ESM2EmbedderWrapper:
         self, sequences: List[str], pooled: bool = False
     ) -> List[np.ndarray]:
         """Embed multiple sequences."""
+        records = self._to_records(sequences)
         results = list(
             self.embedding_service.generate_embeddings(
-                input_data=sequences, reduce=pooled
+                records, reduce=pooled
             )
         )
         return [np.array(embedding) for _, embedding in results]
