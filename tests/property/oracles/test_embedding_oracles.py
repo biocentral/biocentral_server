@@ -1,5 +1,3 @@
-# Embedding Oracle Tests for Batch Invariance and Masking Robustness.
-
 import random
 import hashlib
 from dataclasses import dataclass, field
@@ -19,72 +17,38 @@ from tests.property.oracles.embedding_metrics import (
     get_default_report_path,
     write_metrics_csv,
 )
-
-
-
-
-
-
-
 _oracle_results: List[Dict[str, Any]] = []
 pytestmark = pytest.mark.property
 
-
 def get_oracle_results() -> List[Dict[str, Any]]:
-    """Get accumulated oracle results."""
     return _oracle_results
 
-
 def add_oracle_result(result: Dict[str, Any]) -> None:
-    """Add a result to the oracle results collection."""
     if "timestamp" not in result:
         result["timestamp"] = datetime.now().isoformat()
     _oracle_results.append(result)
 
-
 def clear_oracle_results() -> None:
-    """Clear all accumulated oracle results."""
     _oracle_results.clear()
 
-
-
-
-
-
-
 class EmbedderProtocol(Protocol):
-    """Protocol defining the embedder interface for oracle tests."""
-
     def embed(self, sequence: str) -> np.ndarray:
-        """Embed a single sequence, returning per-residue embeddings."""
         ...
 
     def embed_pooled(self, sequence: str) -> np.ndarray:
-        """Embed a single sequence, returning pooled embedding."""
         ...
 
     def embed_batch(
         self, sequences: List[str], pooled: bool = False
     ) -> List[np.ndarray]:
-        """Embed multiple sequences."""
         ...
-
-
-
-
-
-
 
 @dataclass
 class OracleConfig:
-    """Configuration for embedding oracles."""
-
     embedder_name: str
     cosine_threshold: float
     batch_sizes: List[int] = field(default_factory=lambda: [1, 5, 10])
     masking_ratios: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.2, 0.3])
-
-
 
 ORACLE_CONFIGS = {
     "esm2_t6_8m": OracleConfig(
@@ -92,12 +56,6 @@ ORACLE_CONFIGS = {
         cosine_threshold=0.25,  # Allow some variation in larger batches
     ),
 }
-
-
-
-
-
-
 
 class BatchInvarianceOracle:
     # Oracle verifying that embeddings are invariant to batch composition.
@@ -158,7 +116,6 @@ class BatchInvarianceOracle:
         fillers: List[str],
         batch_size: int,
     ) -> List[str]:
-        """Create a batch with target sequence at a random position."""
         if batch_size == 1:
             return [target]
 
@@ -177,12 +134,6 @@ class BatchInvarianceOracle:
         batch.insert(insert_pos, target)
 
         return batch
-
-
-
-
-
-
 
 class MaskingRobustnessOracle:
     # Oracle verifying embedding behavior under progressive token masking.
@@ -261,15 +212,8 @@ class MaskingRobustnessOracle:
 
         return "".join(seq_list)
 
-
-
-
-
-
-
 @pytest.fixture(scope="module")
 def esm2_t6_8m_oracle_config() -> OracleConfig:
-    """Oracle configuration for ESM2-T6-8M."""
     return ORACLE_CONFIGS["esm2_t6_8m"]
 
 
@@ -301,22 +245,19 @@ def esm2_t6_8m_embedder():
             f"Model must be available for oracle tests: {e}"
         )
 
-
 class ESM2EmbedderWrapper:
-    """Wrapper to adapt biotrainer EmbeddingService to EmbedderProtocol."""
+    # Wrapper to adapt biotrainer EmbeddingService to EmbedderProtocol.
 
     def __init__(self, embedding_service):
         self.embedding_service = embedding_service
 
     def _to_records(self, sequences: List[str]) -> List[BiotrainerSequenceRecord]:
-        """Convert sequences to BiotrainerSequenceRecord objects."""
         return [
             BiotrainerSequenceRecord(seq_id=f"seq_{i}", seq=seq)
             for i, seq in enumerate(sequences)
         ]
 
     def embed(self, sequence: str) -> np.ndarray:
-        """Embed single sequence, returning per-residue embeddings."""
         records = self._to_records([sequence])
         results = list(
             self.embedding_service.generate_embeddings(
@@ -329,7 +270,6 @@ class ESM2EmbedderWrapper:
         return np.array([])
 
     def embed_pooled(self, sequence: str) -> np.ndarray:
-        """Embed single sequence, returning pooled embedding."""
         records = self._to_records([sequence])
         results = list(
             self.embedding_service.generate_embeddings(
@@ -344,7 +284,6 @@ class ESM2EmbedderWrapper:
     def embed_batch(
         self, sequences: List[str], pooled: bool = False
     ) -> List[np.ndarray]:
-        """Embed multiple sequences."""
         records = self._to_records(sequences)
         results = list(
             self.embedding_service.generate_embeddings(
@@ -353,21 +292,16 @@ class ESM2EmbedderWrapper:
         )
         return [np.array(embedding) for _, embedding in results]
 
-
 @pytest.fixture(scope="module")
 def oracle_sequences() -> List[str]:
-    """Test sequences for oracle verification from canonical dataset."""
     return get_test_sequences(categories=["standard"])
 
 
 @pytest.fixture(scope="module")
 def filler_sequences() -> List[str]:
-    """Filler sequences for batch creation from canonical dataset."""
-
     return get_test_sequences(categories=["edge_case"])
 
 class TestBatchInvarianceESM2:
-    """Batch invariance tests using real ESM2-T6-8M model."""
 
     def test_embedding_matches_across_batch_sizes(
         self,
@@ -376,7 +310,6 @@ class TestBatchInvarianceESM2:
         oracle_sequences: List[str],
         filler_sequences: List[str],
     ):
-        """Verify embeddings are identical regardless of batch composition."""
         oracle = BatchInvarianceOracle(
             embedder=esm2_t6_8m_embedder,
             config=esm2_t6_8m_oracle_config,
@@ -410,7 +343,6 @@ class TestBatchInvarianceESM2:
 
 
 class TestMaskingRobustnessESM2:
-    """Masking robustness tests using real ESM2-T6-8M model."""
 
     def test_embedding_stable_under_progressive_masking(
         self,
@@ -418,7 +350,6 @@ class TestMaskingRobustnessESM2:
         esm2_t6_8m_oracle_config: OracleConfig,
         oracle_sequences: List[str],
     ):
-        """Verify embeddings remain stable under progressive masking."""
         oracle = MaskingRobustnessOracle(
             embedder=esm2_t6_8m_embedder,
             config=esm2_t6_8m_oracle_config,
@@ -458,7 +389,6 @@ class TestMaskingRobustnessESM2:
 
 @pytest.fixture(scope="module", autouse=True)
 def write_oracle_report(request):
-    """Write accumulated oracle results to CSV after module completes."""
     yield
 
 
