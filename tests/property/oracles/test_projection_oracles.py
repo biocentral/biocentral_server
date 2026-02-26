@@ -330,9 +330,15 @@ class DirectProjector:
             dims=n_components,
         )
 
+        # Extract coordinates from Arrow table columns (D1, D2, etc.)
+        coords = np.column_stack([
+            reduction.result.column(f"D{d+1}").to_pylist()
+            for d in range(n_components)
+        ])
+
         projections = {}
         for i, seq_id in enumerate(seq_ids):
-            projections[seq_id] = reduction.data[i].astype(np.float32)
+            projections[seq_id] = coords[i].astype(np.float32)
 
         return projections
 

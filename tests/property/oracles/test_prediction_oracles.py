@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 import torch
 
+from biocentral_server.server_management.file_management.storage_backend import StorageError
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 from tests.fixtures.fixed_embedder import FixedEmbedder
 
@@ -389,6 +390,8 @@ def direct_ss_predictor(ss_oracle_config):
         )
         predictor._ensure_initialized()
         return predictor
+    except StorageError as e:
+        pytest.skip(f"SeaweedFS storage not available for ProtT5SecondaryStructure: {e}")
     except Exception as e:
         pytest.skip(f"ONNX model not available for ProtT5SecondaryStructure: {e}")
 
@@ -403,6 +406,8 @@ def direct_bindembed_predictor(binding_oracle_config):
         )
         predictor._ensure_initialized()
         return predictor
+    except StorageError as e:
+        pytest.skip(f"SeaweedFS storage not available for BindEmbed: {e}")
     except Exception as e:
         pytest.skip(f"ONNX model not available for BindEmbed: {e}")
 
@@ -417,6 +422,8 @@ def direct_tmbed_predictor(tmbed_oracle_config):
         )
         predictor._ensure_initialized()
         return predictor
+    except StorageError as e:
+        pytest.skip(f"SeaweedFS storage not available for TMbed: {e}")
     except Exception as e:
         pytest.skip(f"ONNX model not available for TMbed: {e}")
 
@@ -431,6 +438,8 @@ def direct_seth_predictor(disorder_oracle_config):
         )
         predictor._ensure_initialized()
         return predictor
+    except StorageError as e:
+        pytest.skip(f"SeaweedFS storage not available for Seth: {e}")
     except Exception as e:
         pytest.skip(f"ONNX model not available for Seth: {e}")
 
@@ -447,6 +456,8 @@ def direct_predictor(request):
         )
         predictor._ensure_initialized()
         return predictor, config
+    except StorageError as e:
+        pytest.skip(f"SeaweedFS storage not available for {model_name}: {e}")
     except Exception as e:
         pytest.skip(f"ONNX model not available for {model_name}: {e}")
 

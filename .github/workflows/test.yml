@@ -160,11 +160,33 @@ jobs:
     needs: unit-test
 
     steps:
+      - name: Maximize build disk space
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 24576
+          swap-size-mb: 1024
+          temp-reserve-mb: 16384
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'       
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+          overprovision-lvm: 'true'
+
+      - name: Move Docker storage to large partition
+        run: |
+          sudo systemctl stop docker.service
+          sudo systemctl stop docker.socket
+          sudo mkdir -p /home/runner/work/docker
+          sudo mv /var/lib/docker /home/runner/work/docker
+          sudo ln -s /home/runner/work/docker /var/lib/docker
+          sudo systemctl start docker.service
+        
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
+          
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
@@ -187,9 +209,35 @@ jobs:
         env:
           UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Docker image
+        run: docker pull ghcr.io/denizozturk95/biocentral-server:ci
+
+      - name: Start services with Docker Compose
+        run: |
+          docker compose -f docker-compose.dev.yml --env-file .env.ci up -d --wait
+        env:
+          DOCKER_BUILDKIT: 1
+          COMPOSE_DOCKER_CLI_BUILD: 1
+          BUILDKIT_STEP_LOG_MAX_SIZE: 10000000
+          CI_IMAGE: ghcr.io/denizozturk95/biocentral-server:ci 
+        timeout-minutes: 10
+
       - name: Run property oracle tests (non-slow)
         run: uv run pytest tests/property/oracles -v --durations=0 -W "ignore::DeprecationWarning"
-
+        env:
+          SEAWEEDFS_FILER_HOST: localhost
+          SEAWEEDFS_FILER_PORT: 8888
+      
       - name: Upload oracle reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -197,3 +245,15 @@ jobs:
           name: oracle-reports
           path: tests/reports/*.csv
           if-no-files-found: warn
+
+      - name: Show logs 
+        if: always()
+        run: |
+          docker compose -f docker-compose.dev.yml logs
+
+      - name: Stop services
+        if: always()
+        run: |
+          docker compose -f docker-compose.dev.yml down -v
+
+
