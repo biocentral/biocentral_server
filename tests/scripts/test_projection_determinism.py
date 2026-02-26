@@ -32,11 +32,19 @@ def _project(data: np.ndarray, method: str, n_components: int = 2, **kwargs) -> 
         method=method,
         dims=n_components,
     )
-    # reduction is a protspace Reduction object; extract the numpy array
-    coords = np.column_stack([
-        reduction.result.column(f"D{d+1}").to_pylist()
-        for d in range(n_components)
-    ])
+    # Extract coordinates - handle both dict (new API) and Reduction object (old API)
+    if isinstance(reduction, dict):
+        # New protspace API returns dict with D1, D2, etc. keys
+        coords = np.column_stack([
+            reduction[f"D{d+1}"]
+            for d in range(n_components)
+        ])
+    else:
+        # Old API: Reduction object with .result Arrow table
+        coords = np.column_stack([
+            reduction.result.column(f"D{d+1}").to_pylist()
+            for d in range(n_components)
+        ])
     return coords
 
 

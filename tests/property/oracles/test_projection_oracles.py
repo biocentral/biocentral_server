@@ -330,11 +330,19 @@ class DirectProjector:
             dims=n_components,
         )
 
-        # Extract coordinates from Arrow table columns (D1, D2, etc.)
-        coords = np.column_stack([
-            reduction.result.column(f"D{d+1}").to_pylist()
-            for d in range(n_components)
-        ])
+        # Extract coordinates - handle both dict (new API) and Reduction object (old API)
+        if isinstance(reduction, dict):
+            # New protspace API returns dict with D1, D2, etc. keys
+            coords = np.column_stack([
+                reduction[f"D{d+1}"]
+                for d in range(n_components)
+            ])
+        else:
+            # Old API: Reduction object with .result Arrow table
+            coords = np.column_stack([
+                reduction.result.column(f"D{d+1}").to_pylist()
+                for d in range(n_components)
+            ])
 
         projections = {}
         for i, seq_id in enumerate(seq_ids):
