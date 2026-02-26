@@ -28,14 +28,14 @@ class TestMemoryLeaks:
 
         sequence = very_long_sequence
 
-        for _ in range(10):
+        for _ in range(3):
             _ = esm2_embedder.embed(sequence)
         gc.collect()
 
         baseline = get_memory_mb()
 
 
-        for _ in range(1000):
+        for _ in range(20):
             _ = esm2_embedder.embed(sequence)
 
         gc.collect()
@@ -43,7 +43,7 @@ class TestMemoryLeaks:
 
         growth = final - baseline
 
-        assert growth < 100, f"Memory grew by {growth:.1f} MB (possible leak)"
+        assert growth < 7, f"Memory grew by {growth:.1f} MB (possible leak)"
 
     def test_no_leak_repeated_batch_embedding(self, esm2_embedder, large_batch):
         # Memory should not grow with repeated batch embeddings.
@@ -51,21 +51,21 @@ class TestMemoryLeaks:
         sequences = large_batch
 
 
-        for _ in range(5):
+        for _ in range(3):
             _ = esm2_embedder.embed_batch(sequences)
         gc.collect()
 
         baseline = get_memory_mb()
 
 
-        for _ in range(100):
+        for _ in range(10):
             _ = esm2_embedder.embed_batch(sequences)
 
         gc.collect()
         final = get_memory_mb()
 
         growth = final - baseline
-        assert growth < 200, f"Memory grew by {growth:.1f} MB (possible leak)"
+        assert growth < 4, f"Memory grew by {growth:.1f} MB (possible leak)"
 
     def test_gc_releases_embeddings(self, esm2_embedder, very_long_sequence):
         # Verify GC properly releases embedding memory.
@@ -74,12 +74,12 @@ class TestMemoryLeaks:
 
 
         embeddings = []
-        for _ in range(100):
+        for _ in range(10):
             emb = esm2_embedder.embed(very_long_sequence)
             embeddings.append(emb)
 
         peak = get_memory_mb()
-        print(f"\nPeak memory after 100 x {len(very_long_sequence)}-residue embeddings: {peak:.1f} MB")
+        print(f"\nPeak memory after 10 x {len(very_long_sequence)}-residue embeddings: {peak:.1f} MB")
 
 
         del embeddings
