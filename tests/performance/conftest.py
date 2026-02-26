@@ -65,13 +65,14 @@ def perf_embedder() -> FixedEmbedder:
 @pytest.fixture(scope="module")
 def esm2_embedder():
     # Real ESM2-t6-8M embedder for performance benchmarking.
+    import torch
     from biotrainer.embedders import get_embedding_service
     
     service = get_embedding_service(
         embedder_name="facebook/esm2_t6_8M_UR50D",
         use_half_precision=False,
         custom_tokenizer_config=None,
-        device="cpu",
+        device=torch.device("cpu"),
     )
     return ESM2EmbedderAdapter(service)
 
