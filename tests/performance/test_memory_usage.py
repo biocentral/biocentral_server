@@ -100,12 +100,13 @@ class TestMemoryFootprint:
 
         embedding = esm2_embedder.embed(medium_sequence)
         seq_len = len(medium_sequence)
+        embedding_dim = embedding.shape[-1]  # Get actual dimension from embedding
 
-        expected_bytes = seq_len * 1024 * 4
+        expected_bytes = seq_len * embedding_dim * 4
         actual_bytes = embedding.nbytes
 
         assert actual_bytes == expected_bytes
-        print(f"\n{seq_len}-residue embedding: {actual_bytes / 1024:.1f} KB")
+        print(f"\n{seq_len}-residue embedding ({embedding_dim}-dim): {actual_bytes / 1024:.1f} KB")
 
     def test_batch_memory_size(self, esm2_embedder, large_batch):
         # Measure total memory for large batch.
@@ -173,10 +174,12 @@ class TestMemoryEstimation:
             {"n_seqs": 10000, "avg_len": 100},
         ]
 
-        dim = esm2_embedder.embedding_dim
+        # Get dimension from a sample embedding
+        sample_emb = esm2_embedder.embed("M")
+        dim = sample_emb.shape[-1]
         bytes_per_float = 4
 
-        print("\n\nMemory Estimation (per-residue, 1024-dim):")
+        print(f"\n\nMemory Estimation (per-residue, {dim}-dim):")
         print("-" * 60)
         print(f"{'Sequences':>12} {'Avg Length':>12} {'Estimated MB':>14}")
         print("-" * 60)
