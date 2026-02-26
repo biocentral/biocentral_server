@@ -3,8 +3,6 @@
 import numpy as np
 import pytest
 from typing import List
-
-from tests.fixtures.fixed_embedder import FixedEmbedder
  
 
 # ---------------------------------------------------------------------------
@@ -34,13 +32,12 @@ def _project(data: np.ndarray, method: str, n_components: int = 2, **kwargs) -> 
     )
     # Extract coordinates - handle both dict (new API) and Reduction object (old API)
     if isinstance(reduction, dict):
-        # New protspace API returns dict with D1, D2, etc. keys
         coords = np.column_stack([
             reduction[f"D{d+1}"]
             for d in range(n_components)
         ])
     else:
-        # Old API: Reduction object with .result Arrow table
+        # Reduction object with .result Arrow table
         coords = np.column_stack([
             reduction.result.column(f"D{d+1}").to_pylist()
             for d in range(n_components)
@@ -77,11 +74,11 @@ class TestPCADeterminism:
 
     def test_pca_deterministic(
         self,
-        fixed_embedder: FixedEmbedder,
+        esm2_embedder,
         diverse_sequences: List[str],
         reports_dir,
     ):
-        data = _embed_sequences(fixed_embedder, diverse_sequences)
+        data = _embed_sequences(esm2_embedder, diverse_sequences)
 
         coords_1 = _project(data, method="pca", n_components=2)
         coords_2 = _project(data, method="pca", n_components=2)
@@ -90,7 +87,7 @@ class TestPCADeterminism:
         procrustes = _procrustes_distance(coords_1, coords_2)
 
         result = {
-            "embedder": "fixed_embedder",
+            "embedder": "esm2_t6_8m",
             "test_type": "projection_determinism",
             "parameter": "pca",
             "max_abs_diff": float(diff),
@@ -102,10 +99,10 @@ class TestPCADeterminism:
 
     def test_pca_3d_deterministic(
         self,
-        fixed_embedder: FixedEmbedder,
+        esm2_embedder,
         diverse_sequences: List[str],
     ):
-        data = _embed_sequences(fixed_embedder, diverse_sequences)
+        data = _embed_sequences(esm2_embedder, diverse_sequences)
 
         coords_1 = _project(data, method="pca", n_components=3)
         coords_2 = _project(data, method="pca", n_components=3)
@@ -118,7 +115,6 @@ class TestPCADeterminism:
 # UMAP / t-SNE structural consistency (stochastic)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.slow
 class TestStochasticProjectionConsistency:
     # UMAP and t-SNE are stochastic; check that two runs produce similar point-cloud shapes.
 
@@ -126,11 +122,11 @@ class TestStochasticProjectionConsistency:
 
     def test_umap_consistency(
         self,
-        fixed_embedder: FixedEmbedder,
+        esm2_embedder,
         diverse_sequences: List[str],
         reports_dir,
     ):
-        data = _embed_sequences(fixed_embedder, diverse_sequences)
+        data = _embed_sequences(esm2_embedder, diverse_sequences)
         n_neighbors = min(5, len(diverse_sequences) - 1)
 
         coords_1 = _project(data, method="umap", n_components=2,
@@ -143,7 +139,7 @@ class TestStochasticProjectionConsistency:
 
         # Report but don't necessarily fail (stochastic)
         result = {
-            "embedder": "fixed_embedder",
+            "embedder": "esm2_t6_8m",
             "test_type": "projection_consistency",
             "parameter": "umap",
             "procrustes_distance": procrustes,
@@ -154,11 +150,11 @@ class TestStochasticProjectionConsistency:
 
     def test_tsne_consistency(
         self,
-        fixed_embedder: FixedEmbedder,
+        esm2_embedder,
         diverse_sequences: List[str],
         reports_dir,
     ):
-        data = _embed_sequences(fixed_embedder, diverse_sequences)
+        data = _embed_sequences(esm2_embedder, diverse_sequences)
         perplexity = min(5.0, len(diverse_sequences) - 1)
 
         coords_1 = _project(data, method="tsne", n_components=2, perplexity=perplexity)
@@ -168,7 +164,7 @@ class TestStochasticProjectionConsistency:
         print(f"\n[t-SNE Consistency] Procrustes distance = {procrustes:.6f}")
 
         result = {
-            "embedder": "fixed_embedder",
+            "embedder": "esm2_t6_8m",
             "test_type": "projection_consistency",
             "parameter": "tsne",
             "procrustes_distance": procrustes,

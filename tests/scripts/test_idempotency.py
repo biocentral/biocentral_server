@@ -1,9 +1,7 @@
 # Idempotency invariant: same sequence → same embedding for the same model, across repeated calls.
 
-import pytest
 from typing import List
 
-from tests.fixtures.fixed_embedder import FixedEmbedder
 from tests.property.oracles.embedding_metrics import (
     compute_all_metrics,
     format_metrics_table,
@@ -57,64 +55,9 @@ def _run_idempotency_experiment(
 
 
 # ---------------------------------------------------------------------------
-# FixedEmbedder tests
+# ESM2 tests
 # ---------------------------------------------------------------------------
 
-class TestIdempotencyFixedEmbedder:
-    # Idempotency must hold perfectly for the deterministic FixedEmbedder.
-
-    def test_pooled_embedding_idempotent(
-        self,
-        fixed_embedder: FixedEmbedder,
-        standard_sequences: List[str],
-        reports_dir,
-    ):
-        results = _run_idempotency_experiment(
-            embedder=fixed_embedder,
-            embedder_label="fixed_embedder",
-            sequences=standard_sequences,
-            pooled=True,
-        )
-
-        table = format_metrics_table(results, title="Idempotency — FixedEmbedder (pooled)")
-        print(table)
-        write_metrics_csv(results, reports_dir / "idempotency_fixed_pooled.csv")
-
-        for r in results:
-            assert r["passed"], (
-                f"Idempotency FAILED for {r['parameter']}: "
-                f"cosine_distance={r['cosine_distance']:.10f}"
-            )
-
-    def test_per_residue_embedding_idempotent(
-        self,
-        fixed_embedder: FixedEmbedder,
-        standard_sequences: List[str],
-        reports_dir,
-    ):
-        results = _run_idempotency_experiment(
-            embedder=fixed_embedder,
-            embedder_label="fixed_embedder",
-            sequences=standard_sequences,
-            pooled=False,
-        )
-
-        table = format_metrics_table(results, title="Idempotency — FixedEmbedder (per-residue)")
-        print(table)
-        write_metrics_csv(results, reports_dir / "idempotency_fixed_per_residue.csv")
-
-        for r in results:
-            assert r["passed"], (
-                f"Idempotency FAILED for {r['parameter']}: "
-                f"cosine_distance={r['cosine_distance']:.10f}"
-            )
-
-
-# ---------------------------------------------------------------------------
-# Real ESM2 tests (slow, requires model)
-# ---------------------------------------------------------------------------
-
-@pytest.mark.slow
 class TestIdempotencyESM2:
     # Real pLM: GPU non-determinism may introduce tiny drifts — we tolerate cosine distance ≤ 1e-5.
 

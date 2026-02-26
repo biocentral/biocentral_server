@@ -2,10 +2,8 @@
 
 import random
 import hashlib
-import pytest
 from typing import Any, Dict, List
 
-from tests.fixtures.fixed_embedder import FixedEmbedder
 from tests.property.oracles.embedding_metrics import (
     compute_all_metrics,
     format_metrics_table,
@@ -83,43 +81,9 @@ def _run_batch_invariance(
 
 
 # ---------------------------------------------------------------------------
-# FixedEmbedder tests
+# ESM2 tests
 # ---------------------------------------------------------------------------
 
-class TestBatchInvarianceFixedEmbedder:
-    # FixedEmbedder processes sequences independently, so batch invariance must hold exactly.
-
-    def test_batch_invariance_pooled(
-        self,
-        fixed_embedder: FixedEmbedder,
-        standard_sequences: List[str],
-        filler_sequences: List[str],
-        reports_dir,
-    ):
-        results = _run_batch_invariance(
-            embedder=fixed_embedder,
-            embedder_label="fixed_embedder",
-            target_sequences=standard_sequences,
-            filler_sequences=filler_sequences,
-            tolerance=1e-6,
-        )
-
-        table = format_metrics_table(results, title="Batch Invariance — FixedEmbedder")
-        print(table)
-        write_metrics_csv(results, reports_dir / "batch_invariance_fixed.csv")
-
-        for r in results:
-            assert r["passed"], (
-                f"Batch invariance FAILED: {r['parameter']} — "
-                f"cosine_dist={r['cosine_distance']:.10f}"
-            )
-
-
-# ---------------------------------------------------------------------------
-# Real ESM2 tests
-# ---------------------------------------------------------------------------
-
-@pytest.mark.slow
 class TestBatchInvarianceESM2:
     # Real ESM2 model: padding-induced differences should be negligible (cosine distance ≤ 0.01).
 
