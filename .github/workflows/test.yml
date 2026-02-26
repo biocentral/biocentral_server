@@ -159,6 +159,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: unit-test
 
+    env:
+      SEAWEEDFS_FILER_HOST: localhost
+      SEAWEEDFS_FILER_PORT: 8888
+
     steps:
       - name: Maximize build disk space
         uses: easimon/maximize-build-space@v10
@@ -232,11 +236,18 @@ jobs:
           CI_IMAGE: ghcr.io/denizozturk95/biocentral-server:ci 
         timeout-minutes: 10
 
+      - name: Download PREDICT models to SeaweedFS
+        run: |
+          python -c "
+          from biocentral_server.predict import PredictInitializer
+          initializer = PredictInitializer()
+          initializer.run()
+          print('PREDICT models downloaded to SeaweedFS')
+          "
+
       - name: Run property oracle tests (non-slow)
         run: uv run pytest tests/property/oracles -v --durations=0 -W "ignore::DeprecationWarning"
-        env:
-          SEAWEEDFS_FILER_HOST: localhost
-          SEAWEEDFS_FILER_PORT: 8888
+         
       
       - name: Upload oracle reports
         if: always()
