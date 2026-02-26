@@ -1,5 +1,3 @@
-"""Test memory usage and detect leaks."""
-
 import pytest
 import gc
 import numpy as np
@@ -25,20 +23,20 @@ def get_memory_mb() -> float:
 @pytest.mark.slow
 @pytest.mark.performance
 class TestMemoryLeaks:
-    def test_no_leak_repeated_single_embedding(self, perf_embedder, very_long_sequence):
+    def test_no_leak_repeated_single_embedding(self, esm2_embedder, very_long_sequence):
         # Memory should not grow with repeated single embeddings 
 
         sequence = very_long_sequence
 
         for _ in range(10):
-            _ = perf_embedder.embed(sequence)
+            _ = esm2_embedder.embed(sequence)
         gc.collect()
 
         baseline = get_memory_mb()
 
 
         for _ in range(1000):
-            _ = perf_embedder.embed(sequence)
+            _ = esm2_embedder.embed(sequence)
 
         gc.collect()
         final = get_memory_mb()
@@ -47,21 +45,21 @@ class TestMemoryLeaks:
 
         assert growth < 100, f"Memory grew by {growth:.1f} MB (possible leak)"
 
-    def test_no_leak_repeated_batch_embedding(self, perf_embedder, large_batch):
+    def test_no_leak_repeated_batch_embedding(self, esm2_embedder, large_batch):
         # Memory should not grow with repeated batch embeddings.
 
         sequences = large_batch
 
 
         for _ in range(5):
-            _ = perf_embedder.embed_batch(sequences)
+            _ = esm2_embedder.embed_batch(sequences)
         gc.collect()
 
         baseline = get_memory_mb()
 
 
         for _ in range(100):
-            _ = perf_embedder.embed_batch(sequences)
+            _ = esm2_embedder.embed_batch(sequences)
 
         gc.collect()
         final = get_memory_mb()
@@ -69,7 +67,7 @@ class TestMemoryLeaks:
         growth = final - baseline
         assert growth < 200, f"Memory grew by {growth:.1f} MB (possible leak)"
 
-    def test_gc_releases_embeddings(self, perf_embedder, very_long_sequence):
+    def test_gc_releases_embeddings(self, esm2_embedder, very_long_sequence):
         # Verify GC properly releases embedding memory.
         gc.collect()
         baseline = get_memory_mb()
@@ -77,7 +75,7 @@ class TestMemoryLeaks:
 
         embeddings = []
         for _ in range(100):
-            emb = perf_embedder.embed(very_long_sequence)
+            emb = esm2_embedder.embed(very_long_sequence)
             embeddings.append(emb)
 
         peak = get_memory_mb()
@@ -97,10 +95,10 @@ class TestMemoryLeaks:
 class TestMemoryFootprint:
     # Measure memory footprint of embeddings.
 
-    def test_embedding_memory_size(self, perf_embedder, medium_sequence):
+    def test_embedding_memory_size(self, esm2_embedder, medium_sequence):
         # Verify embedding memory matches expected size.
 
-        embedding = perf_embedder.embed(medium_sequence)
+        embedding = esm2_embedder.embed(medium_sequence)
         seq_len = len(medium_sequence)
 
         expected_bytes = seq_len * 1024 * 4
@@ -109,9 +107,9 @@ class TestMemoryFootprint:
         assert actual_bytes == expected_bytes
         print(f"\n{seq_len}-residue embedding: {actual_bytes / 1024:.1f} KB")
 
-    def test_batch_memory_size(self, perf_embedder, large_batch):
+    def test_batch_memory_size(self, esm2_embedder, large_batch):
         # Measure total memory for large batch.
-        embeddings = perf_embedder.embed_batch(large_batch)
+        embeddings = esm2_embedder.embed_batch(large_batch)
 
         total_bytes = sum(emb.nbytes for emb in embeddings)
         total_mb = total_bytes / (1024 * 1024)
@@ -122,10 +120,10 @@ class TestMemoryFootprint:
         print(f"  Total memory: {total_mb:.1f} MB")
         print(f"  Per sequence: {total_bytes / n_seqs / 1024:.1f} KB")
 
-    def test_pooled_vs_per_residue_memory(self, perf_embedder, medium_batch):
+    def test_pooled_vs_per_residue_memory(self, esm2_embedder, medium_batch):
         # Compare memory usage: pooled vs per-residue
-        per_residue = perf_embedder.embed_batch(medium_batch, pooled=False)
-        pooled = perf_embedder.embed_batch(medium_batch, pooled=True)
+        per_residue = esm2_embedder.embed_batch(medium_batch, pooled=False)
+        pooled = esm2_embedder.embed_batch(medium_batch, pooled=True)
 
         per_residue_bytes = sum(e.nbytes for e in per_residue)
         pooled_bytes = sum(e.nbytes for e in pooled)
@@ -142,7 +140,7 @@ class TestMemoryFootprint:
 
         assert pooled_bytes < per_residue_bytes / 10
 
-    def test_memory_per_dimension(self, perf_embedder, medium_sequence):
+    def test_memory_per_dimension(self, esm2_embedder, medium_sequence):
         #Measure memory scaling with embedding dimension.
         dims = [512, 1024, 1280, 2560]
         results = []
@@ -165,7 +163,7 @@ class TestMemoryFootprint:
 class TestMemoryEstimation:
     # Test memory estimation for planning.
 
-    def test_estimate_batch_memory(self, perf_embedder):
+    def test_estimate_batch_memory(self, esm2_embedder):
         # Provide memory estimates for different batch configurations.
         configs = [
             {"n_seqs": 100, "avg_len": 100},
@@ -175,7 +173,7 @@ class TestMemoryEstimation:
             {"n_seqs": 10000, "avg_len": 100},
         ]
 
-        dim = perf_embedder.embedding_dim
+        dim = esm2_embedder.embedding_dim
         bytes_per_float = 4
 
         print("\n\nMemory Estimation (per-residue, 1024-dim):")

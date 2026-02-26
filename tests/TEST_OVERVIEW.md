@@ -4,13 +4,13 @@
 
 | Metric | Count |
 |--------|-------|
-| **Total Test Files** | 23 |
-| **Total Test Cases** | ~115 |
-| **Unit Tests** | 43 |
-| **Integration Tests** | 28 |
-| **Property-Based Tests** | 16 |
-| **Performance Tests** | 18 |
-| **Experiment Scripts** | 20 |
+| **Total Test Files** | 18 |
+| **Total Test Cases** | ~120 |
+| **Unit Tests** | ~70 |
+| **Integration Tests** | ~35 |
+| **Property-Based Tests** | ~12 |
+| **Performance Tests** | ~31 |
+| **Experiment Scripts** | ~10 |
 
 ### Notable Coverage Areas
 
@@ -19,7 +19,52 @@
 - **Projections**: PCA/UMAP/t-SNE configuration and execution
 - **Custom Models**: Training and inference lifecycle, config validation
 - **Oracles**: Batch invariance, masking robustness, determinism, output validity
-- **Experiment Scripts**: Idempotency, batch invariance, projection determinism, X-masking MR, reversed-sequence 
+- **Experiment Scripts**: Idempotency, batch invariance, projection determinism, X-masking MR, reversed-sequence
+
+---
+
+## Directory Structure
+
+```
+tests/
+├── conftest.py                      # Global fixtures
+├── setup.cfg                        # Test configuration
+├── fixtures/                        # Shared test fixtures
+├── unit/                            # Unit tests with mocked dependencies
+│   ├── embeddings/
+│   │   └── test_fixed_embedder.py   # FixedEmbedder mock validation
+│   └── endpoints/
+│       ├── test_embeddings.py       # Embeddings endpoint tests
+│       ├── test_predict.py          # Prediction endpoint tests
+│       ├── test_projection.py       # Projection endpoint tests
+│       └── test_custom_models.py    # Custom models endpoint tests
+├── integration/                     # End-to-end tests against live server
+│   └── endpoints/
+│       ├── test_embed_flow.py       # Embedding flow tests
+│       ├── test_predict_flow.py     # Prediction flow tests
+│       ├── test_project_flow.py     # Projection flow tests
+│       └── test_train_inference_flow.py # Training/inference flow tests
+├── property/                        # Property-based oracle tests
+│   └── oracles/
+│       ├── embedding_metrics.py     # Shared metrics utilities
+│       ├── test_embedding_oracles.py    # Embedding invariant tests
+│       ├── test_prediction_oracles.py   # Prediction invariant tests
+│       └── test_projection_oracles.py   # Projection invariant tests
+├── performance/                     # Performance benchmarks
+│   ├── test_embedding_throughput.py # FixedEmbedder benchmarks
+│   ├── test_esm2_throughput.py      # Real ESM2 benchmarks
+│   ├── test_memory_usage.py         # Memory leak detection
+│   └── test_scaling.py              # Scaling behavior tests
+├── scripts/                         # Experiment scripts (MRs & invariants)
+│   ├── test_idempotency.py          # Idempotency invariant
+│   ├── test_batch_invariance.py     # Batch invariance MR
+│   ├── test_projection_determinism.py   # Projection determinism
+│   ├── test_progressive_x_masking.py    # X-masking MR
+│   └── test_reversed_sequence.py    # Sequence reversal MR
+├── server_management/               # Server management tests
+│   └── test_embeddings_database.py  # Embedding database tests
+└── reports/                         # Generated test reports (CSV)
+```
 
 ---
 
@@ -100,18 +145,27 @@ Unit tests verify isolated components with mocked dependencies.
 | `test_model_dimensions` | Each model has correct embedding dimension | None | Shape matches expected |
 | `test_custom_dimension` | Custom dimension overrides default | None | Shape matches custom dim |
 | `test_pooled_dimension` | Pooled embeddings have 1D shape | None | Shape is `(dim,)` |
+| `test_get_embedding_dimension` | `get_embedding_dimension` returns correct value | None | Returns expected dimension |
 | `test_empty_sequence` | Empty sequence returns empty embedding | None | Shape `(0, dim)` |
 | `test_single_residue` | Single residue works | None | Shape `(1, dim)`, no NaN |
 | `test_very_long_sequence` | Long sequences work | None | Correct shape, no NaN |
 | `test_unknown_amino_acid` | Unknown AA (X) handled | None | Shape correct, no NaN |
 | `test_all_amino_acids` | All 20 standard AAs work | None | Shape `(20, dim)` |
+| `test_homopolymer` | Homopolymer sequences produce valid embeddings | None | Shape correct, positions differ |
 | `test_lowercase_handling` | Lowercase handled same as uppercase | None | Arrays equal |
 | `test_batch_embedding` | Batch embedding correct shapes | None | Length matches, shapes correct |
 | `test_batch_pooled` | Batch pooled embeddings work | None | All shapes `(dim,)` |
 | `test_dict_embedding` | Dict-based embedding works | None | Keys match, shapes correct |
+| `test_empty_batch` | Empty batch returns empty list | None | Returns `[]` |
+| `test_empty_dict` | Empty dict returns empty dict | None | Returns `{}` |
 | `test_get_embedder_creates_instance` | Registry creates new instance | Registry cleared | Not None, model_name correct |
 | `test_get_embedder_reuses_instance` | Registry reuses instance | Registry cleared | Same object |
+| `test_get_embedder_different_models` | Different models have different instances | Registry cleared | Different objects |
 | `test_clear_registry` | Clear removes cached instances | Registry cleared | Different objects |
+| `test_get_fixed_embedder` | Convenience function returns working embedder | None | Not None, embedding works |
+| `test_generate_test_embeddings` | Helper generates correct embeddings | None | Length matches, shapes correct |
+| `test_generate_test_embeddings_pooled` | Helper works with pooled=True | None | All shapes `(dim,)` |
+| `test_generate_test_embeddings_dict` | Helper works with dict input | None | Keys preserved, shapes correct |
 | `test_embedding_not_all_zeros` | Embeddings not all zeros | None | Not all close to 0 |
 | `test_embedding_no_nan` | No NaN values | None | No NaN in embeddings |
 | `test_embedding_no_inf` | No infinite values | None | No Inf in embeddings |
@@ -191,38 +245,33 @@ Property-based tests verify invariants and mathematical properties using oracles
 
 ### test_embedding_oracles.py
 
-| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
-|-----------|------------------|-------------------|----------------|
-| `test_embedding_matches_across_batch_sizes` (FixedEmbedder) | Batch invariance: single vs batched embedding identical | FixedEmbedder | Cosine distance ≤ threshold (1.0) |
-| `test_embedding_stable_under_progressive_masking` (FixedEmbedder) | Masking robustness: embeddings stable at low (0-30%) masking | FixedEmbedder | Cosine distance ≤ threshold (1.0) |
-| `test_embedding_matches_across_batch_sizes` (ESM2) | Batch invariance with real ESM2 model | ESM2 via biotrainer | Cosine distance ≤ 0.2 |
-| `test_embedding_stable_under_progressive_masking` (ESM2) | Masking robustness with real ESM2 model | ESM2 via biotrainer | Cosine distance ≤ 0.2 |
+Tests embedding invariants using `BatchInvarianceOracle` and `MaskingRobustnessOracle` classes.
+
+| Oracle Class | What It Verifies | Key Metrics |
+|--------------|------------------|-------------|
+| `BatchInvarianceOracle` | Embeddings invariant to batch composition | Cosine distance, L2 distance, KL divergence |
+| `MaskingRobustnessOracle` | Embedding stability under progressive X-masking | Cosine distance at various masking ratios |
 
 ### test_prediction_oracles.py
 
-| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
-|-----------|------------------|-------------------|----------------|
-| `test_secondary_structure_determinism` | SS predictions deterministic across runs | MockPredictor | All runs identical |
-| `test_binding_site_determinism` | Binding predictions deterministic | MockPredictor | All runs identical |
-| `test_disorder_determinism` | Disorder predictions deterministic | MockPredictor | All runs identical |
-| `test_secondary_structure_output_validity` | SS output probabilities valid | MockPredictor | Probs in [0,1], sum to 1 |
-| `test_binding_site_output_validity` | Binding output valid | MockPredictor | Probs in [0,1], sum to 1 |
-| `test_disorder_output_validity` | Disorder values in [0,1] | MockPredictor | Values within range |
-| `test_secondary_structure_shape_invariance` | SS output shape matches sequence length | MockPredictor | Length matches, class count matches |
-| `test_binding_site_shape_invariance` | Binding output shape correct | MockPredictor | Length matches, class count matches |
+Tests prediction invariants using oracle classes for determinism, output validity, and shape invariance.
+
+| Oracle Class | What It Verifies | Key Metrics |
+|--------------|------------------|-------------|
+| `PredictionDeterminismOracle` | Predictions deterministic across runs | All runs identical |
+| `OutputValidityOracle` | Prediction outputs properly formatted | Probs in [0,1], sum to 1 |
+| `ShapeInvarianceOracle` | Output shapes match model specifications | Length matches sequence |
 
 ### test_projection_oracles.py
 
-| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
-|-----------|------------------|-------------------|----------------|
-| `test_pca_determinism` | PCA projections deterministic | MockProjector | All runs identical |
-| `test_umap_determinism` | UMAP projections deterministic (fixed seed) | MockProjector | All runs identical |
-| `test_pca_dimensionality_2d` | PCA output has correct dimensions | MockProjector | Shape `(n_components,)` |
-| `test_umap_dimensionality_2d` | UMAP output has correct dimensions | MockProjector | Shape `(n_components,)` |
-| `test_pca_values_valid` | PCA values finite and bounded | MockProjector | No NaN/Inf, values < 1000 |
-| `test_umap_values_valid` | UMAP values valid for diverse inputs | MockProjector | No NaN/Inf, values bounded |
-| `test_pca_preserves_distances` | PCA preserves pairwise distances | MockProjector | Correlation ≥ 0.4 |
-| `test_umap_preserves_local_structure` | UMAP preserves local structure | MockProjector | Correlation ≥ 0.3 |
+Tests projection invariants using oracle classes for determinism, dimensionality, value validity, and distance preservation.
+
+| Oracle Class | What It Verifies | Key Metrics |
+|--------------|------------------|-------------|
+| `ProjectionDeterminismOracle` | Projections deterministic across runs | All runs identical (PCA) or similar (UMAP/t-SNE) |
+| `DimensionalityOracle` | Projection dimensions correct | Shape matches n_components |
+| `ProjectionValueValidityOracle` | Projection values finite and bounded | No NaN/Inf, values < max_abs_value |
+| `DistancePreservationOracle` | Projections preserve pairwise distances | Correlation threshold |
 
 ---
 
@@ -232,106 +281,97 @@ Performance tests measure throughput, latency, memory usage, and scaling behavio
 
 ### test_embedding_throughput.py
 
-| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
-|-----------|------------------|-------------------|----------------|
-| `test_short_sequence_latency` | 10 aa embedding latency | FixedEmbedder | Output shape correct |
-| `test_medium_sequence_latency` | ~79 aa embedding latency | FixedEmbedder | Output shape correct |
-| `test_long_sequence_latency` | ~211 aa embedding latency | FixedEmbedder | Output shape correct |
-| `test_very_long_sequence_latency` | 400 aa embedding latency | FixedEmbedder | Output shape correct |
-| `test_small_batch_throughput` | 5 sequence batch throughput | FixedEmbedder | Result count matches |
-| `test_medium_batch_throughput` | 15 sequence batch throughput | FixedEmbedder | Result count matches |
-| `test_large_batch_throughput` | Full dataset batch throughput | FixedEmbedder | Result count matches |
-| `test_pooled_single_sequence` | Single pooled embedding throughput | FixedEmbedder | Shape `(dim,)` |
-| `test_pooled_batch` | Batch pooled embedding throughput | FixedEmbedder | All shapes `(dim,)` |
-| `test_dict_embedding_throughput` | Dict format embedding throughput | FixedEmbedder | Keys preserved |
+| Test Name | What It Verifies | Key Assertions |
+|-----------|------------------|----------------|
+| `test_short_sequence_latency` | 10 aa embedding latency | Output shape correct |
+| `test_medium_sequence_latency` | ~79 aa embedding latency | Output shape correct |
+| `test_long_sequence_latency` | ~211 aa embedding latency | Output shape correct |
+| `test_very_long_sequence_latency` | 400 aa embedding latency | Output shape correct |
+| `test_small_batch_throughput` | 5 sequence batch throughput | Result count matches |
+| `test_medium_batch_throughput` | 15 sequence batch throughput | Result count matches |
+| `test_large_batch_throughput` | Full dataset batch throughput | Result count matches |
+| `test_pooled_single_sequence` | Single pooled embedding throughput | Shape `(dim,)` |
+| `test_pooled_batch` | Batch pooled embedding throughput | All shapes `(dim,)` |
+| `test_dict_embedding_throughput` | Dict format embedding throughput | Keys preserved |
 
 ### test_esm2_throughput.py
 
-| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
-|-----------|------------------|-------------------|----------------|
-| `test_short_sequence_latency` | 10 aa ESM2 latency | Real ESM2 model | Output shape `(len, 320)` |
-| `test_medium_sequence_latency` | ~79 aa ESM2 latency | Real ESM2 model | Output shape correct |
-| `test_long_sequence_latency` | ~211 aa ESM2 latency | Real ESM2 model | Output shape correct |
-| `test_very_long_sequence_latency` | 400 aa ESM2 latency | Real ESM2 model | Output shape correct |
-| `test_canonical_dataset_throughput` | Full dataset ESM2 throughput | Real ESM2 model | All sequences embedded |
-| `test_small_batch_throughput` | Small batch ESM2 throughput | Real ESM2 model | Result count matches |
-| `test_pooled_embedding_latency` | Pooled ESM2 embedding latency | Real ESM2 model | Shape `(320,)` |
-| `test_esm2_vs_fixed_embedder` | ESM2 vs FixedEmbedder comparison | Real ESM2, FixedEmbedder | Both produce valid embeddings |
-| `test_scaling_report` | ESM2 scaling with sequence length | Real ESM2 model | Mean latency > 0 |
+| Test Name | What It Verifies | Key Assertions |
+|-----------|------------------|----------------|
+| `test_short_sequence_latency` | 10 aa ESM2 latency | Output shape `(len, 320)` |
+| `test_medium_sequence_latency` | ~79 aa ESM2 latency | Output shape correct |
+| `test_long_sequence_latency` | ~211 aa ESM2 latency | Output shape correct |
+| `test_very_long_sequence_latency` | 400 aa ESM2 latency | Output shape correct |
+| `test_canonical_dataset_throughput` | Full dataset ESM2 throughput | All sequences embedded |
+| `test_small_batch_throughput` | Small batch ESM2 throughput | Result count matches |
+| `test_pooled_embedding_latency` | Pooled ESM2 embedding latency | Shape `(320,)` |
+| `test_esm2_vs_fixed_embedder` | ESM2 vs FixedEmbedder comparison | Both produce valid embeddings |
+| `test_scaling_report` | ESM2 scaling with sequence length | Mean latency > 0 |
 
 ### test_memory_usage.py
 
-| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
-|-----------|------------------|-------------------|----------------|
-| `test_no_leak_repeated_single_embedding` | No memory leak on repeated single embeds | FixedEmbedder | Memory growth < 100 MB |
-| `test_no_leak_repeated_batch_embedding` | No memory leak on repeated batch embeds | FixedEmbedder | Memory growth < 200 MB |
-| `test_gc_releases_embeddings` | GC properly releases embedding memory | FixedEmbedder | Memory decreases after GC |
-| `test_embedding_memory_size` | Embedding memory matches expected | FixedEmbedder | `nbytes == seq_len * dim * 4` |
-| `test_batch_memory_size` | Batch total memory measured | FixedEmbedder | Total bytes calculated |
-| `test_pooled_vs_per_residue_memory` | Pooled uses <10% of per-residue memory | FixedEmbedder | Pooled < per_residue / 10 |
-| `test_memory_per_dimension` | Memory scales with embedding dimension | FixedEmbedder(various dims) | Sizes recorded |
-| `test_estimate_batch_memory` | Memory estimates for batch configs | FixedEmbedder | Estimates printed |
+| Test Name | What It Verifies | Key Assertions |
+|-----------|------------------|----------------|
+| `test_no_leak_repeated_single_embedding` | No memory leak on repeated single embeds | Memory growth < 100 MB |
+| `test_no_leak_repeated_batch_embedding` | No memory leak on repeated batch embeds | Memory growth < 200 MB |
+| `test_gc_releases_embeddings` | GC properly releases embedding memory | Memory decreases after GC |
+| `test_embedding_memory_size` | Embedding memory matches expected | `nbytes == seq_len * dim * 4` |
+| `test_batch_memory_size` | Batch total memory measured | Total bytes calculated |
+| `test_pooled_vs_per_residue_memory` | Pooled uses <10% of per-residue memory | Pooled < per_residue / 10 |
+| `test_memory_per_dimension` | Memory scales with embedding dimension | Sizes recorded |
+| `test_estimate_batch_memory` | Memory estimates for batch configs | Estimates printed |
 
 ### test_scaling.py
 
-| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
-|-----------|------------------|-------------------|----------------|
-| `test_linear_scaling_with_length` | Time scales O(n) with sequence length | FixedEmbedder | Time ratio < 3x length ratio |
-| `test_collect_scaling_data` | Scaling data collected | FixedEmbedder | Data printed |
-| `test_linear_scaling_with_batch_size` | Time scales O(n) with batch size | FixedEmbedder | Time ratio < 3x size ratio |
-| `test_collect_batch_scaling_data` | Batch scaling data collected | FixedEmbedder | Data printed |
-| `test_batch_vs_sequential` | Batch vs sequential comparison | FixedEmbedder | Results identical, times compared |
+| Test Name | What It Verifies | Key Assertions |
+|-----------|------------------|----------------|
+| `test_linear_scaling_with_length` | Time scales O(n) with sequence length | Time ratio < 3x length ratio |
+| `test_collect_scaling_data` | Scaling data collected | Data printed |
+| `test_linear_scaling_with_batch_size` | Time scales O(n) with batch size | Time ratio < 3x size ratio |
+| `test_collect_batch_scaling_data` | Batch scaling data collected | Data printed |
+| `test_batch_vs_sequential` | Batch vs sequential comparison | Results identical, times compared |
 
 ---
 
 ## Experiment Scripts (Invariants & Metamorphic Relations)
 
-Small-scale experiments in `tests/scripts/` exploring invariants and metamorphic relations of pLM embedding services. Each script has fast FixedEmbedder tests and optional `@pytest.mark.slow` real ESM2 tests. CSV reports are written to `tests/reports/`.
+Small-scale experiments in `tests/scripts/` exploring invariants and metamorphic relations of pLM embedding services. Tests use ESM2-t6-8M model via biotrainer. CSV reports are written to `tests/reports/`.
 
 ### test_idempotency.py
 
-| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
-|-----------|------------------|-------------------|----------------|
-| `test_pooled_embedding_idempotent` (FixedEmbedder) | Same sequence → identical pooled embedding across 5 repeated calls | FixedEmbedder | Cosine distance ≤ 1e-6 for all repeats |
-| `test_per_residue_embedding_idempotent` (FixedEmbedder) | Same sequence → identical per-residue embedding across 5 repeated calls | FixedEmbedder | Cosine distance ≤ 1e-6 for all repeats |
-| `test_pooled_embedding_idempotent` (ESM2) | Same sequence → near-identical pooled embedding with real model | ESM2 via biotrainer | Cosine distance ≤ 1e-5 (GPU non-determinism tolerance) |
+| Test Name | What It Verifies | Key Assertions |
+|-----------|------------------|----------------|
+| `test_pooled_embedding_idempotent` | Same sequence → near-identical pooled embedding across 5 repeated calls | Cosine distance ≤ 1e-5 (GPU non-determinism tolerance) |
 
 ### test_batch_invariance.py
 
-| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
-|-----------|------------------|-------------------|----------------|
-| `test_batch_invariance_pooled` (FixedEmbedder) | Embedding alone vs. in batches of 2/5/10/20 yields identical result | FixedEmbedder | Cosine distance ≤ 1e-6 across all batch sizes |
-| `test_batch_invariance_pooled` (ESM2) | Batch composition invisible to real model output | ESM2 via biotrainer | Cosine distance ≤ 0.01 across all batch sizes |
+| Test Name | What It Verifies | Key Assertions |
+|-----------|------------------|----------------|
+| `test_batch_invariance_pooled` | Embedding alone vs. in batches of 2/5/10/20 yields same result | Cosine distance ≤ 0.01 across all batch sizes |
 
 ### test_projection_determinism.py
 
-| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
-|-----------|------------------|-------------------|----------------|
-| `test_pca_deterministic` | PCA 2D projection identical across two runs | FixedEmbedder, protspace | Max absolute diff < 1e-10 |
-| `test_pca_3d_deterministic` | PCA 3D projection identical across two runs | FixedEmbedder, protspace | Max absolute diff < 1e-10 |
-| `test_umap_consistency` | UMAP produces structurally similar point clouds | FixedEmbedder, protspace | Procrustes distance ≤ 0.3 |
-| `test_tsne_consistency` | t-SNE produces structurally similar point clouds | FixedEmbedder, protspace | Procrustes distance ≤ 0.3 |
+| Test Name | What It Verifies | Key Assertions |
+|-----------|------------------|----------------|
+| `test_pca_deterministic` | PCA 2D projection identical across two runs | Max absolute diff < 1e-10 |
+| `test_pca_3d_deterministic` | PCA 3D projection identical across two runs | Max absolute diff < 1e-10 |
+| `test_umap_consistency` | UMAP produces structurally similar point clouds | Procrustes distance ≤ 0.3 |
+| `test_tsne_consistency` | t-SNE produces structurally similar point clouds | Procrustes distance ≤ 0.3 |
 
 ### test_progressive_x_masking.py
 
-| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
-|-----------|------------------|-------------------|----------------|
-| `test_masking_divergence_profile` (FixedEmbedder) | Divergence curve as 0–100% residues replaced with 'X' | FixedEmbedder | Reports cosine/L2/KL at 13 masking ratios, finds critical ratio r* |
-| `test_masking_with_diverse_sequences` (FixedEmbedder) | X-masking profile on diverse sequence set | FixedEmbedder | CSV report with per-sequence critical ratios |
-| `test_monotonicity_mostly_holds` (FixedEmbedder) | Divergence increases monotonically with masking ratio | FixedEmbedder | Monotonicity violations < 20% of steps |
-| `test_masking_divergence_profile` (ESM2) | Real model divergence curve under X-masking | ESM2 via biotrainer | Reports critical ratio r* for real pLM |
-| `test_monotonicity_mostly_holds` (ESM2) | Monotonicity of real model under X-masking | ESM2 via biotrainer | Monotonicity violations < 30% of steps |
+| Test Name | What It Verifies | Key Assertions |
+|-----------|------------------|----------------|
+| `test_masking_divergence_profile` | Real model divergence curve under X-masking | Reports critical ratio r* for real pLM |
+| `test_monotonicity_mostly_holds` | Monotonicity of real model under X-masking | Monotonicity violations < 30% of steps |
 
 ### test_reversed_sequence.py
 
-| Test Name | What It Verifies | Dependencies/Mocks | Key Assertions |
-|-----------|------------------|-------------------|----------------|
-| `test_reversal_produces_different_embedding` (FixedEmbedder) | Reversed sequence ≠ original embedding (position-awareness) | FixedEmbedder | Cosine distance > 1e-8 |
-| `test_double_reversal_is_identity` (FixedEmbedder) | rev(rev(s)) yields same embedding as s | FixedEmbedder | Cosine distance ≤ 1e-6 |
-| `test_reversal_with_diverse_sequences` (FixedEmbedder) | Reversal sensitivity across diverse sequences | FixedEmbedder | Reports min/max/mean cosine distance |
-| `test_reversal_significantly_different` (ESM2) | Real Transformer is order-sensitive | ESM2 via biotrainer | Cosine distance > 0.001 |
-| `test_double_reversal_is_identity` (ESM2) | Double reversal identity with real model | ESM2 via biotrainer | Cosine distance ≤ 1e-5 |
-| `test_reversal_summary_and_report` (ESM2) | Full reversal + double-reversal report | ESM2 via biotrainer | CSV report written |
+| Test Name | What It Verifies | Key Assertions |
+|-----------|------------------|----------------|
+| `test_reversal_significantly_different` | Real Transformer is order-sensitive | Cosine distance > 0.001 |
+| `test_double_reversal_is_identity` | Double reversal identity with real model | Cosine distance ≤ 1e-5 |
+| `test_reversal_summary_and_report` | Full reversal + double-reversal report | CSV report written |
 
 ---
 
@@ -367,7 +407,4 @@ uv run pytest tests/ -m "not slow"
 
 # Run experiment scripts (invariants & metamorphic relations)
 uv run pytest tests/scripts/ -v -s
-
-# Run experiment scripts including real ESM2 tests
-uv run pytest tests/scripts/ -v -s --run-slow
 ```
