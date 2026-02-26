@@ -250,16 +250,9 @@ jobs:
 
       - name: Run performance benchmarks
         run: |
-          uv run pytest tests/performance/ -v -m "performance" \
+          uv run pytest tests/performance/ -v -n auto -m "performance" \
             --benchmark-json=benchmark_results.json \
             --benchmark-columns=min,max,mean,stddev,rounds \
-            -W "ignore::DeprecationWarning"
-        continue-on-error: true
-
-      - name: Run memory data collection tests
-        run: |
-          uv run pytest tests/performance/test_scaling.py -v -s \
-            -k "collect_scaling_data or collect_batch_scaling_data or batch_vs_sequential" \
             -W "ignore::DeprecationWarning"
         continue-on-error: true
 
