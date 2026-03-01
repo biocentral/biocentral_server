@@ -10,11 +10,12 @@ def get_memory_mb() -> float:
     """Get current process memory (RSS) in MB using psutil."""
     return psutil.Process().memory_info().rss / (1024 * 1024)
 
+
 @pytest.mark.slow
 @pytest.mark.performance
 class TestMemoryLeaks:
     def test_no_leak_repeated_single_embedding(self, esm2_embedder, very_long_sequence):
-        # Memory should not grow with repeated single embeddings 
+        # Memory should not grow with repeated single embeddings
 
         sequence = very_long_sequence
 
@@ -23,7 +24,6 @@ class TestMemoryLeaks:
         gc.collect()
 
         baseline = get_memory_mb()
-
 
         for _ in range(30):
             _ = esm2_embedder.embed(sequence)
@@ -40,13 +40,11 @@ class TestMemoryLeaks:
 
         sequences = large_batch
 
-
         for _ in range(3):
             _ = esm2_embedder.embed_batch(sequences)
         gc.collect()
 
         baseline = get_memory_mb()
-
 
         for _ in range(30):
             _ = esm2_embedder.embed_batch(sequences)
@@ -62,15 +60,15 @@ class TestMemoryLeaks:
         gc.collect()
         baseline = get_memory_mb()
 
-
         embeddings = []
         for _ in range(10):
             emb = esm2_embedder.embed(very_long_sequence)
             embeddings.append(emb)
 
         peak = get_memory_mb()
-        print(f"\nPeak memory after 10 x {len(very_long_sequence)}-residue embeddings: {peak:.1f} MB")
-
+        print(
+            f"\nPeak memory after 10 x {len(very_long_sequence)}-residue embeddings: {peak:.1f} MB"
+        )
 
         del embeddings
         gc.collect()
@@ -79,6 +77,7 @@ class TestMemoryLeaks:
         print(f"Memory baseline: {baseline:.1f} MB")
         print(f"Memory after GC: {after_gc:.1f} MB")
         print(f"Released: {peak - after_gc:.1f} MB")
+
 
 @pytest.mark.slow
 @pytest.mark.performance
@@ -96,7 +95,9 @@ class TestMemoryFootprint:
         actual_bytes = embedding.nbytes
 
         assert actual_bytes == expected_bytes
-        print(f"\n{seq_len}-residue embedding ({embedding_dim}-dim): {actual_bytes / 1024:.1f} KB")
+        print(
+            f"\n{seq_len}-residue embedding ({embedding_dim}-dim): {actual_bytes / 1024:.1f} KB"
+        )
 
     def test_batch_memory_size(self, esm2_embedder, large_batch):
         # Measure total memory for large batch.
@@ -126,13 +127,12 @@ class TestMemoryFootprint:
         print(f"\n{n_seqs} sequences memory comparison:")
         print(f"  Per-residue: {per_residue_mb:.2f} MB")
         print(f"  Pooled:      {pooled_mb:.4f} MB")
-        print(f"  Reduction:   {(1 - pooled_bytes/per_residue_bytes) * 100:.1f}%")
-
+        print(f"  Reduction:   {(1 - pooled_bytes / per_residue_bytes) * 100:.1f}%")
 
         assert pooled_bytes < per_residue_bytes / 10
 
     def test_memory_per_dimension(self, esm2_embedder, medium_sequence):
-        #Measure memory scaling with embedding dimension.
+        # Measure memory scaling with embedding dimension.
         dims = [512, 1024, 1280, 2560]
         results = []
         seq_len = len(medium_sequence)
@@ -148,6 +148,7 @@ class TestMemoryFootprint:
         print("-" * 40)
         for r in results:
             print(f"{r['dim']:>12} {r['kb']:>14.1f}")
+
 
 @pytest.mark.slow
 @pytest.mark.performance

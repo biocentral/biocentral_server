@@ -1,5 +1,3 @@
-# Integration tests for custom models (training and inference) endpoints.
-
 import httpx
 import pytest
 from typing import Dict, List
@@ -15,6 +13,7 @@ STANDARD_SEQUENCES = {
     "standard_002": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
 }
 
+
 def _assert_not_immediate_terminal_failure(client, task_id: str) -> None:
     """Lightweight status check after task submission."""
     status_response = client.get(f"/biocentral_service/task_status/{task_id}")
@@ -29,6 +28,7 @@ def _assert_not_immediate_terminal_failure(client, task_id: str) -> None:
         f"Task {task_id} failed immediately after submission with status={current_status}: "
         f"{dtos[-1].get('error')}"
     )
+
 
 @pytest.fixture
 def classification_training_data() -> List[Dict]:
@@ -47,11 +47,12 @@ def classification_training_data() -> List[Dict]:
         },
         {
             "seq_id": "standard_003",
-            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence, 
+            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
             "label": "membrane",
             "set": "test",
         },
     ]
+
 
 @pytest.fixture
 def real_world_training_data() -> List[Dict]:
@@ -64,6 +65,7 @@ def real_world_training_data() -> List[Dict]:
         },
     ]
 
+
 @pytest.fixture
 def regression_training_data() -> List[Dict]:
     return [
@@ -75,11 +77,13 @@ def regression_training_data() -> List[Dict]:
         },
     ]
 
+
 @pytest.fixture
 def inference_sequences() -> Dict[str, str]:
     return {
         "infer_1": CANONICAL_TEST_DATASET.get_by_id("length_min_1").sequence,
     }
+
 
 @pytest.fixture
 def classification_config() -> Dict:
@@ -105,7 +109,6 @@ def regression_config() -> Dict:
 
 @pytest.mark.order(1)
 class TestConfigOptionsEndpoint:
-
     @pytest.mark.integration
     def test_get_config_options_for_classification(self, client):
         response = client.get("/custom_models_service/config_options/sequence_to_class")
@@ -126,27 +129,29 @@ class TestConfigOptionsEndpoint:
     @pytest.mark.integration
     def test_get_config_options_invalid_protocol(self, client):
         try:
-            response = client.get("/custom_models_service/config_options/invalid_protocol_xyz")
+            response = client.get(
+                "/custom_models_service/config_options/invalid_protocol_xyz"
+            )
         except Exception as e:
             assert e.response.status_code in (400, 500)
             return
-
 
         assert response.status_code in [400, 500]
 
 
 @pytest.mark.order(2)
 class TestVerifyConfigEndpoint:
-
     @pytest.mark.integration
     def test_verify_valid_classification_config(self, client, classification_config):
         try:
             response = client.post(
                 "/custom_models_service/verify_config/",
-                json={"config_dict": classification_config}
+                json={"config_dict": classification_config},
             )
         except httpx.RemoteProtocolError:
-            pytest.skip("Server disconnected (likely restarting due to resource constraints)")
+            pytest.skip(
+                "Server disconnected (likely restarting due to resource constraints)"
+            )
 
         assert response.status_code == 200
         data = response.json()
@@ -156,7 +161,7 @@ class TestVerifyConfigEndpoint:
     def test_verify_valid_regression_config(self, client, regression_config):
         response = client.post(
             "/custom_models_service/verify_config/",
-            json={"config_dict": regression_config}
+            json={"config_dict": regression_config},
         )
 
         assert response.status_code == 200
@@ -172,7 +177,7 @@ class TestVerifyConfigEndpoint:
 
         response = client.post(
             "/custom_models_service/verify_config/",
-            json={"config_dict": invalid_config}
+            json={"config_dict": invalid_config},
         )
 
         assert response.status_code == 200
@@ -183,7 +188,6 @@ class TestVerifyConfigEndpoint:
 
 @pytest.mark.order(5)
 class TestStartTrainingEndpoint:
-
     @pytest.mark.integration
     def test_start_training_with_real_proteins(
         self,
@@ -196,7 +200,7 @@ class TestStartTrainingEndpoint:
             json={
                 "config_dict": classification_config,
                 "training_data": real_world_training_data,
-            }
+            },
         )
 
         assert response.status_code == 200
@@ -215,7 +219,7 @@ class TestStartTrainingEndpoint:
             json={
                 "config_dict": regression_config,
                 "training_data": regression_training_data,
-            }
+            },
         )
 
         assert response.status_code == 200
@@ -233,7 +237,7 @@ class TestStartTrainingEndpoint:
             json={
                 "config_dict": classification_config,
                 "training_data": [],
-            }
+            },
         )
 
         assert response.status_code == 422
@@ -252,14 +256,14 @@ class TestStartTrainingEndpoint:
                     "embedder_name": "invalid",
                 },
                 "training_data": classification_training_data,
-            }
+            },
         )
 
         assert response.status_code in [400, 422]
 
+
 @pytest.mark.order(3)
 class TestStartInferenceEndpoint:
-
     @pytest.mark.integration
     def test_start_inference_empty_sequences_rejected(self, client):
         response = client.post(
@@ -267,9 +271,8 @@ class TestStartInferenceEndpoint:
             json={
                 "model_hash": "some-model",
                 "sequence_data": {},
-            }
+            },
         )
-
 
         assert response.status_code == 422
 
@@ -283,7 +286,7 @@ class TestStartInferenceEndpoint:
             json={
                 "model_hash": "trained-model-123",
                 "sequence_data": STANDARD_SEQUENCES,
-            }
+            },
         )
 
         assert response.status_code in [200, 404]
@@ -294,22 +297,21 @@ class TestStartInferenceEndpoint:
 
 @pytest.mark.order(4)
 class TestModelFilesEndpoint:
-
     @pytest.mark.integration
     def test_get_model_files_nonexistent(self, client):
         try:
             response = client.post(
                 "/custom_models_service/model_files",
-                json={"model_hash": "non-existent-model-xyz"}
+                json={"model_hash": "non-existent-model-xyz"},
             )
 
             assert response.status_code in [404, 500]
         except Exception as e:
             assert "404" in str(e) or "Not Found" in str(e) or "StorageError" in str(e)
 
+
 @pytest.mark.order(7)
 class TestEndToEndTrainInferenceFlow:
-
     @pytest.mark.integration
     @pytest.mark.slow
     def test_train_then_inference_flow(
@@ -329,16 +331,16 @@ class TestEndToEndTrainInferenceFlow:
                 json={
                     "config_dict": classification_config,
                     "training_data": classification_training_data,
-                }
+                },
             )
         except httpx.RemoteProtocolError:
             pytest.skip("Server disconnected")
-        
+
         assert train_response.status_code == 200
         train_task_id = validate_task_response(train_response.json())
 
         train_result = poll_task(train_task_id, timeout=320)
-        
+
         assert train_result is not None
         train_status = train_result.get("status", "").upper()
         if train_status == "FAILED":
@@ -347,7 +349,9 @@ class TestEndToEndTrainInferenceFlow:
 
         assert_task_success(train_result, context="train task")
         biotrainer_result = train_result.get("biotrainer_result", {})
-        assert isinstance(biotrainer_result, dict), "Training result missing biotrainer_result payload"
+        assert isinstance(biotrainer_result, dict), (
+            "Training result missing biotrainer_result payload"
+        )
         model_hash = biotrainer_result.get("derived_values", {}).get("model_hash")
         assert isinstance(model_hash, str) and len(model_hash) > 0, (
             f"model_hash not found in training result payload: {train_result}"
@@ -358,24 +362,30 @@ class TestEndToEndTrainInferenceFlow:
             json={
                 "model_hash": model_hash,
                 "sequence_data": inference_sequences,
-            }
+            },
         )
 
         assert inference_response.status_code == 200
         inference_task_id = validate_task_response(inference_response.json())
 
-        inference_result = poll_task(inference_task_id, timeout=260, require_success=True)
-        
+        inference_result = poll_task(
+            inference_task_id, timeout=260, require_success=True
+        )
+
         assert inference_result is not None
         assert_task_success(inference_result, context="inference task")
         predictions = inference_result.get("predictions")
-        assert isinstance(predictions, dict), f"Inference result missing predictions dict: {inference_result}"
+        assert isinstance(predictions, dict), (
+            f"Inference result missing predictions dict: {inference_result}"
+        )
         assert set(predictions.keys()) == set(inference_sequences.keys()), (
             f"Inference predictions keys {sorted(predictions.keys())} do not match "
             f"input keys {sorted(inference_sequences.keys())}"
         )
         for seq_id, seq_predictions in predictions.items():
-            assert isinstance(seq_predictions, list), f"Predictions for {seq_id} must be list"
+            assert isinstance(seq_predictions, list), (
+                f"Predictions for {seq_id} must be list"
+            )
             assert len(seq_predictions) > 0, f"Predictions list for {seq_id} is empty"
 
     @pytest.mark.integration
@@ -389,21 +399,20 @@ class TestEndToEndTrainInferenceFlow:
         classification_training_data,
     ):
         flush_redis()
-        
 
         train_response = client.post(
             "/custom_models_service/start_training",
             json={
                 "config_dict": classification_config,
                 "training_data": classification_training_data,
-            }
+            },
         )
-        
+
         assert train_response.status_code == 200
         train_task_id = validate_task_response(train_response.json())
 
         train_result = poll_task(train_task_id, timeout=360)
-        
+
         assert train_result is not None
         train_status = train_result.get("status", "").upper()
         if train_status == "FAILED":
@@ -412,33 +421,43 @@ class TestEndToEndTrainInferenceFlow:
 
         assert_task_success(train_result, context="train task for model_files")
         biotrainer_result = train_result.get("biotrainer_result", {})
-        assert isinstance(biotrainer_result, dict), "Training result missing biotrainer_result payload"
+        assert isinstance(biotrainer_result, dict), (
+            "Training result missing biotrainer_result payload"
+        )
         model_hash = biotrainer_result.get("derived_values", {}).get("model_hash")
         assert isinstance(model_hash, str) and len(model_hash) > 0, (
             f"model_hash not found in training result payload: {train_result}"
         )
 
         files_response = client.post(
-            "/custom_models_service/model_files",
-            json={"model_hash": model_hash}
+            "/custom_models_service/model_files", json={"model_hash": model_hash}
         )
 
         assert files_response.status_code == 200
 
         data = files_response.json()
-        expected_keys = {"BIOTRAINER_RESULT", "BIOTRAINER_LOGGING", "BIOTRAINER_CHECKPOINT"}
+        expected_keys = {
+            "BIOTRAINER_RESULT",
+            "BIOTRAINER_LOGGING",
+            "BIOTRAINER_CHECKPOINT",
+        }
         assert expected_keys.issubset(data.keys()), (
             f"model_files response missing expected keys: expected {sorted(expected_keys)}, got {sorted(data.keys())}"
         )
 
-        assert isinstance(data["BIOTRAINER_RESULT"], str), "BIOTRAINER_RESULT should be string"
-        assert isinstance(data["BIOTRAINER_LOGGING"], str), "BIOTRAINER_LOGGING should be string"
-        assert isinstance(data["BIOTRAINER_CHECKPOINT"], dict), "BIOTRAINER_CHECKPOINT should be dict"
+        assert isinstance(data["BIOTRAINER_RESULT"], str), (
+            "BIOTRAINER_RESULT should be string"
+        )
+        assert isinstance(data["BIOTRAINER_LOGGING"], str), (
+            "BIOTRAINER_LOGGING should be string"
+        )
+        assert isinstance(data["BIOTRAINER_CHECKPOINT"], dict), (
+            "BIOTRAINER_CHECKPOINT should be dict"
+        )
 
 
 @pytest.mark.order(6)
 class TestTrainingDataValidation:
-
     @pytest.mark.integration
     def test_training_with_train_val_split(
         self,
@@ -446,8 +465,18 @@ class TestTrainingDataValidation:
         classification_config,
     ):
         training_data = [
-            {"seq_id": "train_1", "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence, "label": "A", "set": "train"},
-            {"seq_id": "val_1", "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence, "label": "B", "set": "val"},
+            {
+                "seq_id": "train_1",
+                "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+                "label": "A",
+                "set": "train",
+            },
+            {
+                "seq_id": "val_1",
+                "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+                "label": "B",
+                "set": "val",
+            },
         ]
 
         response = client.post(
@@ -455,7 +484,7 @@ class TestTrainingDataValidation:
             json={
                 "config_dict": classification_config,
                 "training_data": training_data,
-            }
+            },
         )
 
         assert response.status_code == 200

@@ -17,38 +17,44 @@ from tests.property.oracles.embedding_metrics import (
     get_default_report_path,
     write_metrics_csv,
 )
+
 _oracle_results: List[Dict[str, Any]] = []
 pytestmark = pytest.mark.property
 
+
 def get_oracle_results() -> List[Dict[str, Any]]:
     return _oracle_results
+
 
 def add_oracle_result(result: Dict[str, Any]) -> None:
     if "timestamp" not in result:
         result["timestamp"] = datetime.now().isoformat()
     _oracle_results.append(result)
 
+
 def clear_oracle_results() -> None:
     _oracle_results.clear()
 
-class EmbedderProtocol(Protocol):
-    def embed(self, sequence: str) -> np.ndarray:
-        ...
 
-    def embed_pooled(self, sequence: str) -> np.ndarray:
-        ...
+class EmbedderProtocol(Protocol):
+    def embed(self, sequence: str) -> np.ndarray: ...
+
+    def embed_pooled(self, sequence: str) -> np.ndarray: ...
 
     def embed_batch(
         self, sequences: List[str], pooled: bool = False
-    ) -> List[np.ndarray]:
-        ...
+    ) -> List[np.ndarray]: ...
+
 
 @dataclass
 class OracleConfig:
     embedder_name: str
     cosine_threshold: float
     batch_sizes: List[int] = field(default_factory=lambda: [1, 5, 10])
-    masking_ratios: List[float] = field(default_factory=lambda: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
+    masking_ratios: List[float] = field(
+        default_factory=lambda: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    )
+
 
 ORACLE_CONFIGS = {
     "esm2_t6_8m": OracleConfig(
@@ -56,6 +62,7 @@ ORACLE_CONFIGS = {
         cosine_threshold=0.25,  # Allow some variation in larger batches
     ),
 }
+
 
 class BatchInvarianceOracle:
     # Oracle verifying that embeddings are invariant to batch composition.
@@ -80,7 +87,6 @@ class BatchInvarianceOracle:
         single_embedding = self.embedder.embed_pooled(target_sequence)
 
         for batch_size in self.config.batch_sizes:
-
             batch = self._create_batch(target_sequence, filler_sequences, batch_size)
             target_idx = batch.index(target_sequence)
 
@@ -115,21 +121,22 @@ class BatchInvarianceOracle:
         if batch_size == 1:
             return [target]
 
-
         n_fillers = batch_size - 1
         selected_fillers = []
         for i in range(n_fillers):
             selected_fillers.append(fillers[i % len(fillers)])
 
-
         batch = selected_fillers.copy()
-        seed_material = f"{self.config.embedder_name}:{batch_size}:{target}".encode("utf-8")
+        seed_material = f"{self.config.embedder_name}:{batch_size}:{target}".encode(
+            "utf-8"
+        )
         seed = int.from_bytes(hashlib.sha256(seed_material).digest()[:8], "big")
         rng = random.Random(seed)
         insert_pos = rng.randint(0, len(batch))
         batch.insert(insert_pos, target)
 
         return batch
+
 
 class MaskingRobustnessOracle:
     # Oracle verifying embedding behavior under progressive token masking.
@@ -153,11 +160,9 @@ class MaskingRobustnessOracle:
         # Verify masking robustness for a sequence.
         results = []
 
-
         original_embedding = self.embedder.embed_pooled(sequence)
 
         for ratio in self.config.masking_ratios:
-
             masked_sequence = self._mask_sequence(sequence, ratio, seed)
 
             masked_embedding = self.embedder.embed_pooled(masked_sequence)
@@ -200,13 +205,13 @@ class MaskingRobustnessOracle:
         seq_list = list(sequence)
         n_mask = int(len(sequence) * ratio)
 
-
         positions = rng.sample(range(len(sequence)), n_mask)
 
         for pos in positions:
             seq_list[pos] = self.MASK_TOKEN
 
         return "".join(seq_list)
+
 
 @pytest.fixture(scope="module")
 def esm2_t6_8m_oracle_config() -> OracleConfig:
@@ -227,7 +232,6 @@ def esm2_t6_8m_embedder():
             device=torch.device("cpu"),
         )
 
-
         return ESM2EmbedderWrapper(embedding_service)
 
     except ImportError as e:
@@ -240,6 +244,7 @@ def esm2_t6_8m_embedder():
             f"Failed to load ESM2-T6-8M model. "
             f"Model must be available for oracle tests: {e}"
         )
+
 
 class ESM2EmbedderWrapper:
     # Wrapper to adapt biotrainer EmbeddingService to EmbedderProtocol.
@@ -256,9 +261,7 @@ class ESM2EmbedderWrapper:
     def embed(self, sequence: str) -> np.ndarray:
         records = self._to_records([sequence])
         results = list(
-            self.embedding_service.generate_embeddings(
-                records, reduce=False
-            )
+            self.embedding_service.generate_embeddings(records, reduce=False)
         )
         if results:
             _, embedding = results[0]
@@ -267,11 +270,7 @@ class ESM2EmbedderWrapper:
 
     def embed_pooled(self, sequence: str) -> np.ndarray:
         records = self._to_records([sequence])
-        results = list(
-            self.embedding_service.generate_embeddings(
-                records, reduce=True
-            )
-        )
+        results = list(self.embedding_service.generate_embeddings(records, reduce=True))
         if results:
             _, embedding = results[0]
             return np.array(embedding)
@@ -282,22 +281,22 @@ class ESM2EmbedderWrapper:
     ) -> List[np.ndarray]:
         records = self._to_records(sequences)
         results = list(
-            self.embedding_service.generate_embeddings(
-                records, reduce=pooled
-            )
+            self.embedding_service.generate_embeddings(records, reduce=pooled)
         )
         return [np.array(embedding) for _, embedding in results]
+
 
 @pytest.fixture(scope="module")
 def oracle_sequences() -> List[str]:
     return get_test_sequences(categories=["standard"])
 
+
 @pytest.fixture(scope="module")
 def filler_sequences() -> List[str]:
     return get_test_sequences(categories=["edge_case"])
 
-class TestBatchInvarianceESM2:
 
+class TestBatchInvarianceESM2:
     def test_embedding_matches_across_batch_sizes(
         self,
         esm2_t6_8m_embedder,
@@ -318,13 +317,11 @@ class TestBatchInvarianceESM2:
                 result["sequence_length"] = len(seq)
             all_results.extend(results)
 
-
         table = format_metrics_table(
             all_results,
             title="Batch Invariance Oracle - ESM2-T6-8M",
         )
         print(table)
-
 
         for result in all_results:
             assert result["passed"], (
@@ -336,8 +333,8 @@ class TestBatchInvarianceESM2:
                 f"sequence_length={result.get('sequence_length')}"
             )
 
-class TestMaskingRobustnessESM2:
 
+class TestMaskingRobustnessESM2:
     def test_embedding_stable_under_progressive_masking(
         self,
         esm2_t6_8m_embedder,
@@ -357,13 +354,11 @@ class TestMaskingRobustnessESM2:
                 result["sequence_length"] = len(seq)
             all_results.extend(results)
 
-
         table = format_metrics_table(
             all_results,
             title="Masking Robustness Oracle - ESM2-T6-8M",
         )
         print(table)
-
 
         for result in all_results:
             assert result["passed"], (
@@ -375,6 +370,7 @@ class TestMaskingRobustnessESM2:
                 f"sequence_length={result.get('sequence_length')}"
             )
 
+
 @pytest.fixture(scope="module", autouse=True)
 def write_oracle_report(request):
     yield
@@ -384,6 +380,5 @@ def write_oracle_report(request):
         report_path = get_default_report_path()
         write_metrics_csv(results, report_path)
         print(f"\n📊 Oracle metrics report written to: {report_path}")
-
 
     clear_oracle_results()

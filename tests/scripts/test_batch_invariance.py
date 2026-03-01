@@ -18,6 +18,7 @@ BATCH_SIZES = [2, 5, 10, 20]
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _build_batch(
     target: str,
     fillers: List[str],
@@ -52,7 +53,9 @@ def _run_batch_invariance(
 
         for bs in batch_sizes:
             seed = int.from_bytes(
-                hashlib.sha256(f"{embedder_label}:{seq_idx}:{bs}".encode()).digest()[:4],
+                hashlib.sha256(f"{embedder_label}:{seq_idx}:{bs}".encode()).digest()[
+                    :4
+                ],
                 "big",
             )
             batch = _build_batch(target, filler_sequences, bs, seed)
@@ -63,19 +66,21 @@ def _run_batch_invariance(
 
             metrics = compute_all_metrics(ref_emb, batched_emb)
 
-            results.append({
-                "embedder": embedder_label,
-                "test_type": "batch_invariance",
-                "parameter": f"seq{seq_idx}_batch{bs}",
-                "cosine_distance": metrics["cosine_distance"],
-                "l2_distance": metrics["l2_distance"],
-                "kl_divergence": metrics["kl_divergence"],
-                "threshold": tolerance,
-                "passed": metrics["cosine_distance"] <= tolerance,
-                "sequence_length": len(target),
-                "batch_size": bs,
-                "target_position": target_pos,
-            })
+            results.append(
+                {
+                    "embedder": embedder_label,
+                    "test_type": "batch_invariance",
+                    "parameter": f"seq{seq_idx}_batch{bs}",
+                    "cosine_distance": metrics["cosine_distance"],
+                    "l2_distance": metrics["l2_distance"],
+                    "kl_divergence": metrics["kl_divergence"],
+                    "threshold": tolerance,
+                    "passed": metrics["cosine_distance"] <= tolerance,
+                    "sequence_length": len(target),
+                    "batch_size": bs,
+                    "target_position": target_pos,
+                }
+            )
 
     return results
 
@@ -83,6 +88,7 @@ def _run_batch_invariance(
 # ---------------------------------------------------------------------------
 # ESM2 tests
 # ---------------------------------------------------------------------------
+
 
 class TestBatchInvarianceESM2:
     # Real ESM2 model: padding-induced differences should be negligible (cosine distance ≤ 0.01).

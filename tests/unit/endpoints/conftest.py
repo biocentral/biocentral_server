@@ -12,7 +12,6 @@ def mock_fastapi_limiter():
     # Initialize FastAPILimiter with a mock Redis for all endpoint unit tests.
     from fastapi_limiter import FastAPILimiter
 
-
     mock_redis = MagicMock()
     mock_redis.evalsha = AsyncMock(return_value=0)
     mock_redis.script_load = AsyncMock(return_value="fake_sha")
@@ -26,12 +25,10 @@ def mock_fastapi_limiter():
     async def close_limiter():
         await FastAPILimiter.close()
 
-
     loop = asyncio.new_event_loop()
     loop.run_until_complete(init_limiter())
 
     yield
-
 
     loop.run_until_complete(close_limiter())
     loop.close()
@@ -79,8 +76,10 @@ def mock_embeddings_database():
 @pytest.fixture
 def mock_rate_limiter():
     """Disable rate limiting for tests."""
+
     async def no_rate_limit():
         pass
+
     return no_rate_limit
 
 

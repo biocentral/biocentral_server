@@ -24,7 +24,6 @@ def boundary_length_sequences() -> Dict[str, str]:
 
 @pytest.mark.order(1)
 class TestModelMetadataEndpoint:
-
     @pytest.mark.integration
     def test_get_model_metadata(self, client):
         response = client.get("/prediction_service/model_metadata")
@@ -39,7 +38,6 @@ class TestModelMetadataEndpoint:
     def test_model_metadata_structure(self, client):
         response = client.get("/prediction_service/model_metadata")
         metadata = response.json()["metadata"]
-
 
         for model_meta in metadata:
             assert isinstance(model_meta, dict)
@@ -57,7 +55,6 @@ class TestModelMetadataEndpoint:
 
 @pytest.mark.order(2)
 class TestPredictEndpoint:
-
     @pytest.mark.integration
     def test_predict_invalid_model_rejected(
         self,
@@ -138,5 +135,7 @@ class TestPredictEndpoint:
         task_id = response.json()["task_id"]
         print(f"[PREDICT] Submitted task {task_id}, waiting for completion...")
         result = poll_task(task_id, timeout=280, max_consecutive_errors=15)
-        assert result["status"].upper() == "FINISHED", f"Prediction failed: {result.get('error', 'unknown')}"
+        assert result["status"].upper() == "FINISHED", (
+            f"Prediction failed: {result.get('error', 'unknown')}"
+        )
         print(f"[PREDICT] Task {task_id} completed successfully")

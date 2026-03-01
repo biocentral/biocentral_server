@@ -9,48 +9,56 @@ from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET, get_test_sequenc
 
 class ESM2EmbedderAdapter:
     # Adapter to provide a consistent embed() API for biotrainer's EmbeddingService.
-    
+
     def __init__(self, embedding_service):
         self._service = embedding_service
-    
+
     def _to_records(self, sequences: List[str]) -> List[BiotrainerSequenceRecord]:
         """Convert sequences to BiotrainerSequenceRecord objects."""
         return [
             BiotrainerSequenceRecord(seq_id=f"seq_{i}", seq=seq)
             for i, seq in enumerate(sequences)
         ]
-    
+
     def embed(self, sequence: str) -> np.ndarray:
         # Embed a single sequence, returning per-residue embeddings.
         records = self._to_records([sequence])
-        results = list(self._service.generate_embeddings(
-            records,
-            reduce=False,
-        ))
+        results = list(
+            self._service.generate_embeddings(
+                records,
+                reduce=False,
+            )
+        )
         if results:
             _, embedding = results[0]
             return np.array(embedding)
         raise ValueError(f"Failed to embed sequence: {sequence[:50]}...")
-    
+
     def embed_pooled(self, sequence: str) -> np.ndarray:
         # Embed a single sequence, returning pooled (reduced) embedding.
         records = self._to_records([sequence])
-        results = list(self._service.generate_embeddings(
-            records,
-            reduce=True,
-        ))
+        results = list(
+            self._service.generate_embeddings(
+                records,
+                reduce=True,
+            )
+        )
         if results:
             _, embedding = results[0]
             return np.array(embedding)
         raise ValueError(f"Failed to embed sequence: {sequence[:50]}...")
-    
-    def embed_batch(self, sequences: List[str], pooled: bool = False) -> List[np.ndarray]:
+
+    def embed_batch(
+        self, sequences: List[str], pooled: bool = False
+    ) -> List[np.ndarray]:
         # Embed multiple sequences.
         records = self._to_records(sequences)
-        results = list(self._service.generate_embeddings(
-            records,
-            reduce=pooled,
-        ))
+        results = list(
+            self._service.generate_embeddings(
+                records,
+                reduce=pooled,
+            )
+        )
         return [np.array(emb) for _, emb in results]
 
 
@@ -65,7 +73,7 @@ def esm2_embedder():
     # Real ESM2-t6-8M embedder for performance benchmarking.
     import torch
     from biotrainer.embedders import get_embedding_service
-    
+
     service = get_embedding_service(
         embedder_name="facebook/esm2_t6_8M_UR50D",
         use_half_precision=False,

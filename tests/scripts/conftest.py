@@ -13,6 +13,7 @@ from tests.fixtures.test_dataset import get_test_sequences
 # Markers
 # ---------------------------------------------------------------------------
 
+
 def pytest_configure(config):
     config.addinivalue_line("markers", "slow: mark test to only run with --run-slow")
 
@@ -43,6 +44,7 @@ def reports_dir() -> Path:
 # ---------------------------------------------------------------------------
 # Embedders
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def esm2_embedder():
@@ -85,7 +87,9 @@ class _ESM2Wrapper:
         results = list(self._svc.generate_embeddings(records, reduce=True))
         return np.array(results[0][1]) if results else np.array([])
 
-    def embed_batch(self, sequences: List[str], pooled: bool = False) -> List[np.ndarray]:
+    def embed_batch(
+        self, sequences: List[str], pooled: bool = False
+    ) -> List[np.ndarray]:
         records = self._to_records(sequences)
         results = list(self._svc.generate_embeddings(records, reduce=pooled))
         return [np.array(emb) for _, emb in results]
@@ -94,6 +98,7 @@ class _ESM2Wrapper:
 # ---------------------------------------------------------------------------
 # Canonical sequences
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def standard_sequences() -> List[str]:

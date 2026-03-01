@@ -1,5 +1,3 @@
-"""Server-based embedder that calls the embedding endpoint via HTTP."""
-
 import os
 import time
 import logging
@@ -14,7 +12,7 @@ from biotrainer.utilities import calculate_sequence_hash
 
 class ServerEmbedder:
     # Embedder that calls the server's embedding endpoint.
-    
+
     def __init__(
         self,
         base_url: Optional[str] = None,
@@ -23,29 +21,31 @@ class ServerEmbedder:
         poll_interval: float = 2.0,
     ):
         # Initialize the server embedder.
-        self.base_url = base_url or os.environ.get("CI_SERVER_URL", "http://localhost:9540")
+        self.base_url = base_url or os.environ.get(
+            "CI_SERVER_URL", "http://localhost:9540"
+        )
         self.api_url = f"{self.base_url}/api/v1"
         self.embedder_name = embedder_name
         self.model_name = embedder_name
         self.timeout = timeout
         self.poll_interval = poll_interval
-        
 
         self._use_fixed_embedder = os.environ.get("CI_EMBEDDER", "").lower() == "fixed"
         self._fixed_embedder = None
-        
+
         if self._use_fixed_embedder:
             from tests.fixtures.fixed_embedder import FixedEmbedder
-            self._fixed_embedder = FixedEmbedder(model_name="esm2_t6", strict_dataset=False)
+
+            self._fixed_embedder = FixedEmbedder(
+                model_name="esm2_t6", strict_dataset=False
+            )
             logging.info("ServerEmbedder: Using FixedEmbedder mode (CI_EMBEDDER=fixed)")
-        
 
         self.db_host = os.environ.get("POSTGRES_HOST", "localhost")
         self.db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
         self.db_name = os.environ.get("POSTGRES_DB", "embeddings_db")
         self.db_user = os.environ.get("POSTGRES_USER", "embeddingsuser")
         self.db_pass = os.environ.get("POSTGRES_PASSWORD", "embeddingspwd")
-        
 
         transport = httpx.HTTPTransport(retries=3)
         self.client = httpx.Client(
@@ -53,64 +53,65 @@ class ServerEmbedder:
             timeout=httpx.Timeout(timeout, connect=10.0),
             transport=transport,
         )
-    
+
     def _submit_embed_task(
         self,
         sequences: Dict[str, str],
         reduce: bool = False,
     ) -> str:
-        """Submit an embedding task and return the task ID."""
         request_data = {
             "embedder_name": self.embedder_name,
             "reduce": reduce,
             "sequence_data": sequences,
             "use_half_precision": False,
         }
-        
+
         response = self.client.post("/embeddings_service/embed", json=request_data)
-        
+
         if response.status_code != 200:
-            raise RuntimeError(f"Failed to submit embedding task: {response.status_code} - {response.text}")
-        
+            raise RuntimeError(
+                f"Failed to submit embedding task: {response.status_code} - {response.text}"
+            )
+
         return response.json()["task_id"]
-    
+
     def _poll_task(self, task_id: str) -> Dict:
-        """Poll task until completion and return the result."""
         start = time.time()
-        
+
         while time.time() - start < self.timeout:
             response = self.client.get(f"/biocentral_service/task_status/{task_id}")
-            
+
             if response.status_code != 200:
                 logging.warning(f"Poll returned {response.status_code}, retrying...")
                 time.sleep(self.poll_interval)
                 continue
-            
+
             dtos = response.json().get("dtos", [])
             if not dtos:
                 time.sleep(self.poll_interval)
                 continue
-            
+
             latest = dtos[-1]
             status = latest.get("status", "").upper()
-            
+
             if status in ("FINISHED", "COMPLETED", "DONE"):
                 return latest
             elif status in ("FAILED", "ERROR"):
-                raise RuntimeError(f"Embedding task failed: {latest.get('error', 'unknown')}")
-            
+                raise RuntimeError(
+                    f"Embedding task failed: {latest.get('error', 'unknown')}"
+                )
+
             time.sleep(self.poll_interval)
-        
+
         raise TimeoutError(f"Task {task_id} did not complete within {self.timeout}s")
-    
+
     def _get_embedding_from_db(
         self,
         sequence: str,
         reduce: bool = False,
     ) -> Optional[np.ndarray]:
-        """Retrieve a single embedding from the PostgreSQL database."""
         seq_hash = calculate_sequence_hash(sequence)
-        
+
         with psycopg.connect(
             host=self.db_host,
             port=self.db_port,
@@ -128,12 +129,12 @@ class ServerEmbedder:
                     (seq_hash, self.embedder_name),
                 )
                 row = cur.fetchone()
-                
+
                 if row and row[0]:
                     return blosc2.unpack_array(row[0])
-        
+
         return None
-    
+
     def _compute_and_save_fixed_embedding(
         self,
         sequence: str,
@@ -141,24 +142,22 @@ class ServerEmbedder:
     ) -> np.ndarray:
         # Compute embedding using FixedEmbedder and save to database.
         from datetime import datetime
-        
 
         if reduce:
             embedding = self._fixed_embedder.embed_pooled(sequence)
         else:
             embedding = self._fixed_embedder.embed(sequence)
-        
 
         seq_hash = calculate_sequence_hash(sequence)
         seq_len = len(sequence)
-        
+
         if reduce:
             per_seq_compressed = blosc2.pack_array(embedding)
             per_res_compressed = None
         else:
             per_seq_compressed = None
             per_res_compressed = blosc2.pack_array(embedding)
-        
+
         with psycopg.connect(
             host=self.db_host,
             port=self.db_port,
@@ -177,11 +176,17 @@ class ServerEmbedder:
                         per_sequence = COALESCE(EXCLUDED.per_sequence, embeddings.per_sequence),
                         per_residue = COALESCE(EXCLUDED.per_residue, embeddings.per_residue)
                     """,
-                    (seq_hash, seq_len, datetime.now(), self.embedder_name,
-                     per_seq_compressed, per_res_compressed),
+                    (
+                        seq_hash,
+                        seq_len,
+                        datetime.now(),
+                        self.embedder_name,
+                        per_seq_compressed,
+                        per_res_compressed,
+                    ),
                 )
             conn.commit()
-        
+
         return embedding
 
     def embed(self, sequence: str) -> np.ndarray:
@@ -189,45 +194,39 @@ class ServerEmbedder:
 
         if self._use_fixed_embedder:
             return self._compute_and_save_fixed_embedding(sequence, reduce=False)
-        
+
         sequences = {"seq_0": sequence}
-        
 
         task_id = self._submit_embed_task(sequences, reduce=False)
-        
 
         self._poll_task(task_id)
-        
 
         embedding = self._get_embedding_from_db(sequence, reduce=False)
-        
+
         if embedding is None:
             raise RuntimeError("Embedding not found in database after task completion")
-        
+
         return embedding
-    
+
     def embed_pooled(self, sequence: str) -> np.ndarray:
         # Embed a single sequence, returning pooled (reduced) embedding.
 
         if self._use_fixed_embedder:
             return self._compute_and_save_fixed_embedding(sequence, reduce=True)
-        
+
         sequences = {"seq_0": sequence}
-        
 
         task_id = self._submit_embed_task(sequences, reduce=True)
-        
 
         self._poll_task(task_id)
-        
 
         embedding = self._get_embedding_from_db(sequence, reduce=True)
-        
+
         if embedding is None:
             raise RuntimeError("Embedding not found in database after task completion")
-        
+
         return embedding
-    
+
     def embed_batch(
         self,
         sequences: List[str],
@@ -240,29 +239,25 @@ class ServerEmbedder:
                 self._compute_and_save_fixed_embedding(seq, reduce=pooled)
                 for seq in sequences
             ]
-        
+
         seq_dict = {f"seq_{i}": seq for i, seq in enumerate(sequences)}
-        
 
         task_id = self._submit_embed_task(seq_dict, reduce=pooled)
-        
 
         self._poll_task(task_id)
-        
 
         embeddings = []
         for seq in sequences:
             emb = self._get_embedding_from_db(seq, reduce=pooled)
             embeddings.append(emb if emb is not None else np.array([]))
-        
+
         return embeddings
-    
+
     def close(self):
-        """Close the HTTP client."""
         self.client.close()
-    
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, *args):
         self.close()

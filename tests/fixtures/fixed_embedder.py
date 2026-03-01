@@ -5,6 +5,7 @@ import numpy as np
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
 
+
 @dataclass
 class FixedEmbedderConfig:
     embedding_dim: int = 320
@@ -21,6 +22,7 @@ class FixedEmbedderConfig:
             "esm2_t12": 480,
         }
     )
+
 
 class FixedEmbedder:
     # The embeddings are generated using a seeded random number generator
@@ -40,7 +42,6 @@ class FixedEmbedder:
         self.model_name = model_name
         self.config = FixedEmbedderConfig(seed_base=seed_base, noise_scale=noise_scale)
 
-
         if embedding_dim is not None:
             self.embedding_dim = embedding_dim
         else:
@@ -52,17 +53,16 @@ class FixedEmbedder:
         self.noise_scale = noise_scale
         self.strict_dataset = strict_dataset
 
-
         self._allowed_sequences: Optional[set] = None
         if self.strict_dataset:
             self._allowed_sequences = self._load_canonical_sequences()
-
 
         self._aa_embeddings = self._generate_aa_base_embeddings()
 
     def _load_canonical_sequences(self) -> set:
         # Load allowed sequences from canonical test dataset.
         from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
+
         return set(CANONICAL_TEST_DATASET.get_all_sequences())
 
     def _validate_sequence(self, sequence: str) -> None:
@@ -87,12 +87,11 @@ class FixedEmbedder:
         return seed
 
     def _generate_aa_base_embeddings(self) -> Dict[str, np.ndarray]:
-        #Generate base embeddings for each amino acid.
+        # Generate base embeddings for each amino acid.
         aa_embeddings = {}
         all_aas = sorted(self.EXTENDED_AMINO_ACIDS | {"X", "-", "*"})
 
         for i, aa in enumerate(all_aas):
-
             rng = np.random.default_rng(self.seed_base + i * 1000)
 
             base = rng.standard_normal(self.embedding_dim).astype(np.float32)
@@ -115,22 +114,17 @@ class FixedEmbedder:
         if not sequence:
             return np.zeros((0, self.embedding_dim), dtype=np.float32)
 
-
         self._validate_sequence(sequence)
 
         seq_len = len(sequence)
 
-
         seq_seed = self._sequence_to_seed(sequence)
         rng = np.random.default_rng(seq_seed)
-
 
         embeddings = np.zeros((seq_len, self.embedding_dim), dtype=np.float32)
 
         for pos, aa in enumerate(sequence):
-
             aa_base = self._get_aa_embedding(aa.upper())
-
 
             pos_seed = seq_seed + pos * 100
             pos_rng = np.random.default_rng(pos_seed)
@@ -138,16 +132,12 @@ class FixedEmbedder:
                 pos_rng.standard_normal(self.embedding_dim).astype(np.float32) * 0.3
             )
 
-
             noise = (
                 rng.standard_normal(self.embedding_dim).astype(np.float32)
                 * self.noise_scale
             )
 
-
             embeddings[pos] = aa_base + positional + noise
-
-
 
         embeddings = embeddings / np.std(embeddings) * 1.0
 
@@ -195,6 +185,7 @@ class FixedEmbedder:
             f"embedding_dim={self.embedding_dim}, seed_base={self.seed_base})"
         )
 
+
 class FixedEmbedderRegistry:
     # Registry for FixedEmbedder instances with different configurations.
 
@@ -230,6 +221,7 @@ def get_fixed_embedder(
     # Get a FixedEmbedder for the specified model.
     return FixedEmbedderRegistry.get_embedder(model_name, strict_dataset=strict_dataset)
 
+
 def generate_test_embeddings(
     sequences: List[str],
     model_name: str = "esm2_t6",
@@ -238,6 +230,7 @@ def generate_test_embeddings(
     # Convenience function to generate test embeddings.
     embedder = get_fixed_embedder(model_name)
     return embedder.embed_batch(sequences, pooled=pooled)
+
 
 def generate_test_embeddings_dict(
     sequences: Dict[str, str],
@@ -323,10 +316,9 @@ def assert_embedding_valid(
     pooled: bool = False,
 ) -> None:
     # Assert that an embedding is valid, raising AssertionError if not.
-    assert validate_embedding_shape(
-        embedding, sequence_length, model_name, pooled
-    ), f"Invalid shape: {embedding.shape}"
-
+    assert validate_embedding_shape(embedding, sequence_length, model_name, pooled), (
+        f"Invalid shape: {embedding.shape}"
+    )
 
     props = validate_embedding_properties(embedding, model_name)
     for prop_name, is_valid in props.items():

@@ -13,6 +13,7 @@ from tests.property.oracles.embedding_metrics import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _reverse_sequence(seq: str) -> str:
     return seq[::-1]
 
@@ -33,19 +34,21 @@ def _run_reversal_experiment(
 
         metrics = compute_all_metrics(orig_emb, rev_emb)
 
-        results.append({
-            "embedder": embedder_label,
-            "test_type": "reversed_sequence",
-            "parameter": f"seq{seq_idx}_len{len(seq)}",
-            "cosine_distance": metrics["cosine_distance"],
-            "l2_distance": metrics["l2_distance"],
-            "kl_divergence": metrics["kl_divergence"],
-            "threshold": 0.0,  # exploratory — no hard threshold
-            "passed": True,
-            "sequence_length": len(seq),
-            "original_prefix": seq[:20],
-            "reversed_prefix": rev_seq[:20],
-        })
+        results.append(
+            {
+                "embedder": embedder_label,
+                "test_type": "reversed_sequence",
+                "parameter": f"seq{seq_idx}_len{len(seq)}",
+                "cosine_distance": metrics["cosine_distance"],
+                "l2_distance": metrics["l2_distance"],
+                "kl_divergence": metrics["kl_divergence"],
+                "threshold": 0.0,  # exploratory — no hard threshold
+                "passed": True,
+                "sequence_length": len(seq),
+                "original_prefix": seq[:20],
+                "reversed_prefix": rev_seq[:20],
+            }
+        )
 
     return results
 
@@ -68,17 +71,19 @@ def _run_double_reversal_experiment(
 
         metrics = compute_all_metrics(orig_emb, double_rev_emb)
 
-        results.append({
-            "embedder": embedder_label,
-            "test_type": "double_reversal",
-            "parameter": f"seq{seq_idx}",
-            "cosine_distance": metrics["cosine_distance"],
-            "l2_distance": metrics["l2_distance"],
-            "kl_divergence": metrics["kl_divergence"],
-            "threshold": tolerance,
-            "passed": metrics["cosine_distance"] <= tolerance,
-            "sequence_length": len(seq),
-        })
+        results.append(
+            {
+                "embedder": embedder_label,
+                "test_type": "double_reversal",
+                "parameter": f"seq{seq_idx}",
+                "cosine_distance": metrics["cosine_distance"],
+                "l2_distance": metrics["l2_distance"],
+                "kl_divergence": metrics["kl_divergence"],
+                "threshold": tolerance,
+                "passed": metrics["cosine_distance"] <= tolerance,
+                "sequence_length": len(seq),
+            }
+        )
 
     return results
 
@@ -86,9 +91,9 @@ def _run_double_reversal_experiment(
 def _summarise_reversal(results: List[Dict[str, Any]], label: str) -> str:
     # Human-readable summary of reversal experiment.
     lines = [
-        f"\n{'='*80}",
+        f"\n{'=' * 80}",
         f"  Reversed Sequence Summary — {label}",
-        f"{'='*80}",
+        f"{'=' * 80}",
     ]
 
     rev_results = [r for r in results if r["test_type"] == "reversed_sequence"]
@@ -109,7 +114,9 @@ def _summarise_reversal(results: List[Dict[str, Any]], label: str) -> str:
     dbl_results = [r for r in results if r["test_type"] == "double_reversal"]
     if dbl_results:
         all_pass = all(r["passed"] for r in dbl_results)
-        lines.append(f"  Double-reversal identity: {'ALL PASS' if all_pass else 'SOME FAILED'}")
+        lines.append(
+            f"  Double-reversal identity: {'ALL PASS' if all_pass else 'SOME FAILED'}"
+        )
 
     lines.append("")
     return "\n".join(lines)
@@ -118,6 +125,7 @@ def _summarise_reversal(results: List[Dict[str, Any]], label: str) -> str:
 # ---------------------------------------------------------------------------
 # ESM2 experiments
 # ---------------------------------------------------------------------------
+
 
 class TestReversedSequenceESM2:
     # Real ESM2-T6-8M: Transformer positional encodings should make the model order-sensitive.
@@ -187,4 +195,6 @@ class TestReversedSequenceESM2:
 
         all_results = rev_results + dbl_results
         print(_summarise_reversal(all_results, "esm2_t6_8m (diverse)"))
-        write_metrics_csv(all_results, reports_dir / "reversed_sequence_esm2_diverse.csv")
+        write_metrics_csv(
+            all_results, reports_dir / "reversed_sequence_esm2_diverse.csv"
+        )

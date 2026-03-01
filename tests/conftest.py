@@ -1,11 +1,11 @@
 """Shared pytest fixtures for biocentral_server tests."""
 
-
-
 import os
-if os.environ.get('CI') or not os.environ.get('DISPLAY'):
+
+if os.environ.get("CI") or not os.environ.get("DISPLAY"):
     import matplotlib
-    matplotlib.use('Agg')
+
+    matplotlib.use("Agg")
 import pytest
 import numpy as np
 from typing import Dict, List, Tuple
@@ -67,8 +67,18 @@ def fixed_embedder_esm2_t36() -> FixedEmbedder:
 def fixed_embedder_factory():
     """Factory fixture for creating FixedEmbedders with custom config."""
 
-    def _factory(model_name: str = "prot_t5", seed_base: int = 42, strict_dataset: bool = False, **kwargs):
-        return FixedEmbedder(model_name=model_name, seed_base=seed_base, strict_dataset=strict_dataset, **kwargs)
+    def _factory(
+        model_name: str = "prot_t5",
+        seed_base: int = 42,
+        strict_dataset: bool = False,
+        **kwargs,
+    ):
+        return FixedEmbedder(
+            model_name=model_name,
+            seed_base=seed_base,
+            strict_dataset=strict_dataset,
+            **kwargs,
+        )
 
     return _factory
 
@@ -80,6 +90,7 @@ def single_sequence() -> List[str]:
         "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSLEVGN"
     ]
 
+
 @pytest.fixture(scope="session")
 def five_sequences() -> List[str]:
     """Five test sequences of varying lengths (same as triton tests)."""
@@ -90,6 +101,7 @@ def five_sequences() -> List[str]:
         "MASMTGGQQMGRGSGMMGMGGMQGGFMGQMMGGGGFMGGMMMGGFMGGGMMGFMGGMMMGGMMGFMGGGMRP",
         "MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGAFSDGLAHLDNLKGTFATLSELHCDKLHVDPENFRLLGNVLVCVLAHHFGKEFTPPVQAAYQKVVAGVANALAHKYH",
     ]
+
 
 @pytest.fixture(scope="session")
 def edge_case_sequences() -> List[str]:
@@ -114,6 +126,7 @@ def prot_t5_embeddings_single(
     """Pre-computed ProtT5 embeddings for single sequence."""
     return fixed_embedder_prot_t5.embed_batch(single_sequence, pooled=False)
 
+
 @pytest.fixture(scope="session")
 def prot_t5_embeddings_batch(
     fixed_embedder_prot_t5: FixedEmbedder,
@@ -121,6 +134,7 @@ def prot_t5_embeddings_batch(
 ) -> List[np.ndarray]:
     """Pre-computed ProtT5 embeddings for 5 sequences."""
     return fixed_embedder_prot_t5.embed_batch(five_sequences, pooled=False)
+
 
 @pytest.fixture(scope="session")
 def esm2_t33_embeddings_single(
@@ -130,6 +144,7 @@ def esm2_t33_embeddings_single(
     """Pre-computed ESM2-T33 embeddings for single sequence."""
     return fixed_embedder_esm2_t33.embed_batch(single_sequence, pooled=False)
 
+
 @pytest.fixture(scope="session")
 def esm2_t33_embeddings_batch(
     fixed_embedder_esm2_t33: FixedEmbedder,
@@ -138,6 +153,7 @@ def esm2_t33_embeddings_batch(
     """Pre-computed ESM2-T33 embeddings for 5 sequences."""
     return fixed_embedder_esm2_t33.embed_batch(five_sequences, pooled=False)
 
+
 @pytest.fixture(scope="session")
 def esm2_t36_embeddings_single(
     fixed_embedder_esm2_t36: FixedEmbedder,
@@ -145,6 +161,7 @@ def esm2_t36_embeddings_single(
 ) -> List[np.ndarray]:
     """Pre-computed ESM2-T36 embeddings for single sequence."""
     return fixed_embedder_esm2_t36.embed_batch(single_sequence, pooled=False)
+
 
 @pytest.fixture(scope="session")
 def esm2_t36_embeddings_batch(
@@ -159,9 +176,11 @@ def _sequences_to_dict(sequences: List[str]) -> Dict[str, str]:
     """Convert list of sequences to dict format."""
     return {f"seq{i}": seq for i, seq in enumerate(sequences)}
 
+
 def _embeddings_to_dict(embeddings: List[np.ndarray]) -> Dict[str, np.ndarray]:
     """Convert list of embeddings to dict format."""
     return {f"seq{i}": emb for i, emb in enumerate(embeddings)}
+
 
 def _convert_to_model_input(
     sequences: List[str],
@@ -169,6 +188,7 @@ def _convert_to_model_input(
 ) -> Tuple[Dict[str, str], Dict[str, np.ndarray]]:
     """Convert lists to dict format expected by prediction models."""
     return _sequences_to_dict(sequences), _embeddings_to_dict(embeddings)
+
 
 @pytest.fixture(scope="session")
 def prot_t5_model_input_single(
@@ -178,6 +198,7 @@ def prot_t5_model_input_single(
     """ProtT5 embeddings in model input format (single sequence)."""
     return _convert_to_model_input(single_sequence, prot_t5_embeddings_single)
 
+
 @pytest.fixture(scope="session")
 def prot_t5_model_input_batch(
     five_sequences: List[str],
@@ -185,6 +206,7 @@ def prot_t5_model_input_batch(
 ) -> Tuple[Dict[str, str], Dict[str, np.ndarray]]:
     """ProtT5 embeddings in model input format (5 sequences)."""
     return _convert_to_model_input(five_sequences, prot_t5_embeddings_batch)
+
 
 @pytest.fixture(scope="session")
 def esm2_t33_model_input_single(
@@ -194,6 +216,7 @@ def esm2_t33_model_input_single(
     """ESM2-T33 embeddings in model input format (single sequence)."""
     return _convert_to_model_input(single_sequence, esm2_t33_embeddings_single)
 
+
 @pytest.fixture(scope="session")
 def esm2_t33_model_input_batch(
     five_sequences: List[str],
@@ -202,6 +225,7 @@ def esm2_t33_model_input_batch(
     """ESM2-T33 embeddings in model input format (5 sequences)."""
     return _convert_to_model_input(five_sequences, esm2_t33_embeddings_batch)
 
+
 @pytest.fixture(scope="session")
 def esm2_t36_model_input_single(
     single_sequence: List[str],
@@ -209,6 +233,7 @@ def esm2_t36_model_input_single(
 ) -> Tuple[Dict[str, str], Dict[str, np.ndarray]]:
     """ESM2-T36 embeddings in model input format (single sequence)."""
     return _convert_to_model_input(single_sequence, esm2_t36_embeddings_single)
+
 
 @pytest.fixture(scope="session")
 def esm2_t36_model_input_batch(
@@ -230,9 +255,7 @@ def reset_registry_for_isolated_tests(request):
 def pytest_collection_modifyitems(session, config, items):
     # Ensure embed tests run before projection tests.
     def get_test_priority(item):
-
-        test_file = item.fspath.basename if hasattr(item, 'fspath') else ""
-        
+        test_file = item.fspath.basename if hasattr(item, "fspath") else ""
 
         if "test_embed" in test_file:
             return 0
@@ -240,6 +263,10 @@ def pytest_collection_modifyitems(session, config, items):
             return 1
         else:
             return 2
-    
 
-    items.sort(key=lambda item: (get_test_priority(item), items.index(item) if item in items else 0))
+    items.sort(
+        key=lambda item: (
+            get_test_priority(item),
+            items.index(item) if item in items else 0,
+        )
+    )

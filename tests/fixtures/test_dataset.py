@@ -35,7 +35,6 @@ class TestDataset:
 
 CANONICAL_TEST_DATASET = TestDataset(
     sequences=[
-
         TestSequence(
             id="standard_001",
             sequence="MKTAYIAKQRQISFV",
@@ -51,7 +50,6 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MVHLTPEEKSAVTALWGALG",
             description="Hemoglobin-like sequence (20 aa)",
         ),
-
         TestSequence(
             id="length_min_1",
             sequence="M",
@@ -87,7 +85,6 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MKTAYIAK" * 50,
             description="Very long repetitive sequence (400 aa)",
         ),
-
         TestSequence(
             id="unknown_single",
             sequence="X",
@@ -123,7 +120,6 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MXXXXXKXXXXXAXXXX",
             description="High ratio of unknown residues (~70%)",
         ),
-
         TestSequence(
             id="all_standard_aa",
             sequence="ACDEFGHIKLMNPQRSTVWY",
@@ -159,7 +155,6 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MCCKCCMCCKCCKCCMCCKCCKCCM",
             description="Cysteine-rich sequence (25 aa) - disulfide potential",
         ),
-
         TestSequence(
             id="ambiguous_B",
             sequence="MKTABIAK",
@@ -185,7 +180,6 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="MKTAOIAK",
             description="Contains O (Pyrrolysine)",
         ),
-
         TestSequence(
             id="motif_alpha_helix",
             sequence="AEEAAKAAEEAAKAAEEAAKAAEEAAK",
@@ -201,7 +195,6 @@ CANONICAL_TEST_DATASET = TestDataset(
             sequence="GGGGGGGGGGGGGGG",
             description="Glycine-rich flexible loop (15 aa)",
         ),
-
         TestSequence(
             id="real_insulin_b",
             sequence="FVNQHLCGSHLVEALYLVCGERGFFYTPKT",
@@ -226,7 +219,6 @@ def get_test_sequences(categories: Optional[List[str]] = None) -> List[str]:
     if categories is None:
         return CANONICAL_TEST_DATASET.get_all_sequences()
 
-
     category_prefixes = {
         "standard": ["standard_"],
         "length": ["length_"],
@@ -235,17 +227,26 @@ def get_test_sequences(categories: Optional[List[str]] = None) -> List[str]:
         "homopolymer": ["homopolymer_"],
         "motif": ["motif_"],
         "real": ["real_"],
-        "edge_case": ["length_", "unknown_", "ambiguous_", "homopolymer_", "motif_",
-                      "selenocysteine", "pyrrolysine", "hydrophobic_", "charged_",
-                      "proline_", "cysteine_", "all_standard_aa"],
+        "edge_case": [
+            "length_",
+            "unknown_",
+            "ambiguous_",
+            "homopolymer_",
+            "motif_",
+            "selenocysteine",
+            "pyrrolysine",
+            "hydrophobic_",
+            "charged_",
+            "proline_",
+            "cysteine_",
+            "all_standard_aa",
+        ],
     }
-
 
     prefixes = []
     for cat in categories:
         if cat in category_prefixes:
             prefixes.extend(category_prefixes[cat])
-
 
     result = []
     for seq in CANONICAL_TEST_DATASET.sequences:
@@ -272,7 +273,6 @@ def get_test_embeddings(
 
 
 def get_dataset_statistics() -> Dict:
-    """Get statistics about the canonical test dataset."""
     sequences = CANONICAL_TEST_DATASET.get_all_sequences()
     lengths = [len(s) for s in sequences]
 

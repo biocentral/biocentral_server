@@ -3,11 +3,7 @@
 import numpy as np
 import pytest
 from typing import List
- 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _embed_sequences(embedder, sequences: List[str]) -> np.ndarray:
     # Return a (N, D) matrix of pooled embeddings.
@@ -15,7 +11,9 @@ def _embed_sequences(embedder, sequences: List[str]) -> np.ndarray:
     return np.stack(embs)
 
 
-def _project(data: np.ndarray, method: str, n_components: int = 2, **kwargs) -> np.ndarray:
+def _project(
+    data: np.ndarray, method: str, n_components: int = 2, **kwargs
+) -> np.ndarray:
     # Run protspace projection and return (N, n_components) array.
     try:
         from protspace.utils import REDUCERS
@@ -32,16 +30,15 @@ def _project(data: np.ndarray, method: str, n_components: int = 2, **kwargs) -> 
     )
     # Extract coordinates - handle both dict (new API) and Reduction object (old API)
     if isinstance(reduction, dict):
-        coords = np.column_stack([
-            reduction[f"D{d+1}"]
-            for d in range(n_components)
-        ])
+        coords = np.column_stack([reduction[f"D{d + 1}"] for d in range(n_components)])
     else:
         # Reduction object with .result Arrow table
-        coords = np.column_stack([
-            reduction.result.column(f"D{d+1}").to_pylist()
-            for d in range(n_components)
-        ])
+        coords = np.column_stack(
+            [
+                reduction.result.column(f"D{d + 1}").to_pylist()
+                for d in range(n_components)
+            ]
+        )
     return coords
 
 
@@ -64,10 +61,6 @@ def _procrustes_distance(A: np.ndarray, B: np.ndarray) -> float:
     A_rot = A_c @ R
     return float(np.linalg.norm(A_rot - B_c))
 
-
-# ---------------------------------------------------------------------------
-# PCA determinism (exact)
-# ---------------------------------------------------------------------------
 
 class TestPCADeterminism:
     # PCA is a closed-form decomposition; two runs must be bit-identical.
@@ -94,7 +87,9 @@ class TestPCADeterminism:
             "procrustes_distance": procrustes,
             "passed": diff < 1e-10,
         }
-        print(f"\n[PCA Determinism] max_abs_diff={diff:.2e}, procrustes={procrustes:.2e}")
+        print(
+            f"\n[PCA Determinism] max_abs_diff={diff:.2e}, procrustes={procrustes:.2e}"
+        )
         assert result["passed"], f"PCA not deterministic: max_abs_diff={diff}"
 
     def test_pca_3d_deterministic(
@@ -111,10 +106,6 @@ class TestPCADeterminism:
         assert diff < 1e-10, f"PCA-3D not deterministic: max_abs_diff={diff}"
 
 
-# ---------------------------------------------------------------------------
-# UMAP / t-SNE structural consistency (stochastic)
-# ---------------------------------------------------------------------------
-
 class TestStochasticProjectionConsistency:
     # UMAP and t-SNE are stochastic; check that two runs produce similar point-cloud shapes.
 
@@ -129,10 +120,12 @@ class TestStochasticProjectionConsistency:
         data = _embed_sequences(esm2_embedder, diverse_sequences)
         n_neighbors = min(5, len(diverse_sequences) - 1)
 
-        coords_1 = _project(data, method="umap", n_components=2,
-                            n_neighbors=n_neighbors, min_dist=0.1)
-        coords_2 = _project(data, method="umap", n_components=2,
-                            n_neighbors=n_neighbors, min_dist=0.1)
+        coords_1 = _project(
+            data, method="umap", n_components=2, n_neighbors=n_neighbors, min_dist=0.1
+        )
+        coords_2 = _project(
+            data, method="umap", n_components=2, n_neighbors=n_neighbors, min_dist=0.1
+        )
 
         procrustes = _procrustes_distance(coords_1, coords_2)
         print(f"\n[UMAP Consistency] Procrustes distance = {procrustes:.6f}")

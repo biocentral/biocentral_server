@@ -1,5 +1,3 @@
-# Integration tests for embeddings endpoints.
-
 import pytest
 
 from tests.integration.endpoints.conftest import (
@@ -11,7 +9,6 @@ from tests.integration.endpoints.conftest import (
 
 @pytest.mark.order(1)
 class TestCommonEmbeddersEndpoint:
-
     @pytest.mark.integration
     def test_common_embedders_returns_list(self, client):
         response = client.get("/embeddings_service/common_embedders")
@@ -27,7 +24,6 @@ class TestCommonEmbeddersEndpoint:
 
         assert response.status_code == 200
         embedders = response.json()
-        
 
         assert "one_hot_encoding" in embedders
         assert "blosum62" in embedders
@@ -44,7 +40,6 @@ class TestCommonEmbeddersEndpoint:
 
 @pytest.mark.order(2)
 class TestEmbedEndpoint:
-
     @pytest.mark.integration
     def test_embed_empty_sequences_rejected(
         self,
@@ -84,7 +79,6 @@ class TestEmbedEndpoint:
 
 @pytest.mark.order(2)
 class TestEndToEndEmbedFlow:
-
     @pytest.mark.integration
     def test_embed_and_wait_for_completion(
         self,
@@ -96,7 +90,7 @@ class TestEndToEndEmbedFlow:
     ):
         print("\n[BEFORE EMBEDDING] Checking cache status...")
         verify_embedding_cache(expect_cached=False)
-       
+
         request_data = {
             "embedder_name": embedder_name,
             "reduce": True,
@@ -104,13 +98,13 @@ class TestEndToEndEmbedFlow:
             "use_half_precision": False,
         }
 
-
         response = client.post("/embeddings_service/embed", json=request_data)
-        assert response.status_code == 200, f"Failed to submit embedding task: {response.text}"
-        
+        assert response.status_code == 200, (
+            f"Failed to submit embedding task: {response.text}"
+        )
+
         task_id = validate_task_response(response.json())
         print(f"[EMBEDDING] Submitted task {task_id}, waiting for completion...")
-        
 
         result = poll_task(
             task_id,
@@ -119,17 +113,21 @@ class TestEndToEndEmbedFlow:
             require_success=True,
         )
         assert_task_success(result, context="embed task")
-        assert result.get("error") in (None, "", []), "Successful embed task should not contain error payload"
-        
+        assert result.get("error") in (None, "", []), (
+            "Successful embed task should not contain error payload"
+        )
 
         task_status = result["status"].upper()
-        assert task_status in ("FINISHED", "COMPLETED", "DONE"), \
+        assert task_status in ("FINISHED", "COMPLETED", "DONE"), (
             f"Embedding task failed with status '{task_status}': {result.get('error', 'unknown error')}"
-        
+        )
+
         print("\n[AFTER EMBEDDING] Checking cache status...")
         after = verify_embedding_cache(expect_cached=True)
-        print(f"[CACHE POPULATED] {after['cached']}/{after['total']} embeddings now cached")
- 
+        print(
+            f"[CACHE POPULATED] {after['cached']}/{after['total']} embeddings now cached"
+        )
+
     @pytest.mark.integration
     def test_embed_with_different_embedders(
         self,
@@ -138,7 +136,7 @@ class TestEndToEndEmbedFlow:
         single_test_sequence,
     ):
         embedders = ["one_hot_encoding", "blosum62"]
-        
+
         for embedder in embedders:
             request_data = {
                 "embedder_name": embedder,
@@ -150,5 +148,7 @@ class TestEndToEndEmbedFlow:
             response = client.post("/embeddings_service/embed", json=request_data)
             assert response.status_code == 200, f"Failed for embedder: {embedder}"
             task_id = validate_task_response(response.json())
-            result = poll_task(task_id, timeout=240, max_consecutive_errors=12, require_success=True)
+            result = poll_task(
+                task_id, timeout=240, max_consecutive_errors=12, require_success=True
+            )
             assert_task_success(result, context=f"embed task ({embedder})")
