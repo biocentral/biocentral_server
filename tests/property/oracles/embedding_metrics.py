@@ -6,11 +6,20 @@ import numpy as np
 
 
 def _stable_sort_key(row: Dict[str, Any]) -> tuple:
+    # Use masking_ratio for numerical sorting if present, otherwise fall back to parameter string
+    masking_ratio = row.get("masking_ratio")
+    seq_idx = (
+        row.get("parameter", "").split("_")[0]
+        if "mask" in row.get("parameter", "")
+        else ""
+    )
     return (
         str(row.get("embedder", "")),
         str(row.get("model", "")),
         str(row.get("method", "")),
         str(row.get("test_type", "")),
+        seq_idx,
+        masking_ratio if masking_ratio is not None else float("inf"),
         str(row.get("parameter", "")),
     )
 

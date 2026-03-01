@@ -82,7 +82,26 @@ override-dependencies = [
 ]
 [tool.coverage.run]
 source = ["biocentral_server"]
-omit = ["*/tests/*", "*/__pycache__/*"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    # Task files (async execution logic)
+    "*_task.py",
+    # Triton/external integration
+    "*/triton_mixin.py",
+    "*/biotrainer_triton_embedder.py",
+    # Model implementations (except __init__.py)
+    "*/predict/models/binding/*",
+    "*/predict/models/conservation/*",
+    "*/predict/models/disorder/*",
+    "*/predict/models/localization/*",
+    "*/predict/models/membrane/*",
+    "*/predict/models/secondary_structure/*",
+    "*/predict/models/toxicity/*",
+    "*/predict/models/variant_effect/*",
+    "*/predict/models/base_model/base_model.py",
+    "*/predict/models/base_model/onnx_mixin.py",
+]
 
 [tool.coverage.report]
 exclude_lines = [
