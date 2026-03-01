@@ -1,11 +1,8 @@
-# Embedding metrics utilities for oracle-based testing.
-
 import csv
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-from scipy.special import softmax
 
 
 def _stable_sort_key(row: Dict[str, Any]) -> tuple:
@@ -26,7 +23,6 @@ def _format_float(value: Any, precision: int = 8) -> str:
 
 
 def compute_cosine_distance(a: np.ndarray, b: np.ndarray) -> float:
-    # Compute cosine distance between two embeddings.
     a_flat = _ensure_1d(a)
     b_flat = _ensure_1d(b)
 
@@ -43,41 +39,20 @@ def compute_cosine_distance(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def compute_l2_distance(a: np.ndarray, b: np.ndarray) -> float:
-    # Compute L2 (Euclidean) distance between two embeddings.
     a_flat = _ensure_1d(a)
     b_flat = _ensure_1d(b)
 
     return float(np.linalg.norm(a_flat - b_flat))
 
 
-def compute_kl_divergence(
-    a: np.ndarray, b: np.ndarray, epsilon: float = 1e-10
-) -> float:
-    # Compute KL divergence between two embeddings after softmax normalization.
-    a_flat = _ensure_1d(a)
-    b_flat = _ensure_1d(b)
-
-    p = softmax(a_flat)
-    q = softmax(b_flat)
-
-    q = q + epsilon
-    q = q / q.sum()
-
-    kl = np.sum(p * np.log(p / q))
-    return float(max(0.0, kl))
-
-
 def compute_all_metrics(a: np.ndarray, b: np.ndarray) -> Dict[str, float]:
-    # Compute all divergence metrics between two embeddings.
     return {
         "cosine_distance": compute_cosine_distance(a, b),
         "l2_distance": compute_l2_distance(a, b),
-        "kl_divergence": compute_kl_divergence(a, b),
     }
 
 
 def _ensure_1d(arr: np.ndarray) -> np.ndarray:
-    # Ensure array is 1D by mean-pooling if 2D.
     if arr.ndim == 1:
         return arr
     elif arr.ndim == 2:
@@ -90,7 +65,6 @@ def format_metrics_table(
     results: List[Dict[str, Any]],
     title: Optional[str] = None,
 ) -> str:
-    # Format metrics results as a readable table for console output.
     if not results:
         return "No results to display."
 
@@ -100,11 +74,10 @@ def format_metrics_table(
         "Parameter",
         "Cosine",
         "L2",
-        "KL",
         "Threshold",
         "Passed",
     ]
-    col_widths = [15, 20, 12, 10, 10, 10, 10, 8]
+    col_widths = [15, 20, 12, 10, 10, 10, 8]
 
     lines = []
 
@@ -124,7 +97,6 @@ def format_metrics_table(
             str(row.get("parameter", ""))[:12],
             f"{row.get('cosine_distance', 0):.6f}",
             f"{row.get('l2_distance', 0):.4f}",
-            f"{row.get('kl_divergence', 0):.6f}",
             f"{row.get('threshold', 0):.4f}",
             "✓" if row.get("passed", False) else "✗",
         ]
@@ -139,7 +111,6 @@ def write_metrics_csv(
     results: List[Dict[str, Any]],
     path: Union[str, Path],
 ) -> None:
-    # Write metrics results to a CSV file, overwriting any existing content.
     path = Path(path)
 
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -151,7 +122,6 @@ def write_metrics_csv(
         "parameter",
         "cosine_distance",
         "l2_distance",
-        "kl_divergence",
         "threshold",
         "passed",
     ]
@@ -168,7 +138,6 @@ def write_metrics_csv(
                 "parameter": row.get("parameter", ""),
                 "cosine_distance": _format_float(row.get("cosine_distance", 0.0)),
                 "l2_distance": _format_float(row.get("l2_distance", 0.0)),
-                "kl_divergence": _format_float(row.get("kl_divergence", 0.0)),
                 "threshold": _format_float(row.get("threshold", 0.0)),
                 "passed": row.get("passed", False),
             }
@@ -176,5 +145,4 @@ def write_metrics_csv(
 
 
 def get_default_report_path() -> Path:
-    """Get the default path for oracle metrics CSV report."""
     return Path(__file__).parent.parent.parent / "reports" / "oracle_metrics.csv"

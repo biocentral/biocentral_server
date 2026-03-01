@@ -1,4 +1,4 @@
-# MR: Reversed sequence — reverse amino-acid order and compare embeddings to the original.
+# MR: Reversed sequence -- reverse amino-acid order and compare embeddings to the original.
 
 import numpy as np
 from typing import Any, Dict, List
@@ -8,10 +8,6 @@ from tests.property.oracles.embedding_metrics import (
     format_metrics_table,
     write_metrics_csv,
 )
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 
 def _reverse_sequence(seq: str) -> str:
@@ -23,7 +19,6 @@ def _run_reversal_experiment(
     embedder_label: str,
     sequences: List[str],
 ) -> List[Dict[str, Any]]:
-    # Embed original and reversed sequences, compute divergence metrics.
     results = []
 
     for seq_idx, seq in enumerate(sequences):
@@ -41,8 +36,7 @@ def _run_reversal_experiment(
                 "parameter": f"seq{seq_idx}_len{len(seq)}",
                 "cosine_distance": metrics["cosine_distance"],
                 "l2_distance": metrics["l2_distance"],
-                "kl_divergence": metrics["kl_divergence"],
-                "threshold": 0.0,  # exploratory — no hard threshold
+                "threshold": 0.0,
                 "passed": True,
                 "sequence_length": len(seq),
                 "original_prefix": seq[:20],
@@ -59,7 +53,6 @@ def _run_double_reversal_experiment(
     sequences: List[str],
     tolerance: float = 1e-6,
 ) -> List[Dict[str, Any]]:
-    # Verify double reversal yields the original embedding: rev(rev(s)) == s.
     results = []
 
     for seq_idx, seq in enumerate(sequences):
@@ -78,7 +71,6 @@ def _run_double_reversal_experiment(
                 "parameter": f"seq{seq_idx}",
                 "cosine_distance": metrics["cosine_distance"],
                 "l2_distance": metrics["l2_distance"],
-                "kl_divergence": metrics["kl_divergence"],
                 "threshold": tolerance,
                 "passed": metrics["cosine_distance"] <= tolerance,
                 "sequence_length": len(seq),
@@ -89,7 +81,6 @@ def _run_double_reversal_experiment(
 
 
 def _summarise_reversal(results: List[Dict[str, Any]], label: str) -> str:
-    # Human-readable summary of reversal experiment.
     lines = [
         f"\n{'=' * 80}",
         f"  Reversed Sequence Summary — {label}",
@@ -122,13 +113,7 @@ def _summarise_reversal(results: List[Dict[str, Any]], label: str) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# ESM2 experiments
-# ---------------------------------------------------------------------------
-
-
 class TestReversedSequenceESM2:
-    # Real ESM2-T6-8M: Transformer positional encodings should make the model order-sensitive.
 
     def test_reversal_significantly_different(
         self,
@@ -151,7 +136,6 @@ class TestReversedSequenceESM2:
                 f"  {r['parameter']}: cosine_dist={r['cosine_distance']:.6f}, "
                 f"l2={r['l2_distance']:.4f}"
             )
-            # ESM2 should be order-sensitive
             assert r["cosine_distance"] > 0.001, (
                 f"ESM2 should be order-sensitive but cosine_dist "
                 f"is very small ({r['cosine_distance']:.8f})"
