@@ -1,6 +1,4 @@
-# Statistical utilities for experiment analysis and principled significance testing.
-
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 import numpy as np
 from scipy import stats
 
@@ -42,14 +40,6 @@ def compute_cohens_d(
 
 
 def interpret_cohens_d(d: float) -> str:
-    """Interpret Cohen's d effect size magnitude.
-
-    Args:
-        d: Cohen's d value.
-
-    Returns:
-        String interpretation: "negligible", "small", "medium", or "large".
-    """
     abs_d = abs(d)
     if abs_d < 0.2:
         return "negligible"

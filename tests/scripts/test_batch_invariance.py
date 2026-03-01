@@ -2,7 +2,7 @@
 
 import random
 import hashlib
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from tests.property.oracles.embedding_metrics import (
     compute_all_metrics,
@@ -14,27 +14,24 @@ from tests.property.oracles.embedding_metrics import (
 BATCH_SIZES = [2, 5, 10, 20]
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
 def _build_batch(
     target: str,
     fillers: List[str],
     batch_size: int,
     seed: int,
-) -> List[str]:
-    # Create a batch of batch_size sequences with target at a random position.
+) -> Tuple[List[str], int]:
     if batch_size <= 1:
-        return [target]
+        return [target], 0
 
     rng = random.Random(seed)
     n_fillers = batch_size - 1
-    selected = [fillers[i % len(fillers)] for i in range(n_fillers)]
+    safe_fillers = [f for f in fillers if f != target]
+    if not safe_fillers:
+        safe_fillers = fillers
+    selected = [safe_fillers[i % len(safe_fillers)] for i in range(n_fillers)]
     pos = rng.randint(0, len(selected))
     selected.insert(pos, target)
-    return selected
+    return selected, pos
 
 
 def _run_batch_invariance(
@@ -48,7 +45,6 @@ def _run_batch_invariance(
     results = []
 
     for seq_idx, target in enumerate(target_sequences):
-        # Reference: embed alone
         ref_emb = embedder.embed_pooled(target)
 
         for bs in batch_sizes:
@@ -58,8 +54,7 @@ def _run_batch_invariance(
                 ],
                 "big",
             )
-            batch = _build_batch(target, filler_sequences, bs, seed)
-            target_pos = batch.index(target)
+            batch, target_pos = _build_batch(target, filler_sequences, bs, seed)
 
             batch_embs = embedder.embed_batch(batch, pooled=True)
             batched_emb = batch_embs[target_pos]
@@ -73,7 +68,6 @@ def _run_batch_invariance(
                     "parameter": f"seq{seq_idx}_batch{bs}",
                     "cosine_distance": metrics["cosine_distance"],
                     "l2_distance": metrics["l2_distance"],
-                    "kl_divergence": metrics["kl_divergence"],
                     "threshold": tolerance,
                     "passed": metrics["cosine_distance"] <= tolerance,
                     "sequence_length": len(target),
@@ -85,13 +79,7 @@ def _run_batch_invariance(
     return results
 
 
-# ---------------------------------------------------------------------------
-# ESM2 tests
-# ---------------------------------------------------------------------------
-
-
 class TestBatchInvarianceESM2:
-    # Real ESM2 model: padding-induced differences should be negligible (cosine distance ≤ 0.01).
 
     TOLERANCE = 0.01
 
@@ -105,7 +93,7 @@ class TestBatchInvarianceESM2:
         results = _run_batch_invariance(
             embedder=esm2_embedder,
             embedder_label="esm2_t6_8m",
-            target_sequences=standard_sequences[:2],  # fewer seqs to keep runtime low
+            target_sequences=standard_sequences[:2],
             filler_sequences=filler_sequences,
             tolerance=self.TOLERANCE,
         )

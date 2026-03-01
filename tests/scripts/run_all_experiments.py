@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# Run every experiment in tests/scripts/ and collect CSV reports in tests/reports/.
 
 import sys
 import subprocess
@@ -23,12 +22,6 @@ def main():
         "--tb=short",
     ]
 
-    # Forward --slow → --run-slow
-    if "--slow" in args:
-        args.remove("--slow")
-        pytest_args.append("--run-slow")
-
-    # Forward any remaining args to pytest
     pytest_args.extend(args)
 
     print(f"Running: {' '.join(pytest_args)}")
