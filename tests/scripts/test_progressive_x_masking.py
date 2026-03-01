@@ -11,7 +11,21 @@ from tests.property.oracles.embedding_metrics import (
 
 
 # Masking ratios to explore (0 % → 100 %)
-MASKING_RATIOS = [0.0, 0.05, 0.10, 0.15, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0]
+MASKING_RATIOS = [
+    0.0,
+    0.05,
+    0.10,
+    0.15,
+    0.20,
+    0.30,
+    0.40,
+    0.50,
+    0.60,
+    0.70,
+    0.80,
+    0.90,
+    1.0,
+]
 
 # Cosine-distance threshold that we consider "significant divergence"
 SIGNIFICANCE_THRESHOLD = 0.1
@@ -22,6 +36,7 @@ SEED = 42
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mask_sequence(sequence: str, ratio: float, seed: int = SEED) -> str:
     # Replace ratio fraction of residues with 'X'.
@@ -62,28 +77,33 @@ def _run_masking_experiment(
             # Check monotonicity w.r.t. previous ratio
             monotonic = metrics["cosine_distance"] >= prev_cosine - 1e-9
 
-            results.append({
-                "embedder": embedder_label,
-                "test_type": "x_masking",
-                "parameter": f"seq{seq_idx}_mask{int(ratio*100)}%",
-                "masking_ratio": ratio,
-                "cosine_distance": metrics["cosine_distance"],
-                "l2_distance": metrics["l2_distance"],
-                "kl_divergence": metrics["kl_divergence"],
-                "threshold": significance_threshold,
-                "significant": metrics["cosine_distance"] > significance_threshold,
-                "monotonic": monotonic,
-                "passed": True,  # exploratory — always pass
-                "sequence_length": len(seq),
-                "masked_sequence": masked_seq[:40] + ("..." if len(masked_seq) > 40 else ""),
-            })
+            results.append(
+                {
+                    "embedder": embedder_label,
+                    "test_type": "x_masking",
+                    "parameter": f"seq{seq_idx}_mask{int(ratio * 100)}%",
+                    "masking_ratio": ratio,
+                    "cosine_distance": metrics["cosine_distance"],
+                    "l2_distance": metrics["l2_distance"],
+                    "kl_divergence": metrics["kl_divergence"],
+                    "threshold": significance_threshold,
+                    "significant": metrics["cosine_distance"] > significance_threshold,
+                    "monotonic": monotonic,
+                    "passed": True,  # exploratory — always pass
+                    "sequence_length": len(seq),
+                    "masked_sequence": masked_seq[:40]
+                    + ("..." if len(masked_seq) > 40 else ""),
+                }
+            )
 
             prev_cosine = metrics["cosine_distance"]
 
     return results
 
 
-def _find_critical_ratio(results: List[Dict[str, Any]], seq_idx: int) -> Optional[float]:
+def _find_critical_ratio(
+    results: List[Dict[str, Any]], seq_idx: int
+) -> Optional[float]:
     # Find the smallest masking ratio where cosine distance crosses the significance threshold.
     seq_results = [r for r in results if r["parameter"].startswith(f"seq{seq_idx}_")]
     for r in sorted(seq_results, key=lambda x: x["masking_ratio"]):
@@ -95,21 +115,21 @@ def _find_critical_ratio(results: List[Dict[str, Any]], seq_idx: int) -> Optiona
 def _summarise_experiment(results: List[Dict[str, Any]], embedder_label: str) -> str:
     # Produce a human-readable summary of the masking experiment.
     lines = [
-        f"\n{'='*80}",
+        f"\n{'=' * 80}",
         f"  Progressive X-Masking Summary — {embedder_label}",
-        f"{'='*80}",
+        f"{'=' * 80}",
     ]
 
     # Identify unique sequences
-    seq_indices = sorted({
-        int(r["parameter"].split("_")[0].replace("seq", ""))
-        for r in results
-    })
+    seq_indices = sorted(
+        {int(r["parameter"].split("_")[0].replace("seq", "")) for r in results}
+    )
 
     for seq_idx in seq_indices:
         critical = _find_critical_ratio(results, seq_idx)
         seq_len = next(
-            r["sequence_length"] for r in results
+            r["sequence_length"]
+            for r in results
             if r["parameter"].startswith(f"seq{seq_idx}_")
         )
         # Check monotonicity violations
@@ -130,6 +150,7 @@ def _summarise_experiment(results: List[Dict[str, Any]], embedder_label: str) ->
 # ---------------------------------------------------------------------------
 # ESM2 experiments
 # ---------------------------------------------------------------------------
+
 
 class TestProgressiveXMaskingESM2:
     # Characterise real ESM2-T6-8M's sensitivity to progressive X-masking.
@@ -163,7 +184,9 @@ class TestProgressiveXMaskingESM2:
             sequences=standard_sequences[:2],
         )
         total = len([r for r in results if r["masking_ratio"] > 0])
-        violations = sum(1 for r in results if r["masking_ratio"] > 0 and not r["monotonic"])
+        violations = sum(
+            1 for r in results if r["masking_ratio"] > 0 and not r["monotonic"]
+        )
         ratio = violations / total if total > 0 else 0
 
         print(f"\n[ESM2 Monotonicity] violations = {violations}/{total} ({ratio:.1%})")

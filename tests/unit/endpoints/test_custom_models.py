@@ -75,7 +75,9 @@ class TestConfigOptionsEndpoint:
 class TestVerifyConfigEndpoint:
     """Tests for POST /custom_models_service/verify_config"""
 
-    @patch("biocentral_server.custom_models.custom_models_endpoint.verify_biotrainer_config")
+    @patch(
+        "biocentral_server.custom_models.custom_models_endpoint.verify_biotrainer_config"
+    )
     @patch("biocentral_server.custom_models.custom_models_endpoint.RateLimiter")
     def test_verify_config_valid(
         self, mock_rate_limiter, mock_verify, custom_models_client
@@ -98,7 +100,9 @@ class TestVerifyConfigEndpoint:
         assert response.status_code == 200
         assert response.json()["error"] == ""
 
-    @patch("biocentral_server.custom_models.custom_models_endpoint.verify_biotrainer_config")
+    @patch(
+        "biocentral_server.custom_models.custom_models_endpoint.verify_biotrainer_config"
+    )
     @patch("biocentral_server.custom_models.custom_models_endpoint.RateLimiter")
     def test_verify_config_invalid(
         self, mock_rate_limiter, mock_verify, custom_models_client
@@ -136,7 +140,9 @@ class TestStartTrainingEndpoint:
     @patch("biocentral_server.custom_models.custom_models_endpoint.TaskManager")
     @patch("biocentral_server.custom_models.custom_models_endpoint.FileManager")
     @patch("biocentral_server.custom_models.custom_models_endpoint.UserManager")
-    @patch("biocentral_server.custom_models.custom_models_endpoint.verify_biotrainer_config")
+    @patch(
+        "biocentral_server.custom_models.custom_models_endpoint.verify_biotrainer_config"
+    )
     @patch("biocentral_server.custom_models.custom_models_endpoint.RateLimiter")
     def test_start_training_valid(
         self,
@@ -174,7 +180,9 @@ class TestStartTrainingEndpoint:
         assert response.status_code == 200
         assert "task_id" in response.json()
 
-    @patch("biocentral_server.custom_models.custom_models_endpoint.verify_biotrainer_config")
+    @patch(
+        "biocentral_server.custom_models.custom_models_endpoint.verify_biotrainer_config"
+    )
     @patch("biocentral_server.custom_models.custom_models_endpoint.RateLimiter")
     def test_start_training_invalid_config(
         self, mock_rate_limiter, mock_verify, custom_models_client
@@ -294,7 +302,9 @@ class TestStartInferenceEndpoint:
         """Test starting inference with valid model and sequences."""
         mock_rate_limiter.return_value = lambda: None
         mock_user_manager.get_user_id_from_request = AsyncMock(return_value="user-1")
-        mock_file_manager.return_value.get_biotrainer_model_path.return_value = "/path/to/model"
+        mock_file_manager.return_value.get_biotrainer_model_path.return_value = (
+            "/path/to/model"
+        )
         mock_task_manager.return_value.add_task.return_value = "inference-task-123"
 
         request_data = {

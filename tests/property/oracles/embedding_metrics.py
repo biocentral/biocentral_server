@@ -50,19 +50,18 @@ def compute_l2_distance(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.linalg.norm(a_flat - b_flat))
 
 
-def compute_kl_divergence(a: np.ndarray, b: np.ndarray, epsilon: float = 1e-10) -> float:
+def compute_kl_divergence(
+    a: np.ndarray, b: np.ndarray, epsilon: float = 1e-10
+) -> float:
     # Compute KL divergence between two embeddings after softmax normalization.
     a_flat = _ensure_1d(a)
     b_flat = _ensure_1d(b)
 
-
     p = softmax(a_flat)
     q = softmax(b_flat)
 
-
     q = q + epsilon
     q = q / q.sum()
-
 
     kl = np.sum(p * np.log(p / q))
     return float(max(0.0, kl))
@@ -82,7 +81,6 @@ def _ensure_1d(arr: np.ndarray) -> np.ndarray:
     if arr.ndim == 1:
         return arr
     elif arr.ndim == 2:
-
         return arr.mean(axis=0)
     else:
         raise ValueError(f"Expected 1D or 2D array, got {arr.ndim}D")
@@ -96,25 +94,28 @@ def format_metrics_table(
     if not results:
         return "No results to display."
 
-
-    headers = ["Embedder", "Test Type", "Parameter", "Cosine", "L2", "KL", "Threshold", "Passed"]
+    headers = [
+        "Embedder",
+        "Test Type",
+        "Parameter",
+        "Cosine",
+        "L2",
+        "KL",
+        "Threshold",
+        "Passed",
+    ]
     col_widths = [15, 20, 12, 10, 10, 10, 10, 8]
 
     lines = []
-
 
     if title:
         lines.append(f"\n{'=' * 97}")
         lines.append(f"  {title}")
         lines.append(f"{'=' * 97}")
 
-
-    header_row = " | ".join(
-        h.ljust(w) for h, w in zip(headers, col_widths)
-    )
+    header_row = " | ".join(h.ljust(w) for h, w in zip(headers, col_widths))
     lines.append(header_row)
     lines.append("-" * len(header_row))
-
 
     for row in sorted(results, key=_stable_sort_key):
         values = [
@@ -127,9 +128,7 @@ def format_metrics_table(
             f"{row.get('threshold', 0):.4f}",
             "✓" if row.get("passed", False) else "✗",
         ]
-        data_row = " | ".join(
-            v.ljust(w) for v, w in zip(values, col_widths)
-        )
+        data_row = " | ".join(v.ljust(w) for v, w in zip(values, col_widths))
         lines.append(data_row)
 
     lines.append("")
@@ -142,7 +141,6 @@ def write_metrics_csv(
 ) -> None:
     # Write metrics results to a CSV file, overwriting any existing content.
     path = Path(path)
-
 
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -163,7 +161,6 @@ def write_metrics_csv(
         writer.writeheader()
 
         for row in sorted(results, key=_stable_sort_key):
-
             csv_row = {
                 "timestamp": row.get("timestamp", ""),
                 "embedder": row.get("embedder", ""),

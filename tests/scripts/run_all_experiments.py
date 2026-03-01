@@ -14,7 +14,9 @@ def main():
     args = sys.argv[1:]
 
     pytest_args = [
-        sys.executable, "-m", "pytest",
+        sys.executable,
+        "-m",
+        "pytest",
         str(SCRIPTS_DIR),
         "-v",
         "-s",

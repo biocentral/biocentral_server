@@ -1,5 +1,3 @@
-# Shared fixtures for endpoint integration tests.
-
 import os
 import time
 import logging
@@ -35,6 +33,7 @@ def flush_redis():
             time.sleep(0.5)
         except redis.ConnectionError:
             pass
+
     return _flush
 
 
@@ -68,10 +67,11 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
     try:
         response = httpx.get(f"{server_url}/health", timeout=10.0)
         if response.status_code != 200:
-            pytest.fail(f"Server at {server_url} returned status {response.status_code}")
+            pytest.fail(
+                f"Server at {server_url} returned status {response.status_code}"
+            )
     except httpx.RequestError as e:
         pytest.fail(f"Cannot connect to server at {server_url}: {e}")
-
 
     if os.environ.get("CI_EMBEDDER", "").lower() == "fixed":
         import uuid
@@ -88,27 +88,31 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
             def json(self, *args, **kwargs):
                 return self._payload
 
-
         _fake_tasks: Dict[str, Dict] = {}
 
-        def _save_embeddings_to_db(sequences: Dict[str, str], embedder_name: str, reduced: bool, fe):
+        def _save_embeddings_to_db(
+            sequences: Dict[str, str], embedder_name: str, reduced: bool, fe
+        ):
             import psycopg
             import blosc2
             from datetime import datetime
             from biotrainer.utilities import calculate_sequence_hash
-            
+
             db_host = os.environ.get("POSTGRES_HOST", "localhost")
             db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
             db_name = os.environ.get("POSTGRES_DB", "embeddings_db")
             db_user = os.environ.get("POSTGRES_USER", "embeddingsuser")
             db_pass = os.environ.get("POSTGRES_PASSWORD", "embeddingspwd")
-            
+
             try:
                 conn = psycopg.connect(
-                    host=db_host, port=db_port, dbname=db_name,
-                    user=db_user, password=db_pass,
+                    host=db_host,
+                    port=db_port,
+                    dbname=db_name,
+                    user=db_user,
+                    password=db_pass,
                 )
-                
+
                 with conn.cursor() as cur:
                     for _, sequence in sequences.items():
                         seq_hash = calculate_sequence_hash(sequence)
@@ -122,7 +126,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                             emb_array = fe.embed(sequence)
                             per_seq_compressed = None
                             per_res_compressed = blosc2.pack_array(emb_array)
-                        
+
                         cur.execute(
                             """
                             INSERT INTO embeddings
@@ -133,8 +137,14 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                                 per_sequence = COALESCE(EXCLUDED.per_sequence, embeddings.per_sequence),
                                 per_residue = COALESCE(EXCLUDED.per_residue, embeddings.per_residue)
                             """,
-                            (seq_hash, seq_len, datetime.now(), embedder_name,
-                             per_seq_compressed, per_res_compressed),
+                            (
+                                seq_hash,
+                                seq_len,
+                                datetime.now(),
+                                embedder_name,
+                                per_seq_compressed,
+                                per_res_compressed,
+                            ),
                         )
                 conn.commit()
                 conn.close()
@@ -176,9 +186,6 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 return FakeResponse(200, {"task_id": task_id})
 
             if path.startswith("/projection_service/project"):
-
-
-
                 data = kwargs.get("json") or {}
                 if not data.get("sequence_data"):
                     return FakeResponse(422, {"detail": "sequence_data empty"})
@@ -193,12 +200,20 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
 
                 task_id = f"local-{uuid.uuid4().hex[:8]}"
 
-                seq_ids = list(seqs.keys()) if isinstance(seqs, dict) else [f"seq_{i}" for i in range(len(seqs))]
+                seq_ids = (
+                    list(seqs.keys())
+                    if isinstance(seqs, dict)
+                    else [f"seq_{i}" for i in range(len(seqs))]
+                )
                 projection_result = {
                     method: {
                         "identifier": seq_ids,
-                        **{f"D{d+1}": [float(i * 0.1 + d * 0.01) for i, _ in enumerate(seq_ids)] 
-                           for d in range(n_components)}
+                        **{
+                            f"D{d + 1}": [
+                                float(i * 0.1 + d * 0.01) for i, _ in enumerate(seq_ids)
+                            ]
+                            for d in range(n_components)
+                        },
                     }
                 }
                 _fake_tasks[task_id] = {
@@ -236,7 +251,9 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
     http_client.close()
 
 
-def _make_request_with_retry(client, method: str, url: str, max_retries: int = 5, **kwargs) -> httpx.Response:
+def _make_request_with_retry(
+    client, method: str, url: str, max_retries: int = 5, **kwargs
+) -> httpx.Response:
     last_error = None
     for attempt in range(max_retries):
         try:
@@ -247,7 +264,7 @@ def _make_request_with_retry(client, method: str, url: str, max_retries: int = 5
             else:
                 raise ValueError(f"Unsupported method: {method}")
             if response.status_code >= 500 and attempt < max_retries - 1:
-                wait_time = min(2 ** attempt, 30)
+                wait_time = min(2**attempt, 30)
                 logging.debug(
                     f"Request got {response.status_code} "
                     f"(attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s..."
@@ -257,8 +274,10 @@ def _make_request_with_retry(client, method: str, url: str, max_retries: int = 5
             return response
         except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadTimeout) as e:
             last_error = e
-            wait_time = min(2 ** attempt, 30)
-            logging.debug(f"Request failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {wait_time}s...")
+            wait_time = min(2**attempt, 30)
+            logging.debug(
+                f"Request failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {wait_time}s..."
+            )
             if attempt < max_retries - 1:
                 time.sleep(wait_time)
                 continue
@@ -273,7 +292,9 @@ def validate_task_dto(task_dto: Dict[str, Any]) -> Dict[str, Any]:
     return task_dto
 
 
-def assert_task_success(task_dto: Dict[str, Any], context: str = "task") -> Dict[str, Any]:
+def assert_task_success(
+    task_dto: Dict[str, Any], context: str = "task"
+) -> Dict[str, Any]:
     validate_task_dto(task_dto)
     status = task_dto["status"].upper()
     assert status in TERMINAL_SUCCESS_STATUSES, (
@@ -292,11 +313,19 @@ def assert_projection_result_schema(
     expected_sequence_count: int,
 ) -> Dict[str, Any]:
     projection_result = task_dto.get("projection_result")
-    assert isinstance(projection_result, dict), "Task DTO missing 'projection_result' dict"
+    assert isinstance(projection_result, dict), (
+        "Task DTO missing 'projection_result' dict"
+    )
 
     method_key = method.lower()
-    method_payload = projection_result.get(method_key) or projection_result.get(method.upper()) or projection_result.get(method)
-    assert isinstance(method_payload, dict), f"Projection result missing method payload for '{method}'"
+    method_payload = (
+        projection_result.get(method_key)
+        or projection_result.get(method.upper())
+        or projection_result.get(method)
+    )
+    assert isinstance(method_payload, dict), (
+        f"Projection result missing method payload for '{method}'"
+    )
 
     identifiers = method_payload.get("identifier")
     assert isinstance(identifiers, list), "Projection payload missing 'identifier' list"
@@ -324,7 +353,9 @@ def assert_prediction_result_schema(
         prediction_result = task_dto.get("prediction_result")
         if prediction_result is None:
             prediction_result = task_dto.get("result")
-        assert isinstance(prediction_result, dict), "Task DTO missing prediction result dict"
+        assert isinstance(prediction_result, dict), (
+            "Task DTO missing prediction result dict"
+        )
         predictions = prediction_result.get("predictions")
     assert isinstance(predictions, dict), "Prediction result missing 'predictions' dict"
     assert set(predictions.keys()) == set(expected_sequence_ids), (
@@ -345,52 +376,57 @@ def poll_task(client):
         start = time.time()
         consecutive_errors = 0
         last_status = "UNKNOWN"
-        
+
         while time.time() - start < timeout:
             elapsed = int(time.time() - start)
-            
+
             try:
                 response = _make_request_with_retry(
-                    client, "GET", f"/biocentral_service/task_status/{task_id}",
+                    client,
+                    "GET",
+                    f"/biocentral_service/task_status/{task_id}",
                     max_retries=3,
                 )
 
                 consecutive_errors = 0
-                
-            except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadTimeout) as e:
+
+            except (
+                httpx.RemoteProtocolError,
+                httpx.ConnectError,
+                httpx.ReadTimeout,
+            ) as e:
                 consecutive_errors += 1
                 logging.warning(
                     f"[POLL] Connection error ({consecutive_errors}/{max_consecutive_errors}): {e}"
                 )
-                
+
                 if consecutive_errors >= max_consecutive_errors:
                     raise RuntimeError(
                         f"Task {task_id} polling failed: {consecutive_errors} consecutive connection errors. "
                         f"Last error: {e}. Last known status: {last_status}"
                     )
-                
 
                 time.sleep(poll_interval * 2)
                 continue
-                
+
             if response.status_code != 200:
                 consecutive_errors += 1
                 logging.warning(
                     f"[POLL] Bad status code {response.status_code} ({consecutive_errors}/{max_consecutive_errors})"
                 )
-                
+
                 if consecutive_errors >= max_consecutive_errors:
                     raise RuntimeError(
                         f"Task {task_id} polling failed: got status {response.status_code} "
                         f"{consecutive_errors} times. Last known status: {last_status}"
                     )
-                
+
                 time.sleep(poll_interval)
                 continue
-            
+
             response_json = response.json()
             dtos = response_json.get("dtos", [])
-            
+
             if not dtos:
                 time.sleep(poll_interval)
                 continue
@@ -401,27 +437,33 @@ def poll_task(client):
             last_status = task_status
 
             if elapsed % 30 == 0 and elapsed > 0:
-                logging.info(f"[POLL] Task {task_id}: {task_status} ({elapsed}s elapsed)")
+                logging.info(
+                    f"[POLL] Task {task_id}: {task_status} ({elapsed}s elapsed)"
+                )
 
             if task_status in TERMINAL_SUCCESS_STATUSES:
-                logging.info(f"[POLL] Task {task_id} completed successfully in {elapsed}s")
+                logging.info(
+                    f"[POLL] Task {task_id} completed successfully in {elapsed}s"
+                )
                 if require_success:
                     assert_task_success(latest_dto, context=f"task {task_id}")
                 return latest_dto
-            
+
             elif task_status in TERMINAL_FAILURE_STATUSES:
                 err = latest_dto.get("error", "unknown")
                 logging.warning(f"[POLL] Task {task_id} failed: {err}")
                 if require_success:
-                    raise RuntimeError(f"Task {task_id} entered terminal failure status={task_status}: {err}")
+                    raise RuntimeError(
+                        f"Task {task_id} entered terminal failure status={task_status}: {err}"
+                    )
                 return latest_dto
-            
+
             time.sleep(poll_interval)
-        
+
         raise TimeoutError(
             f"Task {task_id} did not complete within {timeout}s. Last status: {last_status}"
         )
-    
+
     return _poll
 
 
@@ -433,13 +475,16 @@ EMBEDDER_MAP = {
     "fixed": EMBEDDER_FIXED,
 }
 
+
 def get_embedder_name() -> str:
     ci_embedder = os.environ.get("CI_EMBEDDER", "esm2_t6_8m").lower()
-    
+
     if ci_embedder not in EMBEDDER_MAP:
         valid_options = ", ".join(EMBEDDER_MAP.keys())
-        pytest.fail(f"Invalid CI_EMBEDDER='{ci_embedder}'. Valid options: {valid_options}")
-    
+        pytest.fail(
+            f"Invalid CI_EMBEDDER='{ci_embedder}'. Valid options: {valid_options}"
+        )
+
     embedder_name = EMBEDDER_MAP[ci_embedder]
 
     return embedder_name
@@ -475,12 +520,14 @@ def shared_embedding_sequences() -> Dict[str, str]:
         "short_2": CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
     }
 
+
 @pytest.fixture(scope="session")
 def short_test_sequences() -> Dict[str, str]:
     return {
         "short_1": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
         "short_2": CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
     }
+
 
 @pytest.fixture(scope="session")
 def minimum_length_sequences() -> Dict[str, str]:
@@ -490,23 +537,32 @@ def minimum_length_sequences() -> Dict[str, str]:
         "short_5": CANONICAL_TEST_DATASET.get_by_id("length_short_5").sequence,
     }
 
+
 @pytest.fixture(scope="session")
 def long_sequences() -> Dict[str, str]:
     return {
         "long_200": CANONICAL_TEST_DATASET.get_by_id("length_long_200").sequence,
     }
 
+
 @pytest.fixture(scope="session")
 def unknown_token_sequences() -> Dict[str, str]:
     return {
         "unknown_single": CANONICAL_TEST_DATASET.get_by_id("unknown_single").sequence,
-        "unknown_multiple": CANONICAL_TEST_DATASET.get_by_id("unknown_multiple").sequence,
+        "unknown_multiple": CANONICAL_TEST_DATASET.get_by_id(
+            "unknown_multiple"
+        ).sequence,
         "unknown_start": CANONICAL_TEST_DATASET.get_by_id("unknown_start").sequence,
         "unknown_end": CANONICAL_TEST_DATASET.get_by_id("unknown_end").sequence,
         "unknown_middle": CANONICAL_TEST_DATASET.get_by_id("unknown_middle").sequence,
-        "unknown_scattered": CANONICAL_TEST_DATASET.get_by_id("unknown_scattered").sequence,
-        "unknown_high_ratio": CANONICAL_TEST_DATASET.get_by_id("unknown_high_ratio").sequence,
+        "unknown_scattered": CANONICAL_TEST_DATASET.get_by_id(
+            "unknown_scattered"
+        ).sequence,
+        "unknown_high_ratio": CANONICAL_TEST_DATASET.get_by_id(
+            "unknown_high_ratio"
+        ).sequence,
     }
+
 
 @pytest.fixture(scope="session")
 def ambiguous_code_sequences() -> Dict[str, str]:
@@ -516,12 +572,14 @@ def ambiguous_code_sequences() -> Dict[str, str]:
         "ambiguous_J": CANONICAL_TEST_DATASET.get_by_id("ambiguous_J").sequence,
     }
 
+
 @pytest.fixture(scope="session")
 def composition_edge_sequences() -> Dict[str, str]:
     return {
         "all_standard_aa": CANONICAL_TEST_DATASET.get_by_id("all_standard_aa").sequence,
         "homopolymer_A": CANONICAL_TEST_DATASET.get_by_id("homopolymer_A").sequence,
     }
+
 
 @pytest.fixture(scope="session")
 def structural_motif_sequences() -> Dict[str, str]:
@@ -530,23 +588,38 @@ def structural_motif_sequences() -> Dict[str, str]:
         "beta_sheet": CANONICAL_TEST_DATASET.get_by_id("motif_beta_sheet").sequence,
     }
 
+
 @pytest.fixture(scope="session")
 def real_world_sequences() -> Dict[str, str]:
     return {
         "insulin_b": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
     }
 
+
 CANONICAL_STANDARD_IDS = ["standard_001", "standard_002", "standard_003"]
 CANONICAL_LENGTH_EDGE_IDS = [
-    "length_min_1", "length_min_2", "length_short_5",
-    "length_short_10", "length_medium_50", "length_long_200",
+    "length_min_1",
+    "length_min_2",
+    "length_short_5",
+    "length_short_10",
+    "length_medium_50",
+    "length_long_200",
 ]
 CANONICAL_UNKNOWN_TOKEN_IDS = [
-    "unknown_single", "unknown_multiple", "unknown_start",
-    "unknown_end", "unknown_middle", "unknown_scattered", "unknown_high_ratio",
+    "unknown_single",
+    "unknown_multiple",
+    "unknown_start",
+    "unknown_end",
+    "unknown_middle",
+    "unknown_scattered",
+    "unknown_high_ratio",
 ]
 CANONICAL_AMBIGUOUS_CODE_IDS = [
-    "ambiguous_B", "ambiguous_Z", "ambiguous_J", "selenocysteine", "pyrrolysine",
+    "ambiguous_B",
+    "ambiguous_Z",
+    "ambiguous_J",
+    "selenocysteine",
+    "pyrrolysine",
 ]
 CANONICAL_REAL_WORLD_IDS = ["real_insulin_b", "real_ubiquitin", "real_gfp_core"]
 
@@ -558,56 +631,64 @@ ALL_CANONICAL_IDS = (
     + CANONICAL_REAL_WORLD_IDS
 )
 
+
 def get_sequence_by_id(seq_id: str) -> str:
     return CANONICAL_TEST_DATASET.get_by_id(seq_id).sequence
+
 
 @pytest.fixture(scope="session")
 def all_canonical_sequences() -> Dict[str, str]:
     return {seq_id: get_sequence_by_id(seq_id) for seq_id in ALL_CANONICAL_IDS}
+
 
 @pytest.fixture(scope="session")
 def large_batch_sequences() -> Dict[str, str]:
     base_sequences = [
         CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
     ]
-    
+
     sequences = {}
     for i in range(100):
         base_seq = base_sequences[i % len(base_sequences)]
         seq_id = f"batch_seq_{i:03d}"
         sequences[seq_id] = base_seq
-    
+
     return sequences
 
-def validate_task_response(response_json: Dict, expected_task_id_prefix: str = None) -> str:
+
+def validate_task_response(
+    response_json: Dict, expected_task_id_prefix: str = None
+) -> str:
     assert "task_id" in response_json, "Response missing 'task_id' field"
     task_id = response_json["task_id"]
     assert isinstance(task_id, str), f"task_id should be string, got {type(task_id)}"
     assert len(task_id) > 0, "task_id should not be empty"
-    
+
     if expected_task_id_prefix:
-        assert task_id.startswith(expected_task_id_prefix), \
+        assert task_id.startswith(expected_task_id_prefix), (
             f"task_id '{task_id}' should start with '{expected_task_id_prefix}'"
-    
+        )
+
     return task_id
 
 
 def validate_error_response(response_json: Dict, expected_status: int = None) -> Dict:
     assert "detail" in response_json, "Error response missing 'detail' field"
     detail = response_json["detail"]
-    
+
     if isinstance(detail, list):
         for error in detail:
             assert "loc" in error, "Validation error missing 'loc'"
             assert "msg" in error, "Validation error missing 'msg'"
             assert "type" in error, "Validation error missing 'type'"
-    
+
     return response_json
 
 
 @pytest.fixture(scope="session")
 def test_run_id() -> str:
     import uuid
+
     return str(uuid.uuid4())[:8]
 
 
@@ -616,7 +697,7 @@ def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
     def _verify(expect_cached: bool = True):
         import json
         from biotrainer.utilities import calculate_sequence_hash
-    
+
         hashed_sequences = {
             calculate_sequence_hash(seq): seq
             for seq in shared_embedding_sequences.values()
@@ -626,21 +707,21 @@ def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
             "embedder_name": embedder_name,
             "reduced": True,  # Must match ProtSpaceTask's reduced=True
         }
-        
+
         response = client.post(
             "/embeddings_service/get_missing_embeddings",
             json=request_data,
         )
-        
+
         if response.status_code != 200:
             print(f"[CACHE CHECK] Failed to check cache: {response.status_code}")
             return {"error": response.status_code}
-        
+
         result = response.json()
         missing = result.get("missing", [])
         total = len(shared_embedding_sequences)
         cached = total - len(missing)
-        
+
         status = {
             "total": total,
             "cached": cached,
@@ -648,18 +729,21 @@ def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
             "embedder_name": embedder_name,
             "all_cached": len(missing) == 0,
         }
-        
+
         print(f"\n[CACHE CHECK] Embedder: {embedder_name}")
         print(f"[CACHE CHECK] Cached: {cached}/{total}")
         if missing:
             print(f"[CACHE CHECK] Missing IDs: {missing}")
-        
+
         if expect_cached:
-            assert len(missing) == 0, f"Expected all embeddings cached, but missing: {missing}"
-        
+            assert len(missing) == 0, (
+                f"Expected all embeddings cached, but missing: {missing}"
+            )
+
         return status
-    
+
     return _verify
+
 
 @pytest.fixture(scope="session")
 def precache_prott5_embeddings(shared_embedding_sequences):
@@ -668,15 +752,15 @@ def precache_prott5_embeddings(shared_embedding_sequences):
     import blosc2
     from datetime import datetime
     from biotrainer.utilities import calculate_sequence_hash
-    
+
     db_host = os.environ.get("POSTGRES_HOST", "localhost")
     db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
     db_name = os.environ.get("POSTGRES_DB", "embeddings_db")
     db_user = os.environ.get("POSTGRES_USER", "embeddingsuser")
     db_pass = os.environ.get("POSTGRES_PASSWORD", "embeddingspwd")
-    
+
     embedder_name = "Rostlab/prot_t5_xl_uniref50"
-    
+
     try:
         conn = psycopg.connect(
             host=db_host,
@@ -685,7 +769,7 @@ def precache_prott5_embeddings(shared_embedding_sequences):
             user=db_user,
             password=db_pass,
         )
-        
+
         embeddings_data = []
         for seq_id, sequence in shared_embedding_sequences.items():
             seq_hash = calculate_sequence_hash(sequence)
@@ -699,16 +783,18 @@ def precache_prott5_embeddings(shared_embedding_sequences):
 
             per_seq_compressed = blosc2.pack_array(per_sequence)
             per_res_compressed = blosc2.pack_array(per_residue)
-            
-            embeddings_data.append((
-                seq_hash,
-                seq_len,
-                datetime.now(),
-                embedder_name,
-                per_seq_compressed,
-                per_res_compressed,
-            ))
-        
+
+            embeddings_data.append(
+                (
+                    seq_hash,
+                    seq_len,
+                    datetime.now(),
+                    embedder_name,
+                    per_seq_compressed,
+                    per_res_compressed,
+                )
+            )
+
         with conn.cursor() as cur:
             for data in embeddings_data:
                 cur.execute(
@@ -725,10 +811,10 @@ def precache_prott5_embeddings(shared_embedding_sequences):
                 )
         conn.commit()
         conn.close()
-        
+
         print(f"\n[PRECACHE] Inserted {len(embeddings_data)} fake ProtT5 embeddings")
         return True
-        
+
     except Exception as e:
         print(f"\n[PRECACHE] Failed to insert fake ProtT5 embeddings: {e}")
         return False
@@ -740,7 +826,6 @@ def load_bindembed_onnx():
     import zipfile
     import requests
     from pathlib import Path
-    
 
     seaweedfs_host = os.environ.get("SEAWEEDFS_FILER_HOST", "localhost")
     seaweedfs_port = os.environ.get("SEAWEEDFS_FILER_PORT", "8888")
@@ -751,32 +836,31 @@ def load_bindembed_onnx():
     target_base = "PREDICT"
 
     try:
-        _ = requests.head(f"{seaweedfs_url}/{target_base}/bindembed/", timeout=5) 
-        #print(f"\n[ONNX] Check response: {check_response.status_code}")
+        _ = requests.head(f"{seaweedfs_url}/{target_base}/bindembed/", timeout=5)
+        # print(f"\n[ONNX] Check response: {check_response.status_code}")
     except Exception as e:
         print(f"\n[ONNX] Check failed: {e}")
-    
-    try: 
+
+    try:
         # print(f"\n[ONNX] Downloading prediction models from {model_url}...")
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             response = requests.get(model_url, stream=True, timeout=300)
             response.raise_for_status()
-            
+
             zip_path = Path(tmpdir) / "models.zip"
             with open(zip_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
-            
+
             # print(f"[ONNX] Downloaded {zip_path.stat().st_size / 1024 / 1024:.1f} MB")
 
             extract_dir = Path(tmpdir) / "extracted"
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
                 zip_ref.extractall(extract_dir)
 
             extracted_items = list(extract_dir.iterdir())
             # print(f"[ONNX] Top-level extracted: {[item.name for item in extracted_items]}")
-            
 
             model_root = extract_dir
             if len(extracted_items) == 1 and extracted_items[0].is_dir():
@@ -790,53 +874,61 @@ def load_bindembed_onnx():
 
             uploaded_count = 0
             failed_count = 0
-            
+
             for file_path in model_root.rglob("*"):
                 if file_path.is_file():
                     rel_path = file_path.relative_to(model_root)
                     seaweed_path = f"/{target_base}/{rel_path}"
-                    
+
                     try:
                         with open(file_path, "rb") as f:
                             file_data = f.read()
 
-                        files = {"file": (file_path.name, file_data, "application/octet-stream")}
+                        files = {
+                            "file": (
+                                file_path.name,
+                                file_data,
+                                "application/octet-stream",
+                            )
+                        }
                         upload_response = requests.post(
                             f"{seaweedfs_url}{seaweed_path}",
                             files=files,
                             timeout=60,
                         )
-                        
+
                         if upload_response.status_code in (200, 201):
                             uploaded_count += 1
                         else:
                             failed_count += 1
                             if failed_count <= 3:
-                                print(f"[ONNX] Failed {seaweed_path}: {upload_response.status_code} - {upload_response.text[:100]}")
+                                print(
+                                    f"[ONNX] Failed {seaweed_path}: {upload_response.status_code} - {upload_response.text[:100]}"
+                                )
                     except Exception as e:
                         failed_count += 1
                         if failed_count <= 3:
                             print(f"[ONNX] Error uploading {seaweed_path}: {e}")
-            
-            #print(f"[ONNX] Uploaded {uploaded_count} files, {failed_count} failed")
+
+            # print(f"[ONNX] Uploaded {uploaded_count} files, {failed_count} failed")
 
             try:
                 _ = requests.get(
                     f"{seaweedfs_url}/{target_base}/bindembed/?pretty=y",
                     headers={"Accept": "application/json"},
-                    timeout=10
+                    timeout=10,
                 )
-                #print(f"[ONNX] Verify bindembed dir: {verify_response.status_code}")
-                #if verify_response.status_code == 200:
-                   # print(f"[ONNX] Directory contents: {verify_response.text[:200]}")
+                # print(f"[ONNX] Verify bindembed dir: {verify_response.status_code}")
+                # if verify_response.status_code == 200:
+                # print(f"[ONNX] Directory contents: {verify_response.text[:200]}")
             except Exception as e:
                 print(f"[ONNX] Verify failed: {e}")
-            
+
             return uploaded_count > 0
-            
+
     except Exception as e:
         print(f"\n[ONNX] Failed to load models: {e}")
         import traceback
+
         traceback.print_exc()
         return False
-    

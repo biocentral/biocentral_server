@@ -33,7 +33,6 @@ class TestModelMetadataEndpoint:
         """Test that model metadata endpoint returns available models."""
         mock_rate_limiter.return_value = lambda: None
 
-
         from biocentral_server.predict.models.base_model.model_metadata import (
             ModelMetadata,
             ModelOutput,
@@ -81,10 +80,8 @@ class TestModelMetadataEndpoint:
         mock_rate_limiter.return_value = lambda: None
         mock_get_metadata.return_value = []
 
-
         with pytest.raises(pydantic_core.ValidationError) as exc_info:
             predict_client.get("/prediction_service/model_metadata")
-        
 
         assert "too_short" in str(exc_info.value)
 
@@ -147,7 +144,6 @@ class TestPredictEndpoint:
         }
 
         response = predict_client.post("/prediction_service/predict", json=request_data)
-
 
         assert response.status_code == 422
 

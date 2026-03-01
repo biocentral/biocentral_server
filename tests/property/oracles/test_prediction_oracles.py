@@ -13,8 +13,10 @@ from tests.fixtures.fixed_embedder import FixedEmbedder
 _prediction_oracle_results: List[Dict[str, Any]] = []
 pytestmark = pytest.mark.property
 
+
 def get_prediction_oracle_results() -> List[Dict[str, Any]]:
     return _prediction_oracle_results
+
 
 def add_prediction_oracle_result(result: Dict[str, Any]) -> None:
     if "timestamp" not in result:
@@ -25,6 +27,7 @@ def add_prediction_oracle_result(result: Dict[str, Any]) -> None:
 def clear_prediction_oracle_results() -> None:
     _prediction_oracle_results.clear()
 
+
 @dataclass
 class PredictionOracleConfig:
     model_name: str
@@ -32,6 +35,7 @@ class PredictionOracleConfig:
     is_classification: bool = True
     num_classes: Optional[int] = None
     value_range: Optional[tuple] = None
+
 
 PREDICTION_ORACLE_CONFIGS = {
     "ProtT5SecondaryStructure": PredictionOracleConfig(
@@ -60,12 +64,12 @@ PREDICTION_ORACLE_CONFIGS = {
     ),
 }
 
-class PredictorProtocol(Protocol):
-    def predict(self, sequence: str) -> Dict[str, Any]:
-        ...
 
-    def predict_batch(self, sequences: List[str]) -> List[Dict[str, Any]]:
-        ...
+class PredictorProtocol(Protocol):
+    def predict(self, sequence: str) -> Dict[str, Any]: ...
+
+    def predict_batch(self, sequences: List[str]) -> List[Dict[str, Any]]: ...
+
 
 class PredictionDeterminismOracle:
     # Verifies predictions are deterministic across multiple runs.
@@ -87,9 +91,7 @@ class PredictionDeterminismOracle:
             predictions.append(pred)
 
         first = predictions[0]
-        all_identical = all(
-            self._predictions_equal(first, p) for p in predictions[1:]
-        )
+        all_identical = all(self._predictions_equal(first, p) for p in predictions[1:])
 
         result = {
             "model": self.config.model_name,
@@ -119,6 +121,7 @@ class PredictionDeterminismOracle:
             elif v1 != v2:
                 return False
         return True
+
 
 class OutputValidityOracle:
     # Verifies prediction outputs are valid and properly formatted.
@@ -175,6 +178,7 @@ class OutputValidityOracle:
         add_prediction_oracle_result(result)
         return result
 
+
 class ShapeInvarianceOracle:
     # Verifies output shapes match model specifications.
 
@@ -221,6 +225,7 @@ class ShapeInvarianceOracle:
         add_prediction_oracle_result(result)
         return result
 
+
 # Model name mapping to ONNX directory names (uses model_name.value.lower())
 # Files are auto-discovered within each directory
 MODEL_DIRECTORIES = {
@@ -239,6 +244,7 @@ LABEL_MAPPINGS = {
     "TMbed": {0: "B", 1: "b", 2: "H", 3: "h", 4: "S", 5: "i", 6: "o"},
 }
 
+
 def get_onnx_models_path() -> Optional[Path]:
     path_str = os.environ.get("ONNX_MODELS_PATH")
     if path_str:
@@ -246,6 +252,7 @@ def get_onnx_models_path() -> Optional[Path]:
         if path.exists():
             return path
     return None
+
 
 class DirectPredictor:
     # Predictor using ONNX models directly from local filesystem.
@@ -266,27 +273,27 @@ class DirectPredictor:
     def _ensure_initialized(self):
         if self._initialized:
             return
-        
+
         import onnxruntime as ort
-        
+
         models_path = get_onnx_models_path()
         if models_path is None:
             raise FileNotFoundError(
                 "ONNX_MODELS_PATH not set or directory not found. "
                 "Set ONNX_MODELS_PATH to directory containing model files."
             )
-        
+
         model_dir_name = MODEL_DIRECTORIES.get(self.model_name)
         if not model_dir_name:
             raise ValueError(f"No directory configured for model: {self.model_name}")
-        
+
         model_dir = models_path / model_dir_name
         if not model_dir.exists():
             raise FileNotFoundError(
                 f"Model directory not found: {model_dir}. "
                 f"Download models and set ONNX_MODELS_PATH correctly."
             )
-        
+
         # Auto-discover ONNX files in the model directory
         onnx_files = sorted(model_dir.glob("*.onnx"))
         if not onnx_files:
@@ -294,12 +301,12 @@ class DirectPredictor:
                 f"No .onnx files found in {model_dir}. "
                 f"Ensure models are properly extracted."
             )
-        
+
         # Load all ONNX models (single model or ensemble)
         for onnx_file in onnx_files:
             session = ort.InferenceSession(str(onnx_file))
             self._models.append(session)
-        
+
         # Initialize embedder
         self._embedder = FixedEmbedder(
             model_name="prot_t5",
@@ -309,12 +316,12 @@ class DirectPredictor:
 
     def predict(self, sequence: str) -> Dict[str, Any]:
         self._ensure_initialized()
-        
+
         # Get embedding
         embedding = self._embedder.embed(sequence)
         # Shape: (seq_len, embedding_dim) -> (1, seq_len, embedding_dim)
         embedding_input = np.expand_dims(embedding.astype(np.float32), axis=0)
-        
+
         # Model-specific input preparation
         if self.model_name == "BindEmbed":
             # BindEmbed expects (B, E, L) - transpose from (B, L, E)
@@ -323,7 +330,7 @@ class DirectPredictor:
             # TMbed requires a mask input - all 1s for non-padding positions
             seq_len = embedding_input.shape[1]
             self._mask = np.ones((1, seq_len), dtype=np.float32)
-        
+
         # Run inference
         if len(self._models) == 1:
             # Single model
@@ -331,51 +338,57 @@ class DirectPredictor:
         else:
             # Ensemble - average predictions
             output = self._run_ensemble(embedding_input)
-        
+
         return self._format_output(output, sequence)
-    
+
     def _run_single_model(self, embedding_input: np.ndarray) -> np.ndarray:
         input_feed = self._build_input_feed(embedding_input, self._models[0])
         outputs = self._models[0].run(None, input_feed)
         return outputs[0]  # Return first output
-    
+
     def _run_ensemble(self, embedding_input: np.ndarray) -> np.ndarray:
         all_outputs = []
         for model in self._models:
             input_feed = self._build_input_feed(embedding_input, model)
             outputs = model.run(None, input_feed)
             all_outputs.append(outputs[0])
-        
+
         # Average all predictions
         stacked = np.stack(all_outputs, axis=0)
         return np.mean(stacked, axis=0)
-    
-    def _build_input_feed(self, embedding_input: np.ndarray, model) -> Dict[str, np.ndarray]:
+
+    def _build_input_feed(
+        self, embedding_input: np.ndarray, model
+    ) -> Dict[str, np.ndarray]:
         # Get all required input names
         input_names = [inp.name for inp in model.get_inputs()]
-        
+
         # Start with the embedding input (first input)
         input_feed = {input_names[0]: embedding_input}
-        
+
         # Add mask if required (TMbed)
-        if 'mask' in input_names:
+        if "mask" in input_names:
             # Create mask of 1s for all non-padding positions
             if self.model_name == "TMbed":
                 seq_len = embedding_input.shape[1]  # (B, L, E) format
             else:
-                seq_len = embedding_input.shape[2] if len(embedding_input.shape) == 3 else embedding_input.shape[1]
+                seq_len = (
+                    embedding_input.shape[2]
+                    if len(embedding_input.shape) == 3
+                    else embedding_input.shape[1]
+                )
             mask = np.ones((1, seq_len), dtype=np.float32)
-            input_feed['mask'] = mask
-        
+            input_feed["mask"] = mask
+
         return input_feed
-    
+
     def _format_output(self, raw_output: np.ndarray, sequence: str) -> Dict[str, Any]:
         # raw_output shape: (1, seq_len, num_classes) or (1, seq_len) or (1, seq_len, 1)
-        
+
         # Handle 3D output
         if len(raw_output.shape) == 3:
             predictions_raw = raw_output[0]  # (seq_len, num_classes) or (seq_len, 1)
-            
+
             # Check if it's regression with single output dim (e.g., Seth: seq_len x 1)
             if not self.config.is_classification and predictions_raw.shape[-1] == 1:
                 # Squeeze the last dimension for regression
@@ -391,14 +404,14 @@ class DirectPredictor:
         else:
             # 2D output: (1, seq_len) - direct values
             predictions = raw_output[0].tolist()  # (seq_len,)
-        
+
         # Ensure predictions match sequence length
         if isinstance(predictions, list) and len(predictions) != len(sequence):
             if self.config.is_classification:
                 predictions = [0] * len(sequence)
             else:
                 predictions = [0.5] * len(sequence)
-        
+
         return {
             "predictions": predictions,
             "sequence_length": len(sequence),
@@ -417,13 +430,16 @@ def ss_oracle_config() -> PredictionOracleConfig:
 def binding_oracle_config() -> PredictionOracleConfig:
     return PREDICTION_ORACLE_CONFIGS["BindEmbed"]
 
+
 @pytest.fixture(scope="module")
 def disorder_oracle_config() -> PredictionOracleConfig:
     return PREDICTION_ORACLE_CONFIGS["Seth"]
 
+
 @pytest.fixture(scope="module")
 def tmbed_oracle_config() -> PredictionOracleConfig:
     return PREDICTION_ORACLE_CONFIGS["TMbed"]
+
 
 @pytest.fixture(scope="module")
 def standard_test_sequences() -> List[str]:
@@ -433,6 +449,7 @@ def standard_test_sequences() -> List[str]:
         CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
     ]
 
+
 @pytest.fixture(scope="module")
 def varied_length_sequences() -> List[str]:
     return [
@@ -440,6 +457,7 @@ def varied_length_sequences() -> List[str]:
         CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
         CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
     ]
+
 
 @pytest.fixture(scope="module")
 def direct_ss_predictor(ss_oracle_config):
@@ -470,6 +488,7 @@ def direct_bindembed_predictor(binding_oracle_config):
     except Exception as e:
         pytest.skip(f"ONNX model not available for BindEmbed: {e}")
 
+
 @pytest.fixture(scope="module")
 def direct_tmbed_predictor(tmbed_oracle_config):
     try:
@@ -499,6 +518,7 @@ def direct_seth_predictor(disorder_oracle_config):
     except Exception as e:
         pytest.skip(f"ONNX model not available for Seth: {e}")
 
+
 # Parametrized fixture for multiple models via ONNX
 @pytest.fixture(scope="module", params=["BindEmbed", "TMbed", "Seth"])
 def direct_predictor(request):
@@ -515,6 +535,7 @@ def direct_predictor(request):
         pytest.skip(f"ONNX model not found for {model_name}: {e}")
     except Exception as e:
         pytest.skip(f"ONNX model not available for {model_name}: {e}")
+
 
 # Prediction determinism tests using direct ONNX inference
 @pytest.mark.slow
@@ -576,6 +597,7 @@ class TestPredictionDeterminism:
                 f"sequence_length={len(seq)}, runs={result['num_runs']}"
             )
 
+
 # Output validity tests using direct ONNX inference
 @pytest.mark.slow
 class TestOutputValidity:
@@ -636,6 +658,7 @@ class TestOutputValidity:
                 f"sequence_length={len(seq)}, issues={result['issues']}"
             )
 
+
 # Shape invariance tests using direct ONNX inference
 @pytest.mark.slow
 class TestShapeInvariance:
@@ -675,6 +698,7 @@ class TestShapeInvariance:
             f"num_sequences={result['num_sequences']}, issues={result['issues']}"
         )
 
+
 # Parametrized oracle tests across multiple ONNX models
 @pytest.mark.slow
 class TestParametrizedModelOracles:
@@ -688,10 +712,10 @@ class TestParametrizedModelOracles:
             predictor=predictor,
             config=config,
         )
-        
+
         sequence = CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence
         result = oracle.verify(sequence)
-        
+
         assert result["passed"], (
             f"Determinism failed: model={result['model']}, "
             f"sequence_length={result['sequence_length']}"
@@ -707,14 +731,15 @@ class TestParametrizedModelOracles:
             predictor=predictor,
             config=config,
         )
-        
+
         sequence = CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence
         result = oracle.verify(sequence)
-        
+
         assert result["passed"], (
             f"Output validity failed: model={result['model']}, "
             f"issues={result['issues']}"
         )
+
 
 # Clean up prediction oracle results after module completes
 @pytest.fixture(scope="module", autouse=True)

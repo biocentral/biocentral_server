@@ -46,7 +46,6 @@ class TestCommonEmbeddersEndpoint:
         assert response.status_code == 200
         embedders = response.json()
 
-
         expected_embedders = [e.value for e in CommonEmbedder]
         assert embedders == expected_embedders
 
@@ -65,7 +64,6 @@ class TestCommonEmbeddersEndpoint:
         assert response.status_code == 200
         embedders = response.json()
 
-
         esm2_models = [e for e in embedders if "esm2" in e.lower()]
         assert len(esm2_models) >= 1
 
@@ -75,7 +73,6 @@ class TestCommonEmbeddersEndpoint:
 
         assert response.status_code == 200
         embedders = response.json()
-
 
         assert "one_hot_encoding" in embedders
         assert "blosum62" in embedders
@@ -115,7 +112,6 @@ class TestEmbedEndpoint:
         response = embeddings_client.post(
             "/embeddings_service/embed", json=request_data
         )
-
 
         assert response.status_code == 200
         assert "task_id" in response.json()
@@ -252,17 +248,14 @@ class TestAddEmbeddingsEndpoint:
 
         import numpy as np
 
-
         buffer = io.BytesIO()
         with h5py.File(buffer, "w") as f:
-
             ds1 = f.create_dataset("0", data=np.random.rand(1024).astype(np.float32))
             ds1.attrs["original_id"] = "seq1"
             ds2 = f.create_dataset("1", data=np.random.rand(1024).astype(np.float32))
             ds2.attrs["original_id"] = "seq2"
         buffer.seek(0)
         h5_bytes = base64.b64encode(buffer.read()).decode("utf-8")
-
 
         sequences = json.dumps({"seq1": "MVLSPAD", "seq2": "MGHFTEE"})
 
@@ -277,13 +270,10 @@ class TestAddEmbeddingsEndpoint:
             "/embeddings_service/add_embeddings", json=request_data
         )
 
-
         assert response.status_code in [200, 201]
 
     @patch("biocentral_server.embeddings.embeddings_endpoint.RateLimiter")
-    def test_add_embeddings_invalid_base64(
-        self, mock_rate_limiter, embeddings_client
-    ):
+    def test_add_embeddings_invalid_base64(self, mock_rate_limiter, embeddings_client):
         """Test adding embeddings with invalid base64 data."""
         mock_rate_limiter.return_value = lambda: None
 
@@ -296,6 +286,5 @@ class TestAddEmbeddingsEndpoint:
         response = embeddings_client.post(
             "/embeddings_service/add_embeddings", json=request_data
         )
-
 
         assert response.status_code in [400, 422, 500]

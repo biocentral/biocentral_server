@@ -16,6 +16,7 @@ N_REPEATS = 5  # number of repeated embed calls
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _run_idempotency_experiment(
     embedder,
     embedder_label: str,
@@ -39,17 +40,19 @@ def _run_idempotency_experiment(
         reference = embeddings[0]
         for repeat_idx in range(1, n_repeats):
             metrics = compute_all_metrics(reference, embeddings[repeat_idx])
-            results.append({
-                "embedder": embedder_label,
-                "test_type": "idempotency",
-                "parameter": f"seq{seq_idx}_repeat{repeat_idx}",
-                "cosine_distance": metrics["cosine_distance"],
-                "l2_distance": metrics["l2_distance"],
-                "kl_divergence": metrics["kl_divergence"],
-                "threshold": 1e-6,
-                "passed": metrics["cosine_distance"] <= 1e-6,
-                "sequence_length": len(seq),
-            })
+            results.append(
+                {
+                    "embedder": embedder_label,
+                    "test_type": "idempotency",
+                    "parameter": f"seq{seq_idx}_repeat{repeat_idx}",
+                    "cosine_distance": metrics["cosine_distance"],
+                    "l2_distance": metrics["l2_distance"],
+                    "kl_divergence": metrics["kl_divergence"],
+                    "threshold": 1e-6,
+                    "passed": metrics["cosine_distance"] <= 1e-6,
+                    "sequence_length": len(seq),
+                }
+            )
 
     return results
 
@@ -57,6 +60,7 @@ def _run_idempotency_experiment(
 # ---------------------------------------------------------------------------
 # ESM2 tests
 # ---------------------------------------------------------------------------
+
 
 class TestIdempotencyESM2:
     # Real pLM: GPU non-determinism may introduce tiny drifts — we tolerate cosine distance ≤ 1e-5.

@@ -26,7 +26,9 @@ class TestProjectionConfigEndpoint:
     """Tests for GET /projection_service/projection_config"""
 
     @patch("biocentral_server.embeddings.projection_endpoint.REDUCERS")
-    @patch("biocentral_server.embeddings.projection_endpoint.ProtSpaceDimensionReductionConfig")
+    @patch(
+        "biocentral_server.embeddings.projection_endpoint.ProtSpaceDimensionReductionConfig"
+    )
     @patch("biocentral_server.embeddings.projection_endpoint.RateLimiter")
     def test_projection_config_returns_methods(
         self, mock_rate_limiter, mock_config, mock_reducers, projection_client
@@ -51,7 +53,9 @@ class TestProjectionConfigEndpoint:
         assert isinstance(data["projection_config"], dict)
 
     @patch("biocentral_server.embeddings.projection_endpoint.REDUCERS")
-    @patch("biocentral_server.embeddings.projection_endpoint.ProtSpaceDimensionReductionConfig")
+    @patch(
+        "biocentral_server.embeddings.projection_endpoint.ProtSpaceDimensionReductionConfig"
+    )
     @patch("biocentral_server.embeddings.projection_endpoint.RateLimiter")
     def test_projection_config_includes_all_methods(
         self, mock_rate_limiter, mock_config, mock_reducers, projection_client
@@ -72,7 +76,7 @@ class TestProjectionConfigEndpoint:
         response = projection_client.get("/projection_service/projection_config")
 
         assert response.status_code == 200
-        _ = response.json() # we don't care about the actual response
+        _ = response.json()  # we don't care about the actual response
 
         assert mock_config_instance.parameters_by_method.call_count == len(methods)
 
@@ -143,10 +147,11 @@ class TestProjectEndpoint:
         assert "Unknown method" in response.json()["detail"]
 
     @patch("biocentral_server.embeddings.projection_endpoint.RateLimiter")
-    def test_project_missing_required_fields(self, mock_rate_limiter, projection_client):
+    def test_project_missing_required_fields(
+        self, mock_rate_limiter, projection_client
+    ):
         """Test projection with missing required fields fails validation."""
         mock_rate_limiter.return_value = lambda: None
-
 
         request_data = {
             "method": "umap",
@@ -178,11 +183,12 @@ class TestProjectEndpoint:
         mock_rate_limiter.return_value = lambda: None
         mock_reducers.__contains__ = lambda self, x: x in ["umap", "tsne", "pca"]
 
-
         captured_config = {}
+
         def capture_config(config_dict):
             captured_config.update(config_dict)
             return config_dict
+
         mock_convert_config.side_effect = capture_config
 
         mock_user_manager.get_user_id_from_request = AsyncMock(return_value="user-1")
