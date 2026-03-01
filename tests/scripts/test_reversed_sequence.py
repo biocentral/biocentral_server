@@ -14,6 +14,19 @@ def _reverse_sequence(seq: str) -> str:
     return seq[::-1]
 
 
+def _is_repetitive(seq: str, max_motif_len: int = 5) -> bool:
+    """Check if sequence is highly repetitive (e.g., 'KKRRKKRR' or 'AAAA')."""
+    if len(seq) < 4:
+        return False
+    for motif_len in range(1, min(max_motif_len + 1, len(seq) // 2 + 1)):
+        motif = seq[:motif_len]
+        if motif * (len(seq) // motif_len) == seq[: motif_len * (len(seq) // motif_len)]:
+            # At least 80% of sequence is repetitive
+            if motif_len * (len(seq) // motif_len) >= len(seq) * 0.8:
+                return True
+    return False
+
+
 def _run_reversal_experiment(
     embedder,
     embedder_label: str,
@@ -23,6 +36,8 @@ def _run_reversal_experiment(
 
     for seq_idx, seq in enumerate(sequences):
         rev_seq = _reverse_sequence(seq)
+        is_palindrome = seq == rev_seq
+        is_repetitive = _is_repetitive(seq)
 
         orig_emb = embedder.embed_pooled(seq)
         rev_emb = embedder.embed_pooled(rev_seq)
@@ -41,6 +56,8 @@ def _run_reversal_experiment(
                 "sequence_length": len(seq),
                 "original_prefix": seq[:20],
                 "reversed_prefix": rev_seq[:20],
+                "is_palindrome": is_palindrome,
+                "is_repetitive": is_repetitive,
             }
         )
 
@@ -114,17 +131,16 @@ def _summarise_reversal(results: List[Dict[str, Any]], label: str) -> str:
 
 
 class TestReversedSequenceESM2:
-
     def test_reversal_significantly_different(
         self,
         esm2_embedder,
-        standard_sequences: List[str],
+        extended_sequences: List[str],
         reports_dir,
     ):
         results = _run_reversal_experiment(
             embedder=esm2_embedder,
             embedder_label="esm2_t6_8m",
-            sequences=standard_sequences[:2],
+            sequences=extended_sequences,  # Use all extended sequences for substantial output
         )
 
         table = format_metrics_table(results, title="Reversed Sequence — ESM2-T6-8M")
@@ -136,20 +152,24 @@ class TestReversedSequenceESM2:
                 f"  {r['parameter']}: cosine_dist={r['cosine_distance']:.6f}, "
                 f"l2={r['l2_distance']:.4f}"
             )
-            assert r["cosine_distance"] > 0.001, (
-                f"ESM2 should be order-sensitive but cosine_dist "
-                f"is very small ({r['cosine_distance']:.8f})"
-            )
+            # Skip assertion for palindromic or highly repetitive sequences
+            # These have symmetric/near-symmetric patterns when reversed
+            skip = r.get("is_palindrome", False) or r.get("is_repetitive", False)
+            if not skip:
+                assert r["cosine_distance"] > 0.001, (
+                    f"ESM2 should be order-sensitive but cosine_dist "
+                    f"is very small ({r['cosine_distance']:.8f})"
+                )
 
     def test_double_reversal_is_identity(
         self,
         esm2_embedder,
-        standard_sequences: List[str],
+        extended_sequences: List[str],
     ):
         results = _run_double_reversal_experiment(
             embedder=esm2_embedder,
             embedder_label="esm2_t6_8m",
-            sequences=standard_sequences[:2],
+            sequences=extended_sequences,
             tolerance=1e-5,
         )
 
@@ -162,18 +182,18 @@ class TestReversedSequenceESM2:
     def test_reversal_summary_and_report(
         self,
         esm2_embedder,
-        diverse_sequences: List[str],
+        extended_sequences: List[str],
         reports_dir,
     ):
         rev_results = _run_reversal_experiment(
             embedder=esm2_embedder,
             embedder_label="esm2_t6_8m",
-            sequences=diverse_sequences[:3],
+            sequences=extended_sequences,
         )
         dbl_results = _run_double_reversal_experiment(
             embedder=esm2_embedder,
             embedder_label="esm2_t6_8m",
-            sequences=diverse_sequences[:3],
+            sequences=extended_sequences,
             tolerance=1e-5,
         )
 

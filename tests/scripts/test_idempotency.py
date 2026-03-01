@@ -50,19 +50,19 @@ def _run_idempotency_experiment(
 
 
 class TestIdempotencyESM2:
-
     TOLERANCE = 1e-5
 
     def test_pooled_embedding_idempotent(
         self,
         esm2_embedder,
-        standard_sequences: List[str],
+        extended_sequences: List[str],
         reports_dir,
     ):
+        # Use first 10 extended sequences × 4 repeats = 40 rows
         results = _run_idempotency_experiment(
             embedder=esm2_embedder,
             embedder_label="esm2_t6_8m",
-            sequences=standard_sequences,
+            sequences=extended_sequences[:10],
             pooled=True,
         )
 

@@ -80,21 +80,22 @@ def _run_batch_invariance(
 
 
 class TestBatchInvarianceESM2:
-
+    # Small tolerance for numerical differences due to padding/batching behavior
     TOLERANCE = 0.01
 
     def test_batch_invariance_pooled(
         self,
         esm2_embedder,
-        standard_sequences: List[str],
-        filler_sequences: List[str],
+        extended_sequences: List[str],
+        extended_filler_sequences: List[str],
         reports_dir,
     ):
+        # Use first 10 extended sequences for ~40 rows (10 seqs × 4 batch sizes)
         results = _run_batch_invariance(
             embedder=esm2_embedder,
             embedder_label="esm2_t6_8m",
-            target_sequences=standard_sequences[:2],
-            filler_sequences=filler_sequences,
+            target_sequences=extended_sequences[:10],
+            filler_sequences=extended_filler_sequences,
             tolerance=self.TOLERANCE,
         )
 

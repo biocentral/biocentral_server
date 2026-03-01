@@ -20,6 +20,12 @@ def main():
         "-v",
         "-s",
         "--tb=short",
+        "-W",
+        "ignore::DeprecationWarning",
+        "-W",
+        "ignore::UserWarning",
+        "-W",
+        "ignore::FutureWarning",
     ]
 
     pytest_args.extend(args)
