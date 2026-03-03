@@ -160,12 +160,12 @@ jobs:
       - name: Show logs 
         if: always()
         run: |
-          docker compose -f docker-compose.ci.yml logs
+          docker compose -f docker-compose.ci.yml --env-file .env.local logs
 
       - name: Stop services
         if: always()
         run: |
-          docker compose -f docker-compose.ci.yml down -v
+          docker compose -f docker-compose.ci.yml --env-file .env.local down -v
 
   property-oracle-test:
     runs-on: ubuntu-latest
