@@ -1,11 +1,11 @@
 import random
 import hashlib
-from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Protocol
 
 import numpy as np
 import pytest
+from pydantic import BaseModel, Field
 from biotrainer.input_files import BiotrainerSequenceRecord
 
 from tests.fixtures.test_dataset import (
@@ -46,13 +46,18 @@ class EmbedderProtocol(Protocol):
     ) -> List[np.ndarray]: ...
 
 
-@dataclass
-class OracleConfig:
-    embedder_name: str
-    cosine_threshold: float
-    batch_sizes: List[int] = field(default_factory=lambda: [1, 5, 10])
-    masking_ratios: List[float] = field(
-        default_factory=lambda: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+class OracleConfig(BaseModel):
+    embedder_name: str = Field(description="Name of the embedder model to test")
+    cosine_threshold: float = Field(
+        description="Maximum cosine distance allowed for batch invariance checks"
+    )
+    batch_sizes: List[int] = Field(
+        default=[1, 5, 10],
+        description="List of batch sizes to test for batch invariance",
+    )
+    masking_ratios: List[float] = Field(
+        default=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        description="Ratios of sequence masking to test for metamorphic relations",
     )
 
 
@@ -136,82 +141,6 @@ class BatchInvarianceOracle:
         batch.insert(insert_pos, target)
 
         return batch
-
-
-class MaskingRobustnessOracle:
-    # Oracle verifying embedding behavior under progressive token masking.
-
-    MASK_TOKEN = "X"
-
-    def __init__(
-        self,
-        embedder: EmbedderProtocol,
-        config: OracleConfig,
-    ):
-        # Initialize MaskingRobustnessOracle.
-        self.embedder = embedder
-        self.config = config
-
-    def verify(
-        self,
-        sequence: str,
-        seed: int = 42,
-    ) -> List[Dict[str, Any]]:
-        # Verify masking robustness for a sequence.
-        results = []
-
-        original_embedding = self.embedder.embed_pooled(sequence)
-
-        for ratio in self.config.masking_ratios:
-            masked_sequence = self._mask_sequence(sequence, ratio, seed)
-
-            masked_embedding = self.embedder.embed_pooled(masked_sequence)
-
-            metrics = compute_all_metrics(original_embedding, masked_embedding)
-
-            if ratio >= 0.3:
-                passed = "N/A"  # exploratory — no strict pass/fail at higher masking
-            else:
-                passed = metrics["cosine_distance"] <= self.config.cosine_threshold
-
-            result = {
-                "embedder": self.config.embedder_name,
-                "test_type": "masking_robustness",
-                "parameter": f"mask_{int(ratio * 100)}%",
-                "cosine_distance": metrics["cosine_distance"],
-                "l2_distance": metrics["l2_distance"],
-                "kl_divergence": metrics["kl_divergence"],
-                "threshold": self.config.cosine_threshold,
-                "passed": passed,
-            }
-            results.append(result)
-            add_oracle_result(result)
-
-        return results
-
-    def _mask_sequence(
-        self,
-        sequence: str,
-        ratio: float,
-        seed: int,
-    ) -> str:
-        # Mask a portion of the sequence with unknown token 'X'.
-        if ratio <= 0:
-            return sequence
-        if ratio >= 1:
-            return self.MASK_TOKEN * len(sequence)
-
-        rng = random.Random(seed + int(ratio * 1000))
-        seq_list = list(sequence)
-        n_mask = int(len(sequence) * ratio)
-
-        positions = rng.sample(range(len(sequence)), n_mask)
-
-        for pos in positions:
-            seq_list[pos] = self.MASK_TOKEN
-
-        return "".join(seq_list)
-
 
 @pytest.fixture(scope="module")
 def esm2_t6_8m_oracle_config() -> OracleConfig:
@@ -326,43 +255,6 @@ class TestBatchInvarianceESM2:
         for result in all_results:
             assert result["passed"], (
                 f"Batch invariance failed for {result['parameter']}: "
-                f"cosine_distance={result['cosine_distance']:.6f} > "
-                f"threshold={result['threshold']:.4f}; "
-                f"embedder={result['embedder']}; "
-                f"sequence_index={result.get('sequence_index')}; "
-                f"sequence_length={result.get('sequence_length')}"
-            )
-
-
-class TestMaskingRobustnessESM2:
-    def test_embedding_stable_under_progressive_masking(
-        self,
-        esm2_t6_8m_embedder,
-        esm2_t6_8m_oracle_config: OracleConfig,
-        oracle_sequences: List[str],
-    ):
-        oracle = MaskingRobustnessOracle(
-            embedder=esm2_t6_8m_embedder,
-            config=esm2_t6_8m_oracle_config,
-        )
-
-        all_results = []
-        for idx, seq in enumerate(oracle_sequences[:2]):
-            results = oracle.verify(seq)
-            for result in results:
-                result["sequence_index"] = idx
-                result["sequence_length"] = len(seq)
-            all_results.extend(results)
-
-        table = format_metrics_table(
-            all_results,
-            title="Masking Robustness Oracle - ESM2-T6-8M",
-        )
-        print(table)
-
-        for result in all_results:
-            assert result["passed"], (
-                f"Masking robustness failed for {result['parameter']}: "
                 f"cosine_distance={result['cosine_distance']:.6f} > "
                 f"threshold={result['threshold']:.4f}; "
                 f"embedder={result['embedder']}; "

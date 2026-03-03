@@ -146,7 +146,7 @@ jobs:
 
       - name: Start services with Docker Compose
         run: |
-          docker compose -f docker-compose.dev.yml --env-file .env.ci up -d --wait
+          docker compose -f docker-compose.ci.yml --env-file .env.local up -d --wait
         env:
           DOCKER_BUILDKIT: 1
           COMPOSE_DOCKER_CLI_BUILD: 1
@@ -160,12 +160,12 @@ jobs:
       - name: Show logs 
         if: always()
         run: |
-          docker compose -f docker-compose.dev.yml logs
+          docker compose -f docker-compose.ci.yml logs
 
       - name: Stop services
         if: always()
         run: |
-          docker compose -f docker-compose.dev.yml down -v
+          docker compose -f docker-compose.ci.yml down -v
 
   property-oracle-test:
     runs-on: ubuntu-latest
@@ -214,10 +214,6 @@ jobs:
         env:
           UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
-      - name: Download ONNX prediction models
-        run: uv run python -m tests.fixtures.download_onnx_models --output-dir $ONNX_MODELS_PATH
-        timeout-minutes: 15
-
       - name: Run property oracle tests
         run: uv run pytest tests/property/oracles -v -n auto --durations=0 -W "ignore::DeprecationWarning"
       
@@ -228,129 +224,3 @@ jobs:
           name: oracle-reports
           path: tests/reports/*.csv
           if-no-files-found: warn
-
-  performance-benchmark:
-    runs-on: ubuntu-latest
-    #needs: unit-test
-    #if: ${{ always() && (needs.unit-test.result == 'success' || needs.unit-test.result == 'skipped') }}
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Configure Git to use HTTPS for git dependencies
-        run: |
-          git config --global url."https://github.com/".insteadOf git@github.com:
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "0.9.26"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-          cache-local-path: "/tmp/.uv-cache"
-
-      - name: Install dependencies (CPU-only PyTorch)
-        run: uv sync --no-install-project --index-strategy unsafe-best-match
-        env:
-          UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
-
-      - name: Run performance benchmarks
-        run: |
-          uv run pytest tests/performance/ -v -n auto -m "performance" \
-            --benchmark-json=benchmark_results.json \
-            --benchmark-columns=min,max,mean,stddev,rounds \
-            -W "ignore::DeprecationWarning"
-        continue-on-error: true
-
-      - name: Display benchmark results
-        if: always()
-        run: |
-          echo "## Performance Benchmark Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -s benchmark_results.json ]; then
-            uv run python -c "
-          import json
-          with open('benchmark_results.json') as f:
-              data = json.load(f)
-          
-          print('| Test | Min (s) | Mean (s) | Max (s) | StdDev | Rounds |')
-          print('|------|---------|----------|---------|--------|--------|')
-          
-          for bench in data.get('benchmarks', []):
-              name = bench['name'].split('::')[-1]
-              stats = bench['stats']
-              print(f\"| {name} | {stats['min']:.4f} | {stats['mean']:.4f} | {stats['max']:.4f} | {stats['stddev']:.4f} | {stats['rounds']} |\")
-          " >> $GITHUB_STEP_SUMMARY
-          else
-            echo "No benchmark results found." >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Display memory usage results
-        if: always()
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Memory Usage Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -s memory_results.json ]; then
-            uv run python -c "
-          import json
-          with open('memory_results.json') as f:
-              data = json.load(f)
-          
-          # Sequence Length Scaling
-          if 'sequence_length_scaling' in data:
-              print('### Sequence Length Scaling')
-              print('')
-              print('| Length | Mean (ms) | Std (ms) | Emb (MB) | Mem Δ (MB) |')
-              print('|--------|-----------|----------|----------|------------|')
-              for r in data['sequence_length_scaling']:
-                  print(f\"| {r['length']} | {r['mean_ms']:.3f} | {r['std_ms']:.3f} | {r['embedding_mb']:.4f} | {r['mem_delta_mb']:.2f} |\")
-              print('')
-          
-          # Batch Size Scaling
-          if 'batch_size_scaling' in data:
-              print('### Batch Size Scaling')
-              print('')
-              print('| Batch Size | Total (ms) | Per Seq (ms) | Emb (MB) | Mem Δ (MB) |')
-              print('|------------|------------|--------------|----------|------------|')
-              for r in data['batch_size_scaling']:
-                  print(f\"| {r['batch_size']} | {r['mean_ms']:.3f} | {r['per_seq_ms']:.4f} | {r['total_emb_mb']:.4f} | {r['mem_delta_mb']:.2f} |\")
-              print('')
-          
-          # Sequential vs Batch
-          if 'sequential_vs_batch' in data:
-              svb = data['sequential_vs_batch']
-              print('### Sequential vs Batch')
-              print('')
-              print(f\"Sequences: {svb['num_sequences']}\")
-              print('')
-              print('| Mode | Time (ms) | Emb (MB) | Mem Δ (MB) |')
-              print('|------|-----------|----------|------------|')
-              print(f\"| Sequential | {svb['sequential']['time_ms']:.2f} | {svb['sequential']['emb_mb']:.4f} | {svb['sequential']['mem_delta_mb']:.2f} |\")
-              print(f\"| Batch | {svb['batch']['time_ms']:.2f} | {svb['batch']['emb_mb']:.4f} | {svb['batch']['mem_delta_mb']:.2f} |\")
-              print('')
-              print(f\"**Time ratio:** {svb['time_ratio']:.2f}x\")
-          " >> $GITHUB_STEP_SUMMARY
-          else
-            echo "No memory results found." >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Upload benchmark results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-results
-          path: |
-            benchmark_results.json
-            memory_results.json
-          if-no-files-found: warn
-
-

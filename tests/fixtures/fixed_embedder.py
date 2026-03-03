@@ -1,26 +1,34 @@
 # Fixed Embedder for deterministic, reproducible testing.
 
-import hashlib
 import numpy as np
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, field
+
+from biotrainer.utilities import calculate_sequence_hash
+from pydantic import BaseModel, Field
 
 
-@dataclass
-class FixedEmbedderConfig:
-    embedding_dim: int = 320
-    seed_base: int = 42
-    noise_scale: float = 0.1
+class FixedEmbedderConfig(BaseModel):
+    """Configuration for the FixedEmbedder test utility."""
 
-    model_dimensions: Dict[str, int] = field(
-        default_factory=lambda: {
+    embedding_dim: int = Field(
+        default=320, description="Dimension of the generated embeddings"
+    )
+    seed_base: int = Field(
+        default=42, description="Base seed for deterministic random generation"
+    )
+    noise_scale: float = Field(
+        default=0.1, description="Scale factor for random noise added to embeddings"
+    )
+    model_dimensions: Dict[str, int] = Field(
+        default={
             "prot_t5": 1024,
             "prot_t5_xl": 1024,
             "esm2_t33": 1280,
             "esm2_t36": 2560,
             "esm2_t6": 320,
             "esm2_t12": 480,
-        }
+        },
+        description="Mapping of model names to their embedding dimensions",
     )
 
 
@@ -39,6 +47,15 @@ class FixedEmbedder:
         noise_scale: float = 0.1,
         strict_dataset: bool = True,
     ):
+        """
+        Args:
+            model_name: Name of the model to mimic (determines default embedding dimension).
+            embedding_dim: Override embedding dimension. If None, uses model_dimensions lookup.
+            seed_base: Base seed for deterministic random generation. Same seed = same embeddings.
+            noise_scale: Scale factor for random noise added to embeddings (0.0 = no noise).
+            strict_dataset: If True, only allows sequences from CANONICAL_TEST_DATASET.
+                           Raises ValueError for unknown sequences.
+        """
         self.model_name = model_name
         self.config = FixedEmbedderConfig(seed_base=seed_base, noise_scale=noise_scale)
 
@@ -49,8 +66,6 @@ class FixedEmbedder:
                 model_name, self.config.model_dimensions["prot_t5"]
             )
 
-        self.seed_base = seed_base
-        self.noise_scale = noise_scale
         self.strict_dataset = strict_dataset
 
         self._allowed_sequences: Optional[set] = None
@@ -77,13 +92,12 @@ class FixedEmbedder:
                 )
 
     def _sequence_to_seed(self, sequence: str) -> int:
-        # Convert sequence to deterministic seed using SHA-256.
-        normalized_sequence = sequence.upper()
-
-        hash_input = f"{self.seed_base}:{normalized_sequence}".encode("utf-8")
-        hash_bytes = hashlib.sha256(hash_input).digest()
-
-        seed = int.from_bytes(hash_bytes[:8], byteorder="big") % (2**32)
+        # Convert sequence to deterministic seed using biotrainer's sequence hash.
+        # Combines seed_base with sequence hash for reproducible, unique seeds.
+        seq_hash = calculate_sequence_hash(sequence)
+        # Convert hex hash to integer, combine with seed_base for uniqueness
+        hash_int = int(seq_hash, 16) if seq_hash else 0
+        seed = (self.config.seed_base + hash_int) % (2**32)
         return seed
 
     def _generate_aa_base_embeddings(self) -> Dict[str, np.ndarray]:
@@ -92,7 +106,7 @@ class FixedEmbedder:
         all_aas = sorted(self.EXTENDED_AMINO_ACIDS | {"X", "-", "*"})
 
         for i, aa in enumerate(all_aas):
-            rng = np.random.default_rng(self.seed_base + i * 1000)
+            rng = np.random.default_rng(self.config.seed_base + i * 1000)
 
             base = rng.standard_normal(self.embedding_dim).astype(np.float32)
             base = base / np.linalg.norm(base)
@@ -134,7 +148,7 @@ class FixedEmbedder:
 
             noise = (
                 rng.standard_normal(self.embedding_dim).astype(np.float32)
-                * self.noise_scale
+                * self.config.noise_scale
             )
 
             embeddings[pos] = aa_base + positional + noise
@@ -182,7 +196,7 @@ class FixedEmbedder:
     def __repr__(self) -> str:
         return (
             f"FixedEmbedder(model_name='{self.model_name}', "
-            f"embedding_dim={self.embedding_dim}, seed_base={self.seed_base})"
+            f"embedding_dim={self.embedding_dim}, seed_base={self.config.seed_base})"
         )
 
 

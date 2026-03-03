@@ -2,7 +2,6 @@ import os
 import time
 import logging
 import sys
-import hashlib
 import pytest
 import httpx
 import redis
@@ -18,6 +17,49 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 TERMINAL_SUCCESS_STATUSES = {"FINISHED", "COMPLETED", "DONE"}
 TERMINAL_FAILURE_STATUSES = {"FAILED", "ERROR"}
 
+EMBEDDER_ESM2_T6_8M = "facebook/esm2_t6_8M_UR50D"
+EMBEDDER_FIXED = "fixed"
+
+EMBEDDER_MAP = {
+    "esm2_t6_8m": EMBEDDER_ESM2_T6_8M,
+    "fixed": EMBEDDER_FIXED,
+}
+
+
+CANONICAL_STANDARD_IDS = ["standard_001", "standard_002", "standard_003"]
+CANONICAL_LENGTH_EDGE_IDS = [
+    "length_min_1",
+    "length_min_2",
+    "length_short_5",
+    "length_short_10",
+    "length_medium_50",
+    "length_long_200",
+]
+CANONICAL_UNKNOWN_TOKEN_IDS = [
+    "unknown_single",
+    "unknown_multiple",
+    "unknown_start",
+    "unknown_end",
+    "unknown_middle",
+    "unknown_scattered",
+    "unknown_high_ratio",
+]
+CANONICAL_AMBIGUOUS_CODE_IDS = [
+    "ambiguous_B",
+    "ambiguous_Z",
+    "ambiguous_J",
+    "selenocysteine",
+    "pyrrolysine",
+]
+CANONICAL_REAL_WORLD_IDS = ["real_insulin_b", "real_ubiquitin", "real_gfp_core"]
+
+ALL_CANONICAL_IDS = (
+    CANONICAL_STANDARD_IDS
+    + CANONICAL_LENGTH_EDGE_IDS
+    + CANONICAL_UNKNOWN_TOKEN_IDS
+    + CANONICAL_AMBIGUOUS_CODE_IDS
+    + CANONICAL_REAL_WORLD_IDS
+)
 
 def get_redis_port() -> int:
     return int(os.environ.get("REDIS_JOBS_PORT", "6379"))
@@ -73,13 +115,31 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
     except httpx.RequestError as e:
         pytest.fail(f"Cannot connect to server at {server_url}: {e}")
 
+    # Fixed embedder mode: bypass GPU compute while still testing real server behavior.
+    # 
+    # What's STILL tested (real server):
+    #   - Validation logic (empty sequences → 422, missing embedder → 422, invalid method → 400)
+    #   - Configuration endpoints (/common_embedders, /projection_config)
+    #   - Request/response contracts and endpoint routing
+    #
+    # What's BYPASSED (via FakeResponse):
+    #   - GPU-intensive model inference (ESM2, ProtT5, etc.)
+    #   - Redis job queue and worker processing
+    #   - Actual PCA/UMAP/t-SNE computation
+    #
+    # This allows integration tests to verify the full submit→poll→result flow
+    # and all validation logic without waiting for slow ML compute.
     if os.environ.get("CI_EMBEDDER", "").lower() == "fixed":
         import uuid
         from tests.fixtures.fixed_embedder import get_fixed_embedder
 
+        # Save original methods so we can delegate non-intercepted requests
         original_post = http_client.post
         original_get = http_client.get
 
+        # FakeResponse mimics httpx.Response interface (status_code, json()).
+        # Required because we return mock responses for intercepted endpoints
+        # while still satisfying the same API contract as real HTTP responses.
         class FakeResponse:
             def __init__(self, status_code: int, payload: Dict):
                 self.status_code = status_code
@@ -88,8 +148,12 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
             def json(self, *args, **kwargs):
                 return self._payload
 
+        # Track fake task state so GET /task_status can return correct status
         _fake_tasks: Dict[str, Dict] = {}
 
+        # Write fake embeddings directly to the database so subsequent reads
+        # (e.g., get_missing_embeddings, prediction tasks) find cached data.
+        # This simulates what the real embedding worker would do.
         def _save_embeddings_to_db(
             sequences: Dict[str, str], embedder_name: str, reduced: bool, fe
         ):
@@ -151,12 +215,17 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
             except Exception as e:
                 print(f"[FIXED EMBEDDER] Warning: Failed to save to DB: {e}")
 
+        # Intercept POST requests to embedding/projection endpoints.
+        # Instead of forwarding to the real server, generate fake embeddings
+        # and immediately return a "completed" task response.
         def _fake_post(url, *args, **kwargs):
             try:
                 path = urlparse(str(url)).path
             except Exception:
                 path = str(url)
 
+            # Intercept embedding requests: generate deterministic embeddings,
+            # save them to DB, and return a fake task_id marked as FINISHED
             if path.startswith("/embeddings_service/embed"):
                 data = kwargs.get("json") or {}
 
@@ -185,6 +254,8 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 }
                 return FakeResponse(200, {"task_id": task_id})
 
+            # Intercept projection requests: return fake dimensionality-reduced coordinates
+            # without running actual PCA/UMAP/t-SNE algorithms
             if path.startswith("/projection_service/project"):
                 data = kwargs.get("json") or {}
                 if not data.get("sequence_data"):
@@ -224,14 +295,18 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
                 }
                 return FakeResponse(200, {"task_id": task_id})
 
+            # Non-intercepted endpoints pass through to the real server
             return original_post(url, *args, **kwargs)
 
+        # Intercept GET requests for task status checks.
+        # Return stored fake task state for "local-" prefixed task IDs.
         def _fake_get(url, *args, **kwargs):
             try:
                 path = urlparse(str(url)).path
             except Exception:
                 path = str(url)
 
+            # Only intercept task status for our fake "local-" tasks
             if path.startswith("/biocentral_service/task_status/local-"):
                 try:
                     task_id = path.rstrip("/").split("/")[-1]
@@ -244,6 +319,7 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
 
             return original_get(url, *args, **kwargs)
 
+        # Monkey-patch the client to use our fake handlers
         http_client.post = _fake_post
         http_client.get = _fake_get
 
@@ -466,16 +542,6 @@ def poll_task(client):
 
     return _poll
 
-
-EMBEDDER_ESM2_T6_8M = "facebook/esm2_t6_8M_UR50D"
-EMBEDDER_FIXED = "fixed"
-
-EMBEDDER_MAP = {
-    "esm2_t6_8m": EMBEDDER_ESM2_T6_8M,
-    "fixed": EMBEDDER_FIXED,
-}
-
-
 def get_embedder_name() -> str:
     ci_embedder = os.environ.get("CI_EMBEDDER", "esm2_t6_8m").lower()
 
@@ -595,43 +661,6 @@ def real_world_sequences() -> Dict[str, str]:
         "insulin_b": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
     }
 
-
-CANONICAL_STANDARD_IDS = ["standard_001", "standard_002", "standard_003"]
-CANONICAL_LENGTH_EDGE_IDS = [
-    "length_min_1",
-    "length_min_2",
-    "length_short_5",
-    "length_short_10",
-    "length_medium_50",
-    "length_long_200",
-]
-CANONICAL_UNKNOWN_TOKEN_IDS = [
-    "unknown_single",
-    "unknown_multiple",
-    "unknown_start",
-    "unknown_end",
-    "unknown_middle",
-    "unknown_scattered",
-    "unknown_high_ratio",
-]
-CANONICAL_AMBIGUOUS_CODE_IDS = [
-    "ambiguous_B",
-    "ambiguous_Z",
-    "ambiguous_J",
-    "selenocysteine",
-    "pyrrolysine",
-]
-CANONICAL_REAL_WORLD_IDS = ["real_insulin_b", "real_ubiquitin", "real_gfp_core"]
-
-ALL_CANONICAL_IDS = (
-    CANONICAL_STANDARD_IDS
-    + CANONICAL_LENGTH_EDGE_IDS
-    + CANONICAL_UNKNOWN_TOKEN_IDS
-    + CANONICAL_AMBIGUOUS_CODE_IDS
-    + CANONICAL_REAL_WORLD_IDS
-)
-
-
 def get_sequence_by_id(seq_id: str) -> str:
     return CANONICAL_TEST_DATASET.get_by_id(seq_id).sequence
 
@@ -747,72 +776,43 @@ def verify_embedding_cache(client, embedder_name, shared_embedding_sequences):
 
 @pytest.fixture(scope="session")
 def precache_prott5_embeddings(shared_embedding_sequences):
-    import numpy as np
-    import psycopg
-    import blosc2
-    from datetime import datetime
-    from biotrainer.utilities import calculate_sequence_hash
+    from biotrainer.input_files import BiotrainerSequenceRecord
+    from biocentral_server.server_management.embedding_database import EmbeddingsDatabase
+    from tests.fixtures.fixed_embedder import FixedEmbedder
 
-    db_host = os.environ.get("POSTGRES_HOST", "localhost")
-    db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
-    db_name = os.environ.get("POSTGRES_DB", "embeddings_db")
-    db_user = os.environ.get("POSTGRES_USER", "embeddingsuser")
-    db_pass = os.environ.get("POSTGRES_PASSWORD", "embeddingspwd")
+    postgres_config = {
+        "host": os.environ.get("POSTGRES_HOST", "localhost"),
+        "port": int(os.environ.get("POSTGRES_PORT", "5432")),
+        "dbname": os.environ.get("POSTGRES_DB", "embeddings_db"),
+        "user": os.environ.get("POSTGRES_USER", "embeddingsuser"),
+        "password": os.environ.get("POSTGRES_PASSWORD", "embeddingspwd"),
+    }
 
     embedder_name = "Rostlab/prot_t5_xl_uniref50"
+    fe = FixedEmbedder(model_name="prot_t5_xl")
 
     try:
-        conn = psycopg.connect(
-            host=db_host,
-            port=db_port,
-            dbname=db_name,
-            user=db_user,
-            password=db_pass,
-        )
+        db = EmbeddingsDatabase(postgres_config)
 
-        embeddings_data = []
-        for seq_id, sequence in shared_embedding_sequences.items():
-            seq_hash = calculate_sequence_hash(sequence)
-            seq_len = len(sequence)
-            seed_bytes = hashlib.sha256(seq_hash.encode("utf-8")).digest()[:8]
-            seed = int.from_bytes(seed_bytes, "big")
-            rng = np.random.default_rng(seed)
-
-            per_residue = rng.standard_normal((seq_len, 1024)).astype(np.float32)
-            per_sequence = per_residue.mean(axis=0)
-
-            per_seq_compressed = blosc2.pack_array(per_sequence)
-            per_res_compressed = blosc2.pack_array(per_residue)
-
-            embeddings_data.append(
-                (
-                    seq_hash,
-                    seq_len,
-                    datetime.now(),
-                    embedder_name,
-                    per_seq_compressed,
-                    per_res_compressed,
-                )
+        # Save per-residue embeddings
+        per_residue_records = [
+            BiotrainerSequenceRecord(
+                seq_id=seq_id, seq=sequence, embedding=fe.embed(sequence)
             )
+            for seq_id, sequence in shared_embedding_sequences.items()
+        ]
+        db.save_embeddings(per_residue_records, embedder_name, reduced=False)
 
-        with conn.cursor() as cur:
-            for data in embeddings_data:
-                cur.execute(
-                    """
-                    INSERT INTO embeddings
-                    (sequence_hash, sequence_length, last_updated, embedder_name, per_sequence, per_residue)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (sequence_hash, embedder_name) DO UPDATE SET
-                    last_updated = EXCLUDED.last_updated,
-                    per_sequence = COALESCE(EXCLUDED.per_sequence, embeddings.per_sequence),
-                    per_residue = COALESCE(EXCLUDED.per_residue, embeddings.per_residue)
-                    """,
-                    data,
-                )
-        conn.commit()
-        conn.close()
+        # Save per-sequence (pooled) embeddings
+        per_sequence_records = [
+            BiotrainerSequenceRecord(
+                seq_id=seq_id, seq=sequence, embedding=fe.embed_pooled(sequence)
+            )
+            for seq_id, sequence in shared_embedding_sequences.items()
+        ]
+        db.save_embeddings(per_sequence_records, embedder_name, reduced=True)
 
-        print(f"\n[PRECACHE] Inserted {len(embeddings_data)} fake ProtT5 embeddings")
+        print(f"\n[PRECACHE] Inserted {len(shared_embedding_sequences)} fake ProtT5 embeddings")
         return True
 
     except Exception as e:
@@ -822,113 +822,22 @@ def precache_prott5_embeddings(shared_embedding_sequences):
 
 @pytest.fixture(scope="session")
 def load_bindembed_onnx():
-    import tempfile
-    import zipfile
-    import requests
-    from pathlib import Path
-
-    seaweedfs_host = os.environ.get("SEAWEEDFS_FILER_HOST", "localhost")
-    seaweedfs_port = os.environ.get("SEAWEEDFS_FILER_PORT", "8888")
-    seaweedfs_url = f"http://{seaweedfs_host}:{seaweedfs_port}"
-
-    model_url = "https://nextcloud.in.tum.de/index.php/s/kxJ64RcRi7g6p6r/download"
-
-    target_base = "PREDICT"
+    from biocentral_server.predict import PredictInitializer
 
     try:
-        _ = requests.head(f"{seaweedfs_url}/{target_base}/bindembed/", timeout=5)
-        # print(f"\n[ONNX] Check response: {check_response.status_code}")
-    except Exception as e:
-        print(f"\n[ONNX] Check failed: {e}")
+        initializer = PredictInitializer()
 
-    try:
-        # print(f"\n[ONNX] Downloading prediction models from {model_url}...")
+        if not initializer.check_one_time_setup_is_done():
+            initializer.one_time_setup()
+            print("\n[ONNX] Downloaded and uploaded prediction models via PredictInitializer")
+        else:
+            print("\n[ONNX] Prediction models already present")
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            response = requests.get(model_url, stream=True, timeout=300)
-            response.raise_for_status()
-
-            zip_path = Path(tmpdir) / "models.zip"
-            with open(zip_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-
-            # print(f"[ONNX] Downloaded {zip_path.stat().st_size / 1024 / 1024:.1f} MB")
-
-            extract_dir = Path(tmpdir) / "extracted"
-            with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                zip_ref.extractall(extract_dir)
-
-            extracted_items = list(extract_dir.iterdir())
-            # print(f"[ONNX] Top-level extracted: {[item.name for item in extracted_items]}")
-
-            model_root = extract_dir
-            if len(extracted_items) == 1 and extracted_items[0].is_dir():
-                model_root = extracted_items[0]
-                # print(f"[ONNX] Using nested root: {model_root.name}")
-
-            for item in model_root.iterdir():
-                if item.is_dir():
-                    files = list(item.iterdir())[:3]
-                    # print(f"[ONNX] Dir {item.name}/: {[f.name for f in files]}...")
-
-            uploaded_count = 0
-            failed_count = 0
-
-            for file_path in model_root.rglob("*"):
-                if file_path.is_file():
-                    rel_path = file_path.relative_to(model_root)
-                    seaweed_path = f"/{target_base}/{rel_path}"
-
-                    try:
-                        with open(file_path, "rb") as f:
-                            file_data = f.read()
-
-                        files = {
-                            "file": (
-                                file_path.name,
-                                file_data,
-                                "application/octet-stream",
-                            )
-                        }
-                        upload_response = requests.post(
-                            f"{seaweedfs_url}{seaweed_path}",
-                            files=files,
-                            timeout=60,
-                        )
-
-                        if upload_response.status_code in (200, 201):
-                            uploaded_count += 1
-                        else:
-                            failed_count += 1
-                            if failed_count <= 3:
-                                print(
-                                    f"[ONNX] Failed {seaweed_path}: {upload_response.status_code} - {upload_response.text[:100]}"
-                                )
-                    except Exception as e:
-                        failed_count += 1
-                        if failed_count <= 3:
-                            print(f"[ONNX] Error uploading {seaweed_path}: {e}")
-
-            # print(f"[ONNX] Uploaded {uploaded_count} files, {failed_count} failed")
-
-            try:
-                _ = requests.get(
-                    f"{seaweedfs_url}/{target_base}/bindembed/?pretty=y",
-                    headers={"Accept": "application/json"},
-                    timeout=10,
-                )
-                # print(f"[ONNX] Verify bindembed dir: {verify_response.status_code}")
-                # if verify_response.status_code == 200:
-                # print(f"[ONNX] Directory contents: {verify_response.text[:200]}")
-            except Exception as e:
-                print(f"[ONNX] Verify failed: {e}")
-
-            return uploaded_count > 0
+        return True
 
     except Exception as e:
         print(f"\n[ONNX] Failed to load models: {e}")
         import traceback
-
         traceback.print_exc()
         return False
+
