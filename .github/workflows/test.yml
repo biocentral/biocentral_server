@@ -151,7 +151,7 @@ jobs:
           DOCKER_BUILDKIT: 1
           COMPOSE_DOCKER_CLI_BUILD: 1
           BUILDKIT_STEP_LOG_MAX_SIZE: 10000000
-          CI_IMAGE: ghcr.io/${{ github.repository }}/biocentral-server
+          CI_IMAGE: ghcr.io/${{ github.repository }}
         timeout-minutes: 10
 
       - name: Run integration tests
