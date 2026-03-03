@@ -142,7 +142,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull Docker image
-        run: docker pull ghcr.io/${{ github.repository }}/biocentral-server
+        run: docker pull ghcr.io/${{ github.repository }}
 
       - name: Start services with Docker Compose
         run: |
