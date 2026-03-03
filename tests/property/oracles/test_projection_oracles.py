@@ -1,9 +1,9 @@
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Protocol
 
 import numpy as np
 import pytest
+from pydantic import BaseModel, Field
 
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 from tests.fixtures.fixed_embedder import FixedEmbedder
@@ -26,11 +26,15 @@ def clear_projection_oracle_results() -> None:
     _projection_oracle_results.clear()
 
 
-@dataclass
-class ProjectionOracleConfig:
-    method: str
-    n_components: int = 2
-    distance_correlation_threshold: float = 0.5
+class ProjectionOracleConfig(BaseModel):
+    method: str = Field(description="Projection method name (e.g., 'umap', 'pca', 'tsne')")
+    n_components: int = Field(
+        default=2, description="Number of dimensions to project to"
+    )
+    distance_correlation_threshold: float = Field(
+        default=0.5,
+        description="Minimum correlation between original and projected distances",
+    )
 
 
 PROJECTION_ORACLE_CONFIGS = {
@@ -357,68 +361,43 @@ def tsne_config() -> ProjectionOracleConfig:
     return PROJECTION_ORACLE_CONFIGS["tsne"]
 
 
+# 20 sequence IDs for UMAP (requires > n_neighbors=15)
+_ORACLE_SEQUENCE_IDS = [
+    "standard_001", "standard_002", "standard_003",
+    "real_insulin_b", "real_ubiquitin", "real_gfp_core",
+    "length_short_10", "length_medium_50", "length_long_200",
+    "all_standard_aa", "hydrophobic_rich", "charged_rich", "proline_rich",
+    "motif_alpha_helix", "motif_beta_sheet", "motif_glycine_loop",
+    "cysteine_rich", "homopolymer_A", "length_short_5", "length_min_2",
+]
+
+
 @pytest.fixture(scope="module")
 def oracle_embeddings() -> Dict[str, np.ndarray]:
     # Test embeddings from canonical dataset using FixedEmbedder.
-    # Uses 20 sequences to ensure UMAP has enough data points (> n_neighbors=15).
     embedder = FixedEmbedder(model_name="esm2_t6")
-    sequences = {
-        "standard_001": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
-        "standard_002": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
-        "standard_003": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
-        "real_insulin_b": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
-        "real_ubiquitin": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
-        "real_gfp_core": CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
-        "length_short_10": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
-        "length_medium_50": CANONICAL_TEST_DATASET.get_by_id(
-            "length_medium_50"
-        ).sequence,
-        "length_long_200": CANONICAL_TEST_DATASET.get_by_id("length_long_200").sequence,
-        "all_standard_aa": CANONICAL_TEST_DATASET.get_by_id("all_standard_aa").sequence,
-        "hydrophobic_rich": CANONICAL_TEST_DATASET.get_by_id(
-            "hydrophobic_rich"
-        ).sequence,
-        "charged_rich": CANONICAL_TEST_DATASET.get_by_id("charged_rich").sequence,
-        "proline_rich": CANONICAL_TEST_DATASET.get_by_id("proline_rich").sequence,
-        "motif_alpha_helix": CANONICAL_TEST_DATASET.get_by_id(
-            "motif_alpha_helix"
-        ).sequence,
-        "motif_beta_sheet": CANONICAL_TEST_DATASET.get_by_id(
-            "motif_beta_sheet"
-        ).sequence,
-        "motif_glycine_loop": CANONICAL_TEST_DATASET.get_by_id(
-            "motif_glycine_loop"
-        ).sequence,
-        "cysteine_rich": CANONICAL_TEST_DATASET.get_by_id("cysteine_rich").sequence,
-        "homopolymer_A": CANONICAL_TEST_DATASET.get_by_id("homopolymer_A").sequence,
-        "length_short_5": CANONICAL_TEST_DATASET.get_by_id("length_short_5").sequence,
-        "length_min_2": CANONICAL_TEST_DATASET.get_by_id("length_min_2").sequence,
-    }
+    sequences = CANONICAL_TEST_DATASET.get_subset_dict(_ORACLE_SEQUENCE_IDS)
     return embedder.embed_dict(sequences, pooled=True)
+
+
+# Mapping for diverse test with renamed keys (16 sequences for UMAP)
+_DIVERSE_ID_MAPPING = {
+    "short": "length_short_10", "medium": "length_medium_50", "long": "length_long_200",
+    "standard": "standard_001", "standard_002": "standard_002", "standard_003": "standard_003",
+    "charged": "charged_rich", "hydrophobic": "hydrophobic_rich", "proline_rich": "proline_rich",
+    "alpha_helix": "motif_alpha_helix", "beta_sheet": "motif_beta_sheet", "glycine_loop": "motif_glycine_loop",
+    "cysteine_rich": "cysteine_rich", "all_aa": "all_standard_aa",
+    "insulin": "real_insulin_b", "ubiquitin": "real_ubiquitin",
+}
 
 
 @pytest.fixture(scope="module")
 def diverse_test_embeddings() -> Dict[str, np.ndarray]:
     # Test embeddings with diverse properties.
-    # Uses 16 sequences to ensure UMAP has enough data points (> n_neighbors=15).
     embedder = FixedEmbedder(model_name="esm2_t6")
     sequences = {
-        "short": CANONICAL_TEST_DATASET.get_by_id("length_short_10").sequence,
-        "medium": CANONICAL_TEST_DATASET.get_by_id("length_medium_50").sequence,
-        "standard": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
-        "charged": CANONICAL_TEST_DATASET.get_by_id("charged_rich").sequence,
-        "hydrophobic": CANONICAL_TEST_DATASET.get_by_id("hydrophobic_rich").sequence,
-        "standard_002": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
-        "standard_003": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
-        "proline_rich": CANONICAL_TEST_DATASET.get_by_id("proline_rich").sequence,
-        "alpha_helix": CANONICAL_TEST_DATASET.get_by_id("motif_alpha_helix").sequence,
-        "beta_sheet": CANONICAL_TEST_DATASET.get_by_id("motif_beta_sheet").sequence,
-        "glycine_loop": CANONICAL_TEST_DATASET.get_by_id("motif_glycine_loop").sequence,
-        "cysteine_rich": CANONICAL_TEST_DATASET.get_by_id("cysteine_rich").sequence,
-        "long": CANONICAL_TEST_DATASET.get_by_id("length_long_200").sequence,
-        "all_aa": CANONICAL_TEST_DATASET.get_by_id("all_standard_aa").sequence,
-        "insulin": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
-        "ubiquitin": CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
+        k: CANONICAL_TEST_DATASET.get_by_id(v).sequence
+        for k, v in _DIVERSE_ID_MAPPING.items()
     }
     return embedder.embed_dict(sequences, pooled=True)
 

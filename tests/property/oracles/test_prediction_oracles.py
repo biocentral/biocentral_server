@@ -1,12 +1,14 @@
 import os
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 import numpy as np
 import pytest
+from pydantic import BaseModel, Field
 
+from biocentral_server.predict.predict_initializer import PredictInitializer
+from biocentral_server.server_management import ServerModuleInitializer
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 from tests.fixtures.fixed_embedder import FixedEmbedder
 
@@ -28,13 +30,20 @@ def clear_prediction_oracle_results() -> None:
     _prediction_oracle_results.clear()
 
 
-@dataclass
-class PredictionOracleConfig:
-    model_name: str
-    output_type: str  # "per_residue" or "per_sequence"
-    is_classification: bool = True
-    num_classes: Optional[int] = None
-    value_range: Optional[tuple] = None
+class PredictionOracleConfig(BaseModel):
+    model_name: str = Field(description="Name of the prediction model to test")
+    output_type: str = Field(
+        description="Type of output: 'per_residue' or 'per_sequence'"
+    )
+    is_classification: bool = Field(
+        default=True, description="Whether the model performs classification vs regression"
+    )
+    num_classes: Optional[int] = Field(
+        default=None, description="Number of output classes for classification models"
+    )
+    value_range: Optional[Tuple[float, float]] = Field(
+        default=None, description="Expected value range for regression outputs"
+    )
 
 
 PREDICTION_ORACLE_CONFIGS = {
@@ -246,12 +255,40 @@ LABEL_MAPPINGS = {
 
 
 def get_onnx_models_path() -> Optional[Path]:
+    """Get or download ONNX models path.
+
+    Checks ONNX_MODELS_PATH env var first, then falls back to
+    default location, downloading if necessary.
+    """
+    # Check environment variable first
     path_str = os.environ.get("ONNX_MODELS_PATH")
     if path_str:
         path = Path(path_str)
         if path.exists():
             return path
-    return None
+
+    # Default location for downloaded models
+    default_path = Path("onnx_models")
+    expected_dirs = ["prott5secondarystructure", "seth", "bindembed", "tmbed"]
+
+    # Check if models already exist
+    def models_exist(p: Path) -> bool:
+        for model_name in expected_dirs:
+            model_dir = p / model_name
+            if model_dir.exists() and any(model_dir.glob("*.onnx")):
+                return True
+        return False
+
+    if default_path.exists() and models_exist(default_path):
+        return default_path
+
+    # Download models
+    default_path.mkdir(parents=True, exist_ok=True)
+    ServerModuleInitializer._download_data(
+        urls=PredictInitializer.DOWNLOAD_URLS,
+        data_dir=default_path,
+    )
+    return default_path
 
 
 class DirectPredictor:
@@ -277,11 +314,6 @@ class DirectPredictor:
         import onnxruntime as ort
 
         models_path = get_onnx_models_path()
-        if models_path is None:
-            raise FileNotFoundError(
-                "ONNX_MODELS_PATH not set or directory not found. "
-                "Set ONNX_MODELS_PATH to directory containing model files."
-            )
 
         model_dir_name = MODEL_DIRECTORIES.get(self.model_name)
         if not model_dir_name:
@@ -291,7 +323,7 @@ class DirectPredictor:
         if not model_dir.exists():
             raise FileNotFoundError(
                 f"Model directory not found: {model_dir}. "
-                f"Download models and set ONNX_MODELS_PATH correctly."
+                f"Models may not have downloaded correctly."
             )
 
         # Auto-discover ONNX files in the model directory

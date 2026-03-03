@@ -1,12 +1,7 @@
 # Ignore storage except model-repository
 /storage/*
 !/storage/model-repository/
-.coverage
-htmlcov/
-coverage.xml
 
-# Test reports (auto-generated)
-tests/reports/*.csv
 /logs/
 /dist/
 /build/
@@ -16,5 +11,3 @@ tests/reports/*.csv
 __pycache__/
 *ipynb
 .DS_Store
-
-*pdf

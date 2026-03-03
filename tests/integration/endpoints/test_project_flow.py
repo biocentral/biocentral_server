@@ -1,5 +1,4 @@
 # Integration tests for projection endpoints.
-import httpx
 import pytest
 
 
@@ -16,46 +15,6 @@ class TestProjectionConfigEndpoint:
         config = response_json["projection_config"]
         assert isinstance(config, dict)
         assert len(config) > 0
-
-
-@pytest.mark.order(2)
-class TestProjectEndpoint:
-    @pytest.mark.integration
-    def test_project_task_completes(
-        self,
-        client,
-        poll_task,
-        embedder_name,
-        shared_embedding_sequences,
-        verify_embedding_cache,
-    ):
-        cache_status = verify_embedding_cache(expect_cached=True)
-        print(
-            f"\n[PROJECTION] Cache status: {cache_status['cached']}/{cache_status['total']} cached"
-        )
-
-        request_data = {
-            "method": "pca",
-            "sequence_data": shared_embedding_sequences,
-            "embedder_name": embedder_name,
-            "config": {
-                "n_components": 2,
-            },
-        }
-
-        response = client.post("/projection_service/project", json=request_data)
-        assert response.status_code == 200, (
-            f"Failed to submit projection task: {response.text}"
-        )
-
-        task_id = response.json()["task_id"]
-        print(f"[PROJECTION] Submitted task {task_id}, waiting for completion...")
-        result = poll_task(task_id, timeout=120, max_consecutive_errors=10)
-
-        assert result["status"].upper() == "FINISHED", (
-            f"Projection failed: {result.get('error', 'unknown')}"
-        )
-        print(f"[PROJECTION] Task {task_id} completed successfully")
 
     @pytest.mark.integration
     def test_project_invalid_method_rejected(
@@ -96,37 +55,6 @@ class TestProjectEndpoint:
 @pytest.mark.order(3)
 class TestEndToEndProjectionFlow:
     @pytest.mark.integration
-    def test_complete_projection_flow(
-        self,
-        client,
-        poll_task,
-        embedder_name,
-        shared_embedding_sequences,
-    ):
-        request_data = {
-            "method": "pca",
-            "sequence_data": shared_embedding_sequences,
-            "embedder_name": embedder_name,
-            "config": {"n_components": 2},
-        }
-
-        response = client.post("/projection_service/project", json=request_data)
-        assert response.status_code == 200
-
-        task_id = response.json()["task_id"]
-
-        try:
-            result = poll_task(task_id, timeout=60)
-        except TimeoutError:
-            pytest.skip(f"Task {task_id} timed out - CI resource constraints")
-        except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
-            pytest.skip(f"Server connection lost during polling: {e}")
-
-        assert result["status"].upper() == "FINISHED", (
-            f"Projection failed: {result.get('error', 'unknown')}"
-        )
-
-    @pytest.mark.integration
     @pytest.mark.slow
     def test_umap_projection_flow(
         self,
@@ -154,25 +82,41 @@ class TestEndToEndProjectionFlow:
 
         assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
 
+@pytest.mark.order(2)
+class TestProjectEndpoint:
     @pytest.mark.integration
-    def test_projection_with_real_world_collection(
+    def test_project_task_completes(
         self,
         client,
         poll_task,
         embedder_name,
         shared_embedding_sequences,
+        verify_embedding_cache,
     ):
+        cache_status = verify_embedding_cache(expect_cached=True)
+        print(
+            f"\n[PROJECTION] Cache status: {cache_status['cached']}/{cache_status['total']} cached"
+        )
+
         request_data = {
             "method": "pca",
             "sequence_data": shared_embedding_sequences,
             "embedder_name": embedder_name,
-            "config": {"n_components": 2},
+            "config": {
+                "n_components": 2,
+            },
         }
 
         response = client.post("/projection_service/project", json=request_data)
-        assert response.status_code == 200
+        assert response.status_code == 200, (
+            f"Failed to submit projection task: {response.text}"
+        )
 
         task_id = response.json()["task_id"]
-        result = poll_task(task_id, timeout=120)
+        print(f"[PROJECTION] Submitted task {task_id}, waiting for completion...")
+        result = poll_task(task_id, timeout=120, max_consecutive_errors=10)
 
-        assert result["status"].lower() in ("finished", "completed", "done", "failed")
+        assert result["status"].upper() == "FINISHED", (
+            f"Projection failed: {result.get('error', 'unknown')}"
+        )
+        print(f"[PROJECTION] Task {task_id} completed successfully")

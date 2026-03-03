@@ -5,9 +5,10 @@ from typing import Dict, List, Optional
 
 import httpx
 import numpy as np
-import blosc2
-import psycopg
 from biotrainer.utilities import calculate_sequence_hash
+from biotrainer.input_files import BiotrainerSequenceRecord
+
+from biocentral_server.server_management.embedding_database import EmbeddingsDatabase
 
 
 class ServerEmbedder:
@@ -41,11 +42,14 @@ class ServerEmbedder:
             )
             logging.info("ServerEmbedder: Using FixedEmbedder mode (CI_EMBEDDER=fixed)")
 
-        self.db_host = os.environ.get("POSTGRES_HOST", "localhost")
-        self.db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
-        self.db_name = os.environ.get("POSTGRES_DB", "embeddings_db")
-        self.db_user = os.environ.get("POSTGRES_USER", "embeddingsuser")
-        self.db_pass = os.environ.get("POSTGRES_PASSWORD", "embeddingspwd")
+        postgres_config = {
+            "host": os.environ.get("POSTGRES_HOST", "localhost"),
+            "port": int(os.environ.get("POSTGRES_PORT", "5432")),
+            "dbname": os.environ.get("POSTGRES_DB", "embeddings_db"),
+            "user": os.environ.get("POSTGRES_USER", "embeddingsuser"),
+            "password": os.environ.get("POSTGRES_PASSWORD", "embeddingspwd"),
+        }
+        self._db = EmbeddingsDatabase(postgres_config)
 
         transport = httpx.HTTPTransport(retries=3)
         self.client = httpx.Client(
@@ -111,28 +115,15 @@ class ServerEmbedder:
         reduce: bool = False,
     ) -> Optional[np.ndarray]:
         seq_hash = calculate_sequence_hash(sequence)
-
-        with psycopg.connect(
-            host=self.db_host,
-            port=self.db_port,
-            dbname=self.db_name,
-            user=self.db_user,
-            password=self.db_pass,
-        ) as conn:
-            with conn.cursor() as cur:
-                column = "per_sequence" if reduce else "per_residue"
-                cur.execute(
-                    f"""
-                    SELECT {column} FROM embeddings
-                    WHERE sequence_hash = %s AND embedder_name = %s
-                    """,
-                    (seq_hash, self.embedder_name),
-                )
-                row = cur.fetchone()
-
-                if row and row[0]:
-                    return blosc2.unpack_array(row[0])
-
+        records = self._db.get_embeddings(
+            {seq_hash: sequence}, self.embedder_name, reduce
+        )
+        if records and records[0].embedding is not None:
+            emb = records[0].embedding
+            # Convert torch tensor to numpy if needed
+            if hasattr(emb, "numpy"):
+                return emb.numpy()
+            return np.asarray(emb)
         return None
 
     def _compute_and_save_fixed_embedding(
@@ -141,51 +132,15 @@ class ServerEmbedder:
         reduce: bool = False,
     ) -> np.ndarray:
         # Compute embedding using FixedEmbedder and save to database.
-        from datetime import datetime
-
         if reduce:
             embedding = self._fixed_embedder.embed_pooled(sequence)
         else:
             embedding = self._fixed_embedder.embed(sequence)
 
-        seq_hash = calculate_sequence_hash(sequence)
-        seq_len = len(sequence)
-
-        if reduce:
-            per_seq_compressed = blosc2.pack_array(embedding)
-            per_res_compressed = None
-        else:
-            per_seq_compressed = None
-            per_res_compressed = blosc2.pack_array(embedding)
-
-        with psycopg.connect(
-            host=self.db_host,
-            port=self.db_port,
-            dbname=self.db_name,
-            user=self.db_user,
-            password=self.db_pass,
-        ) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO embeddings
-                    (sequence_hash, sequence_length, last_updated, embedder_name, per_sequence, per_residue)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (sequence_hash, embedder_name) DO UPDATE SET
-                        last_updated = EXCLUDED.last_updated,
-                        per_sequence = COALESCE(EXCLUDED.per_sequence, embeddings.per_sequence),
-                        per_residue = COALESCE(EXCLUDED.per_residue, embeddings.per_residue)
-                    """,
-                    (
-                        seq_hash,
-                        seq_len,
-                        datetime.now(),
-                        self.embedder_name,
-                        per_seq_compressed,
-                        per_res_compressed,
-                    ),
-                )
-            conn.commit()
+        record = BiotrainerSequenceRecord(
+            seq_id="fixed", seq=sequence, embedding=embedding
+        )
+        self._db.save_embeddings([record], self.embedder_name, reduced=reduce)
 
         return embedding
 
