@@ -35,6 +35,7 @@ jobs:
           images: ghcr.io/${{ github.repository }}/biocentral-server
           tags: |
             type=sha,format=short
+            type=raw,value=ci
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
