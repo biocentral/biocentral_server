@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [ 'main', 'develop', 'feature/tests' ]
+    branches: [ 'main', 'develop']
   pull_request:
-    branches: [ 'main', 'develop', 'feature/tests' ]
+    branches: [ 'main', 'develop' ]
   workflow_dispatch:
     inputs:
       skip_unit_tests:
@@ -72,14 +72,14 @@ jobs:
         with:
           name: coverage-report
           path: coverage.xml
-          retention-days: 30
+          retention-days: 1
 
   integration-test:
     runs-on: ubuntu-latest
 
     env:
       CI_SERVER_URL: http://localhost:9540
-      #CI_EMBEDDER: fixed
+      CI_EMBEDDER: fixed
 
     steps:
       - name: Maximize build disk space
