@@ -128,6 +128,8 @@ class FixedEmbedder:
         if not sequence:
             return np.zeros((0, self.embedding_dim), dtype=np.float32)
 
+        sequence = sequence.upper()
+        
         self._validate_sequence(sequence)
 
         seq_len = len(sequence)
