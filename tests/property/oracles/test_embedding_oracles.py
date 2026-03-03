@@ -108,7 +108,6 @@ class BatchInvarianceOracle:
                 "parameter": f"batch_{batch_size}",
                 "cosine_distance": metrics["cosine_distance"],
                 "l2_distance": metrics["l2_distance"],
-                "kl_divergence": metrics["kl_divergence"],
                 "threshold": self.config.cosine_threshold,
                 "passed": passed,
             }
