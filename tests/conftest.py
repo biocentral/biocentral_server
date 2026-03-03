@@ -8,6 +8,7 @@ if os.environ.get("CI") or not os.environ.get("DISPLAY"):
     matplotlib.use("Agg")
 
 
+
 def pytest_collection_modifyitems(session, config, items):
     # Ensure embed tests run before projection tests.
     def get_test_priority(item):
