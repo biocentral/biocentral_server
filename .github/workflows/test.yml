@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [ 'main', 'develop', 'feature/tests' ]
+    branches: [ 'main', 'develop', 'testing-locally' ]
   pull_request:
-    branches: [ 'main', 'develop', 'feature/tests' ]
+    branches: [ 'main', 'develop', 'testing-locally' ]
   workflow_dispatch:
     inputs:
       skip_unit_tests:
