@@ -9,24 +9,21 @@ from tests.integration.endpoints.conftest import (
 
 @pytest.mark.order(1)
 class TestCommonEmbeddersEndpoint:
-    @pytest.mark.integration
-    def test_common_embedders_returns_list(self, client):
+    @pytest.fixture(scope="class")
+    def common_embedders_response(self, client):
         response = client.get("/embeddings_service/common_embedders")
-
         assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-        assert len(data) > 0
+        return response.json()
 
     @pytest.mark.integration
-    def test_common_embedders_includes_baseline_models(self, client):
-        response = client.get("/embeddings_service/common_embedders")
+    def test_common_embedders_returns_list(self, common_embedders_response):
+        assert isinstance(common_embedders_response, list)
+        assert len(common_embedders_response) > 0
 
-        assert response.status_code == 200
-        embedders = response.json()
-
-        assert "one_hot_encoding" in embedders
-        assert "blosum62" in embedders
+    @pytest.mark.integration
+    def test_common_embedders_includes_baseline_models(self, common_embedders_response):
+        assert "one_hot_encoding" in common_embedders_response
+        assert "blosum62" in common_embedders_response
 
     @pytest.mark.integration
     def test_common_embedders_response_is_consistent(self, client):
