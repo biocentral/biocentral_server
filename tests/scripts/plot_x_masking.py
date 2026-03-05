@@ -237,6 +237,147 @@ def plot_baseline_comparison():
     _save_plot("x_masking_baseline_comparison")
     plt.close()
 
+def plot_uniref50_masking():
+    """Plot UniRef50 large-scale masking results: mean±std per length bin."""
+    prog_path = REPORTS_DIR / "x_masking_progressive_uniref50.csv"
+    rand_path = REPORTS_DIR / "x_masking_random_uniref50.csv"
+
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+
+    datasets = [
+        (prog_path, "Progressive X-Masking"),
+        (rand_path, "Random X-Masking"),
+    ]
+
+    for col, (path, masking_label) in enumerate(datasets):
+        if not path.exists():
+            print(f"File not found: {path}")
+            continue
+        df = pd.read_csv(path)
+        if "masking_ratio" not in df.columns:
+            df["masking_ratio"] = (
+                df["parameter"].str.extract(r"mask(\d+)%").astype(float) / 100
+            )
+        df["cosine_similarity"] = 1 - df["cosine_distance"]
+
+        bins = sorted(df["bin"].dropna().unique()) if "bin" in df.columns else []
+        if not bins:
+            print(f"No bin column in {path}")
+            continue
+
+        ax_cos = axes[0, col]
+        ax_l2 = axes[1, col]
+        _add_region_shading(ax_cos)
+        _add_region_shading(ax_l2)
+
+        for i, bin_val in enumerate(bins):
+            bin_data = df[df["bin"] == bin_val]
+            agg = bin_data.groupby("masking_ratio").agg(
+                cos_mean=("cosine_similarity", "mean"),
+                cos_std=("cosine_similarity", "std"),
+                l2_mean=("l2_distance", "mean"),
+                l2_std=("l2_distance", "std"),
+            ).reset_index()
+
+            x = agg["masking_ratio"] * 100
+            color = COLORS[i % len(COLORS)]
+            label = f"bin={int(bin_val)}"
+
+            ax_cos.plot(x, agg["cos_mean"], marker="o", markersize=3, linewidth=1.8,
+                        label=label, color=color, alpha=0.9)
+            ax_cos.fill_between(x, agg["cos_mean"] - agg["cos_std"],
+                                agg["cos_mean"] + agg["cos_std"], alpha=0.12, color=color)
+
+            ax_l2.plot(x, agg["l2_mean"], marker="s", markersize=3, linewidth=1.8,
+                       label=label, color=color, alpha=0.9)
+            ax_l2.fill_between(x, agg["l2_mean"] - agg["l2_std"],
+                               agg["l2_mean"] + agg["l2_std"], alpha=0.12, color=color)
+
+        ax_cos.axhline(y=0.9, color="gray", linestyle="--", linewidth=1.5, alpha=0.7)
+        _add_region_labels(ax_cos, 0.97)
+        ax_cos.set_xlabel("Masking Rate p (%)", fontsize=11)
+        ax_cos.set_ylabel("Cosine Similarity", fontsize=11)
+        ax_cos.set_title(f"{masking_label} — Cosine Similarity\n(UniRef50, ESM2-T6-8M, 250 seqs/bin)",
+                         fontsize=12, fontweight="bold")
+        ax_cos.set_xlim(-2, 108)
+        ax_cos.set_ylim(-0.05, 1.02)
+        ax_cos.legend(loc="lower left", fontsize=8)
+        ax_cos.grid(True, alpha=0.3)
+        ax_cos.set_xticks(np.arange(0, 101, 10))
+
+        ax_l2.set_xlabel("Masking Rate p (%)", fontsize=11)
+        ax_l2.set_ylabel("L2 (Euclidean) Distance", fontsize=11)
+        ax_l2.set_title(f"{masking_label} — L2 Distance\n(UniRef50, ESM2-T6-8M, 250 seqs/bin)",
+                         fontsize=12, fontweight="bold")
+        ax_l2.set_xlim(-2, 108)
+        ax_l2.legend(loc="upper left", fontsize=8)
+        ax_l2.grid(True, alpha=0.3)
+        ax_l2.set_xticks(np.arange(0, 101, 10))
+
+    plt.tight_layout()
+    _save_plot("x_masking_uniref50")
+    plt.close()
+
+
+def plot_uniref50_vs_random_baseline():
+    """Compare UniRef50 real sequences vs random sequences vs one-hot baseline.
+
+    Aggregates across all length bins to show divergence profile differences.
+    """
+    configs = [
+        ("x_masking_progressive_uniref50.csv", "UniRef50 (ESM2)", "-"),
+        ("x_masking_progressive_random_seqs.csv", "Random Seqs (ESM2)", ":"),
+        ("x_masking_progressive_one_hot.csv", "One-Hot Encoding", "--"),
+    ]
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    for path_name, label, linestyle in configs:
+        path = REPORTS_DIR / path_name
+        if not path.exists():
+            print(f"File not found: {path}")
+            continue
+        df = pd.read_csv(path)
+        if "masking_ratio" not in df.columns:
+            df["masking_ratio"] = (
+                df["parameter"].str.extract(r"mask(\d+)%").astype(float) / 100
+            )
+        df["cosine_similarity"] = 1 - df["cosine_distance"]
+
+        agg = df.groupby("masking_ratio").agg(
+            cos_mean=("cosine_similarity", "mean"),
+            cos_std=("cosine_similarity", "std"),
+            l2_mean=("l2_distance", "mean"),
+            l2_std=("l2_distance", "std"),
+        ).reset_index()
+
+        x = agg["masking_ratio"] * 100
+
+        axes[0].plot(x, agg["cos_mean"], linewidth=2, linestyle=linestyle, label=label, alpha=0.9)
+        axes[0].fill_between(x, agg["cos_mean"] - agg["cos_std"],
+                             agg["cos_mean"] + agg["cos_std"], alpha=0.12)
+
+        axes[1].plot(x, agg["l2_mean"], linewidth=2, linestyle=linestyle, label=label, alpha=0.9)
+        axes[1].fill_between(x, agg["l2_mean"] - agg["l2_std"],
+                             agg["l2_mean"] + agg["l2_std"], alpha=0.12)
+
+    for ax, ylabel, title in [
+        (axes[0], "Cosine Similarity", "Cosine Similarity"),
+        (axes[1], "L2 (Euclidean) Distance", "L2 Distance"),
+    ]:
+        ax.set_xlabel("Masking Rate p (%)", fontsize=11)
+        ax.set_ylabel(ylabel, fontsize=11)
+        ax.set_title(f"UniRef50 vs Baselines — {title}", fontsize=12, fontweight="bold")
+        ax.set_xlim(-2, 108)
+        ax.legend(fontsize=9)
+        ax.grid(True, alpha=0.3)
+        ax.set_xticks(np.arange(0, 101, 10))
+
+    plt.tight_layout()
+    _save_plot("x_masking_uniref50_vs_baselines")
+    plt.close()
+
+
 def _save_plot(name: str):
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     png_path = REPORTS_DIR / f"{name}.png"
@@ -250,3 +391,5 @@ if __name__ == "__main__":
     plot_masking_results()
     plot_masking_results_with_l2()
     plot_baseline_comparison()
+    plot_uniref50_masking()
+    plot_uniref50_vs_random_baseline()

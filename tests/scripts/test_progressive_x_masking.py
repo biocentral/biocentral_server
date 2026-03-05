@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from tests.property.oracles.embedding_metrics import (
     compute_all_metrics,
-    write_metrics_csv,
 )
 
 MASKING_RATIOS = [
@@ -355,7 +354,7 @@ class TestProgressiveXMaskingESM2:
         )
         print(table)
         print(_summarise_experiment(progressive_results, "esm2_t6_8m", "Progressive"))
-        write_metrics_csv(
+        _write_masking_csv(
             progressive_results, reports_dir / "x_masking_progressive_esm2.csv"
         )
 
@@ -377,7 +376,7 @@ class TestProgressiveXMaskingESM2:
         )
         print(table)
         print(_summarise_experiment(random_results, "esm2_t6_8m", "Random"))
-        write_metrics_csv(random_results, reports_dir / "x_masking_random_esm2.csv")
+        _write_masking_csv(random_results, reports_dir / "x_masking_random_esm2.csv")
 
     def test_monotonicity_mostly_holds(
         self,

@@ -100,11 +100,37 @@ specific substitutions.
 ### Plotting
 
 - `plot_x_masking.py` produces:
-  - **1×2 cosine similarity** plot (original, backward-compatible)
-  - **2×2 cosine + L2** plot (top: cosine similarity, bottom: L2 distance)
-  - **Baseline comparison** plot (ESM2 vs one-hot vs random sequences, cosine + L2)
+  - **1×2 cosine similarity** plot (original, backward-compatible) → `x_masking_similarity_plot`
+  - **2×2 cosine + L2** plot (top: cosine similarity, bottom: L2 distance) → `x_masking_cosine_and_l2_plot`
+  - **Baseline comparison** plot (ESM2 vs one-hot vs random sequences, cosine + L2) → `x_masking_baseline_comparison`
+  - **UniRef50 per-bin** plot (mean±std per length bin, cosine + L2) → `x_masking_uniref50`
+  - **UniRef50 vs baselines** plot (aggregated comparison, cosine + L2) → `x_masking_uniref50_vs_baselines`
 - `plot_aa_mutation.py` produces:
-  - **Heatmap** (AA × ratio → distance)
-  - **Line overlay** (all 20 AAs + X-masking reference)
-  - **Bar ranking** (AAs at 10% mutation rate)
+  - **Heatmap** (AA × ratio → distance) → `aa_mutation_heatmap`
+  - **Line overlay** (all 20 AAs + X-masking reference) → `aa_mutation_line_overlay`
+  - **Bar ranking** (AAs at 10% mutation rate) → `aa_mutation_bar_ranking`
+  - **UniRef50 heatmap** (aggregated across all bins) → `aa_mutation_heatmap_uniref50`
+  - **UniRef50 per-bin** (per-length AA sensitivity at ~10%) → `aa_mutation_per_bin_uniref50`
+  - **Mutation vs X-masking** (mean AA distance + range vs X-masking reference) → `aa_mutation_vs_xmasking`
+
+### CSV Reports
+
+All CSV reports are written to `tests/reports/`. Key files:
+
+| File | Source Test | Description |
+|------|-----------|-------------|
+| `idempotency_esm2_pooled.csv` | `test_idempotency.py` | Repeat-call consistency |
+| `batch_invariance_esm2.csv` | `test_batch_invariance.py` | Batch vs individual embedding |
+| `reversed_sequence_esm2.csv` | `test_reversed_sequence.py` | Order sensitivity |
+| `reversed_sequence_esm2_diverse.csv` | `test_reversed_sequence.py` | Reversal + double-reversal |
+| `x_masking_progressive_esm2.csv` | `test_progressive_x_masking.py` | Basic 4-seq progressive masking |
+| `x_masking_random_esm2.csv` | `test_progressive_x_masking.py` | Basic 4-seq random masking |
+| `x_masking_progressive_one_hot.csv` | `test_progressive_x_masking.py` | One-hot baseline |
+| `x_masking_random_one_hot.csv` | `test_progressive_x_masking.py` | One-hot baseline (random) |
+| `x_masking_progressive_uniref50.csv` | `test_progressive_x_masking.py` | UniRef50 large-scale progressive |
+| `x_masking_random_uniref50.csv` | `test_progressive_x_masking.py` | UniRef50 large-scale random |
+| `x_masking_progressive_random_seqs.csv` | `test_random_baseline.py` | Random sequences baseline |
+| `x_masking_random_random_seqs.csv` | `test_random_baseline.py` | Random sequences baseline (random masking) |
+| `aa_mutation_sensitivity_esm2.csv` | `test_aa_mutation_sensitivity.py` | Basic 4-seq AA mutation |
+| `aa_mutation_sensitivity_uniref50.csv` | `test_aa_mutation_sensitivity.py` | UniRef50 AA mutation |
 
