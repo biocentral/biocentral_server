@@ -11,5 +11,3 @@
 __pycache__/
 *ipynb
 .DS_Store
-
-tests/scripts

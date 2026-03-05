@@ -226,3 +226,71 @@ jobs:
           name: oracle-reports
           path: tests/reports/*.csv
           if-no-files-found: warn
+
+  script-experiments:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Maximize build disk space
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 24576
+          swap-size-mb: 1024
+          temp-reserve-mb: 8192
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+          overprovision-lvm: 'true'
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Configure Git to use HTTPS for git dependencies
+        run: |
+          git config --global url."https://github.com/".insteadOf git@github.com:
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.9.26"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          cache-local-path: "/tmp/.uv-cache"
+
+      - name: Install dependencies (CPU-only PyTorch)
+        run: uv sync --no-install-project --index-strategy unsafe-best-match
+        env:
+          UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
+
+      - name: Fetch UniRef50 sequences
+        run: uv run python tests/scripts/fetch_uniref50_sequences.py --seqs-per-bin 250
+        timeout-minutes: 15
+
+      - name: Run script experiments
+        run: uv run pytest tests/scripts/ -v -s --durations=0 -W "ignore::DeprecationWarning" -W "ignore::UserWarning" -W "ignore::FutureWarning"
+
+      - name: Generate plots
+        if: always()
+        run: |
+          uv run python tests/scripts/plot_x_masking.py || true
+          uv run python tests/scripts/plot_aa_mutation.py || true
+
+      - name: Upload experiment reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: script-experiment-reports
+          path: |
+            tests/reports/*.csv
+            tests/reports/*.png
+            tests/reports/*.pdf
+          if-no-files-found: warn
