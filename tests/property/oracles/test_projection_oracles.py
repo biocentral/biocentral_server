@@ -322,16 +322,18 @@ class DirectProjector:
         )
         projection_result = {key: table.to_pydict() for key, table in output.items()}
 
-        # Extract per-sequence coordinate arrays from the tabular result
+        # Extract per-sequence coordinate arrays from protspace tabular output.
+        # protspace create_output produces a "projections_data" table with
+        # columns: projection_name, identifier, x, y, z
+        coord_cols = ["x", "y", "z"][:n_components]
+        data = projection_result["projections_data"]
         projections = {}
-        for method_key, table_dict in projection_result.items():
-            for i, seq_id in enumerate(table_dict["identifier"]):
-                coords = np.array(
-                    [table_dict[f"D{d + 1}"][i] for d in range(n_components)],
-                    dtype=np.float32,
-                )
-                projections[seq_id] = coords
-            break
+        for i, seq_id in enumerate(data["identifier"]):
+            coords = np.array(
+                [data[c][i] for c in coord_cols],
+                dtype=np.float32,
+            )
+            projections[seq_id] = coords
 
         return projections
 
