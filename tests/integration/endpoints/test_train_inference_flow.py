@@ -15,12 +15,10 @@ STANDARD_SEQUENCES = {
 
 
 def _assert_not_immediate_terminal_failure(client, task_id: str) -> None:
-    """Lightweight status check right after task submission.
+    #Some tasks fail on purpose instantly (e.g. invalid config that passes HTTP validation
+    #but is rejected by the worker). This catch-early check avoids waiting for
+    #the full poll timeout only to discover the task was already aborted.
 
-    Some tasks fail instantly (e.g. invalid config that passes HTTP validation
-    but is rejected by the worker). This catch-early check avoids waiting for
-    the full poll timeout only to discover the task was already aborted.
-    """
     status_response = client.get(f"/biocentral_service/task_status/{task_id}")
     assert status_response.status_code == 200, (
         f"Unable to check status for task {task_id}: {status_response.status_code}"
