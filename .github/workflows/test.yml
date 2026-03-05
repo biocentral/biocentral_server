@@ -81,7 +81,7 @@ jobs:
       CI_SERVER_URL: http://localhost:9540
       SEAWEEDFS_FILER_HOST: localhost
       SEAWEEDFS_FILER_PORT: 8888
-      CI_EMBEDDER: fixed
+      #CI_EMBEDDER: fixed
 
     steps:
       - name: Maximize build disk space
