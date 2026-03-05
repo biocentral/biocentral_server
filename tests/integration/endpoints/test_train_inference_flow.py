@@ -285,29 +285,6 @@ class TestStartTrainingEndpoint:
 
         assert response.status_code in [400, 422]
 
-    @pytest.mark.integration
-    def test_start_training_missing_test_split_rejected(
-        self,
-        client,
-        classification_config,
-        classification_training_data,
-    ):
-        # Only include train and val splits — missing test split should be rejected
-        incomplete_data = [
-            entry for entry in classification_training_data if entry["set"] != "test"
-        ]
-
-        response = client.post(
-            "/custom_models_service/start_training",
-            json={
-                "config_dict": classification_config,
-                "training_data": incomplete_data,
-            },
-        )
-
-        assert response.status_code in [400, 422]
-
-
 @pytest.mark.order(3)
 class TestStartInferenceEndpoint:
     @pytest.mark.integration
@@ -479,3 +456,38 @@ class TestEndToEndTrainInferenceFlow:
             f"{[k for k, t in expected_types.items() if not isinstance(data[k], t)]}"
         )
 
+
+@pytest.mark.order(6)
+class TestTrainingDataValidation:
+    @pytest.mark.integration
+    def test_training_with_train_val_split(
+        self,
+        client,
+        classification_config,
+    ):
+        training_data = [
+            {
+                "seq_id": "train_1",
+                "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+                "label": "A",
+                "set": "train",
+            },
+            {
+                "seq_id": "val_1",
+                "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+                "label": "B",
+                "set": "val",
+            },
+        ]
+
+        response = client.post(
+            "/custom_models_service/start_training",
+            json={
+                "config_dict": classification_config,
+                "training_data": training_data,
+            },
+        )
+
+        assert response.status_code == 200
+        task_id = validate_task_response(response.json())
+        _assert_not_immediate_terminal_failure(client, task_id)

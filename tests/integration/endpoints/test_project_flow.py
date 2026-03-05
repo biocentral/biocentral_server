@@ -52,7 +52,7 @@ class TestProjectionConfigEndpoint:
         assert response.status_code in (400, 422)
 
 
-@pytest.mark.order(3)
+@pytest.mark.order(4)
 class TestEndToEndProjectionFlow:
     @pytest.mark.integration
     @pytest.mark.slow
@@ -82,7 +82,7 @@ class TestEndToEndProjectionFlow:
 
         assert result["status"].upper() in ("FINISHED", "COMPLETED", "DONE", "FAILED")
 
-@pytest.mark.order(2)
+@pytest.mark.order(3)
 class TestProjectEndpoint:
     @pytest.mark.integration
     def test_project_task_completes(
