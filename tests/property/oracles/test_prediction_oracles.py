@@ -250,24 +250,13 @@ MODEL_DIRECTORIES = {
 }
 
 
-def get_onnx_models_path() -> Optional[Path]:
+def get_onnx_models_path() -> Path:
     """Get or download ONNX models path.
 
     Checks ONNX_MODELS_PATH env var first, then falls back to
     default location, downloading if necessary.
     """
-    # Check environment variable first
-    path_str = os.environ.get("ONNX_MODELS_PATH")
-    if path_str:
-        path = Path(path_str)
-        if path.exists():
-            return path
 
-    # Default location for downloaded models
-    default_path = Path("onnx_models")
-    expected_dirs = ["prott5secondarystructure", "seth", "bindembed", "tmbed"]
-
-    # Check if models already exist
     def models_exist(p: Path) -> bool:
         for model_name in expected_dirs:
             model_dir = p / model_name
@@ -275,16 +264,22 @@ def get_onnx_models_path() -> Optional[Path]:
                 return True
         return False
 
-    if default_path.exists() and models_exist(default_path):
-        return default_path
+    expected_dirs = ["prott5secondarystructure", "seth", "bindembed", "tmbed"]
 
-    # Download models
-    default_path.mkdir(parents=True, exist_ok=True)
+    # Check environment variable first
+    path_str = os.environ.get("ONNX_MODELS_PATH")
+    target_path = Path(path_str) if path_str else Path("onnx_models")
+
+    if target_path.exists() and models_exist(target_path):
+        return target_path
+
+    # Download models to target path
+    target_path.mkdir(parents=True, exist_ok=True)
     ServerModuleInitializer._download_data(
         urls=PredictInitializer.DOWNLOAD_URLS,
-        data_dir=default_path,
+        data_dir=target_path,
     )
-    return default_path
+    return target_path
 
 
 class DirectPredictor:

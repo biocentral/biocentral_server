@@ -279,7 +279,6 @@ class DirectProjector:
         if self._processor is not None:
             return
 
-        import pandas as pd 
         from protspace.data.processors import BaseProcessor
         from protspace.utils import REDUCERS
 
