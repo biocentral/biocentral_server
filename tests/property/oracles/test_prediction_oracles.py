@@ -5,8 +5,13 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 import numpy as np
 import pytest
+import torch
 from pydantic import BaseModel, Field
 
+from biocentral_server.predict.models.secondary_structure import ProtT5SecondaryStructure
+from biocentral_server.predict.models.binding.bind_embed import BindEmbed
+from biocentral_server.predict.models.membrane.tmbed import TMbed
+from biocentral_server.predict.models.disorder.seth import Seth
 from biocentral_server.predict.predict_initializer import PredictInitializer
 from biocentral_server.server_management import ServerModuleInitializer
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
@@ -244,15 +249,6 @@ MODEL_DIRECTORIES = {
     "TMbed": "tmbed",
 }
 
-# Label mappings for classification models
-LABEL_MAPPINGS = {
-    "ProtT5SecondaryStructure": {0: "H", 1: "E", 2: "L"},
-    # BindEmbed predicts 3 binding types: argmax gives dominant type
-    "BindEmbed": {0: "M", 1: "N", 2: "S"},  # Metal, Nucleic, Small molecule
-    # TMbed transmembrane topology classes
-    "TMbed": {0: "B", 1: "b", 2: "H", 3: "h", 4: "S", 5: "i", 6: "o"},
-}
-
 
 def get_onnx_models_path() -> Optional[Path]:
     """Get or download ONNX models path.
@@ -296,6 +292,13 @@ class DirectPredictor:
     # Loads ONNX models without server dependencies.
     # Configure model path with ONNX_MODELS_PATH environment variable.
 
+    MODEL_CLASSES = {
+        "ProtT5SecondaryStructure": ProtT5SecondaryStructure,
+        "BindEmbed": BindEmbed,
+        "TMbed": TMbed,
+        "Seth": Seth,
+    }
+
     def __init__(
         self,
         model_name: str,
@@ -303,7 +306,7 @@ class DirectPredictor:
     ):
         self.model_name = model_name
         self.config = config
-        self._models: List[Any] = []  # List of ONNX sessions (for ensemble models)
+        self._model = None
         self._embedder = None
         self._initialized = False
 
@@ -313,8 +316,15 @@ class DirectPredictor:
 
         import onnxruntime as ort
 
-        models_path = get_onnx_models_path()
+        model_cls = self.MODEL_CLASSES.get(self.model_name)
+        if not model_cls:
+            raise ValueError(f"Unknown model: {self.model_name}")
 
+        # Instantiate the production model with ONNX backend
+        self._model = model_cls(batch_size=1, backend="onnx")
+
+        # Load ONNX sessions from local filesystem, bypassing SeaweedFS
+        models_path = get_onnx_models_path()
         model_dir_name = MODEL_DIRECTORIES.get(self.model_name)
         if not model_dir_name:
             raise ValueError(f"No directory configured for model: {self.model_name}")
@@ -326,7 +336,6 @@ class DirectPredictor:
                 f"Models may not have downloaded correctly."
             )
 
-        # Auto-discover ONNX files in the model directory
         onnx_files = sorted(model_dir.glob("*.onnx"))
         if not onnx_files:
             raise FileNotFoundError(
@@ -334,12 +343,16 @@ class DirectPredictor:
                 f"Ensure models are properly extracted."
             )
 
-        # Load all ONNX models (single model or ensemble)
-        for onnx_file in onnx_files:
-            session = ort.InferenceSession(str(onnx_file))
-            self._models.append(session)
+        sessions = [ort.InferenceSession(str(f)) for f in onnx_files]
 
-        # Initialize embedder
+        if self._model.uses_ensemble:
+            self._model.models = sessions
+        else:
+            self._model.model = sessions[0]
+
+        # Mark backend as initialized so predict() skips SeaweedFS loading
+        self._model._backend_initialized = True
+
         self._embedder = FixedEmbedder(
             model_name="prot_t5",
             strict_dataset=False,
@@ -349,100 +362,24 @@ class DirectPredictor:
     def predict(self, sequence: str) -> Dict[str, Any]:
         self._ensure_initialized()
 
-        # Get embedding
+        seq_id = "test_seq"
         embedding = self._embedder.embed(sequence)
-        # Shape: (seq_len, embedding_dim) -> (1, seq_len, embedding_dim)
-        embedding_input = np.expand_dims(embedding.astype(np.float32), axis=0)
+        embedding_tensor = torch.from_numpy(embedding)
 
-        # Model-specific input preparation
-        if self.model_name == "BindEmbed":
-            # BindEmbed expects (B, E, L) - transpose from (B, L, E)
-            embedding_input = np.transpose(embedding_input, (0, 2, 1))
-        elif self.model_name == "TMbed":
-            # TMbed requires a mask input - all 1s for non-padding positions
-            seq_len = embedding_input.shape[1]
-            self._mask = np.ones((1, seq_len), dtype=np.float32)
+        result = self._model.predict(
+            sequences={seq_id: sequence},
+            embeddings={seq_id: embedding_tensor},
+        )
 
-        # Run inference
-        if len(self._models) == 1:
-            # Single model
-            output = self._run_single_model(embedding_input)
+        # Convert from Dict[str, List[Prediction]] to oracle format
+        preds = result[seq_id]
+        first_pred = preds[0]
+
+        if self.config.is_classification:
+            predictions = list(first_pred.value)
         else:
-            # Ensemble - average predictions
-            output = self._run_ensemble(embedding_input)
-
-        return self._format_output(output, sequence)
-
-    def _run_single_model(self, embedding_input: np.ndarray) -> np.ndarray:
-        input_feed = self._build_input_feed(embedding_input, self._models[0])
-        outputs = self._models[0].run(None, input_feed)
-        return outputs[0]  # Return first output
-
-    def _run_ensemble(self, embedding_input: np.ndarray) -> np.ndarray:
-        all_outputs = []
-        for model in self._models:
-            input_feed = self._build_input_feed(embedding_input, model)
-            outputs = model.run(None, input_feed)
-            all_outputs.append(outputs[0])
-
-        # Average all predictions
-        stacked = np.stack(all_outputs, axis=0)
-        return np.mean(stacked, axis=0)
-
-    def _build_input_feed(
-        self, embedding_input: np.ndarray, model
-    ) -> Dict[str, np.ndarray]:
-        # Get all required input names
-        input_names = [inp.name for inp in model.get_inputs()]
-
-        # Start with the embedding input (first input)
-        input_feed = {input_names[0]: embedding_input}
-
-        # Add mask if required (TMbed)
-        if "mask" in input_names:
-            # Create mask of 1s for all non-padding positions
-            if self.model_name == "TMbed":
-                seq_len = embedding_input.shape[1]  # (B, L, E) format
-            else:
-                seq_len = (
-                    embedding_input.shape[2]
-                    if len(embedding_input.shape) == 3
-                    else embedding_input.shape[1]
-                )
-            mask = np.ones((1, seq_len), dtype=np.float32)
-            input_feed["mask"] = mask
-
-        return input_feed
-
-    def _format_output(self, raw_output: np.ndarray, sequence: str) -> Dict[str, Any]:
-        # raw_output shape: (1, seq_len, num_classes) or (1, seq_len) or (1, seq_len, 1)
-
-        # Handle 3D output
-        if len(raw_output.shape) == 3:
-            predictions_raw = raw_output[0]  # (seq_len, num_classes) or (seq_len, 1)
-
-            # Check if it's regression with single output dim (e.g., Seth: seq_len x 1)
-            if not self.config.is_classification and predictions_raw.shape[-1] == 1:
-                # Squeeze the last dimension for regression
-                predictions = predictions_raw.squeeze(-1).tolist()  # (seq_len,)
-            elif self.config.is_classification:
-                # Classification with logits - argmax to get predicted class index
-                pred_indices = np.argmax(predictions_raw, axis=-1)  # (seq_len,)
-                label_map = LABEL_MAPPINGS.get(self.model_name, {})
-                predictions = [label_map.get(int(idx), "?") for idx in pred_indices]
-            else:
-                # Regression with multiple outputs per residue - take mean or first
-                predictions = predictions_raw.mean(axis=-1).tolist()
-        else:
-            # 2D output: (1, seq_len) - direct values
-            predictions = raw_output[0].tolist()  # (seq_len,)
-
-        # Ensure predictions match sequence length
-        if isinstance(predictions, list) and len(predictions) != len(sequence):
-            if self.config.is_classification:
-                predictions = [0] * len(sequence)
-            else:
-                predictions = [0.5] * len(sequence)
+            # Regression (e.g., Seth) uses comma-delimited values
+            predictions = [float(v) for v in first_pred.value.split(",")]
 
         return {
             "predictions": predictions,

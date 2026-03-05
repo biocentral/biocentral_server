@@ -57,7 +57,7 @@ services:
       - seaweedfs-volume
     networks:
       - storage
-      - backend  # Bridge: accessible from app services
+      - backend 
     healthcheck:
       test: [ "CMD", "wget", "--spider", "--quiet", "-Y", "off", "http://seaweedfs-filer:8888/" ]
       interval: 5s

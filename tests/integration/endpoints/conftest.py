@@ -323,6 +323,31 @@ def client(server_url) -> Generator[httpx.Client, None, None]:
         http_client.post = _fake_post
         http_client.get = _fake_get
 
+    # Wrap post/get with retry logic for transient connection errors.
+    # This avoids scattering try/except RemoteProtocolError across every test;
+    # if the server is truly unreachable after retries, the test fails properly.
+    _raw_post = http_client.post
+    _raw_get = http_client.get
+
+    def _resilient_call(method_fn, *args, max_retries: int = 3, **kwargs):
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                return method_fn(*args, **kwargs)
+            except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadTimeout) as e:
+                last_error = e
+                wait_time = min(2 ** attempt, 10)
+                logging.warning(
+                    f"[CLIENT] {type(e).__name__} on attempt {attempt + 1}/{max_retries}, "
+                    f"retrying in {wait_time}s: {e}"
+                )
+                if attempt < max_retries - 1:
+                    time.sleep(wait_time)
+        raise last_error
+
+    http_client.post = lambda *args, **kwargs: _resilient_call(_raw_post, *args, **kwargs)
+    http_client.get = lambda *args, **kwargs: _resilient_call(_raw_get, *args, **kwargs)
+
     yield http_client
     http_client.close()
 

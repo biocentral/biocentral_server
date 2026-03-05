@@ -1,7 +1,7 @@
-import httpx
 import pytest
 from typing import Dict, List
 
+from biocentral_server.custom_models.endpoint_models import SequenceTrainingData
 from tests.fixtures.test_dataset import CANONICAL_TEST_DATASET
 from tests.integration.endpoints.conftest import (
     assert_task_success,
@@ -15,7 +15,12 @@ STANDARD_SEQUENCES = {
 
 
 def _assert_not_immediate_terminal_failure(client, task_id: str) -> None:
-    """Lightweight status check after task submission."""
+    """Lightweight status check right after task submission.
+
+    Some tasks fail instantly (e.g. invalid config that passes HTTP validation
+    but is rejected by the worker). This catch-early check avoids waiting for
+    the full poll timeout only to discover the task was already aborted.
+    """
     status_response = client.get(f"/biocentral_service/task_status/{task_id}")
     assert status_response.status_code == 200, (
         f"Unable to check status for task {task_id}: {status_response.status_code}"
@@ -33,48 +38,74 @@ def _assert_not_immediate_terminal_failure(client, task_id: str) -> None:
 @pytest.fixture
 def classification_training_data() -> List[Dict]:
     return [
-        {
-            "seq_id": "standard_001",
-            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
-            "label": "membrane",
-            "set": "train",
-        },
-        {
-            "seq_id": "standard_001",
-            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
-            "label": "membrane",
-            "set": "val",
-        },
-        {
-            "seq_id": "standard_003",
-            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
-            "label": "membrane",
-            "set": "test",
-        },
+        SequenceTrainingData(
+            seq_id="standard_001",
+            sequence=CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+            label="membrane",
+            set="train",
+        ).model_dump(),
+        SequenceTrainingData(
+            seq_id="standard_002",
+            sequence=CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+            label="membrane",
+            set="val",
+        ).model_dump(),
+        SequenceTrainingData(
+            seq_id="standard_003",
+            sequence=CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
+            label="membrane",
+            set="test",
+        ).model_dump(),
     ]
 
 
 @pytest.fixture
 def real_world_training_data() -> List[Dict]:
+    # biotrainer requires at least one sequence per split (train/val/test)
     return [
-        {
-            "seq_id": "insulin_b",
-            "sequence": CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
-            "label": "hormone",
-            "set": "train",
-        },
+        SequenceTrainingData(
+            seq_id="insulin_b",
+            sequence=CANONICAL_TEST_DATASET.get_by_id("real_insulin_b").sequence,
+            label="hormone",
+            set="train",
+        ).model_dump(),
+        SequenceTrainingData(
+            seq_id="ubiquitin",
+            sequence=CANONICAL_TEST_DATASET.get_by_id("real_ubiquitin").sequence,
+            label="signaling",
+            set="val",
+        ).model_dump(),
+        SequenceTrainingData(
+            seq_id="gfp_core",
+            sequence=CANONICAL_TEST_DATASET.get_by_id("real_gfp_core").sequence,
+            label="fluorescence",
+            set="test",
+        ).model_dump(),
     ]
 
 
 @pytest.fixture
 def regression_training_data() -> List[Dict]:
+    # biotrainer requires at least one sequence per split (train/val/test)
     return [
-        {
-            "seq_id": "standard_001",
-            "sequence": CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
-            "label": "0.75",
-            "set": "train",
-        },
+        SequenceTrainingData(
+            seq_id="standard_001",
+            sequence=CANONICAL_TEST_DATASET.get_by_id("standard_001").sequence,
+            label="0.75",
+            set="train",
+        ).model_dump(),
+        SequenceTrainingData(
+            seq_id="standard_002",
+            sequence=CANONICAL_TEST_DATASET.get_by_id("standard_002").sequence,
+            label="0.50",
+            set="val",
+        ).model_dump(),
+        SequenceTrainingData(
+            seq_id="standard_003",
+            sequence=CANONICAL_TEST_DATASET.get_by_id("standard_003").sequence,
+            label="0.25",
+            set="test",
+        ).model_dump(),
     ]
 
 
@@ -143,15 +174,10 @@ class TestConfigOptionsEndpoint:
 class TestVerifyConfigEndpoint:
     @pytest.mark.integration
     def test_verify_valid_classification_config(self, client, classification_config):
-        try:
-            response = client.post(
-                "/custom_models_service/verify_config/",
-                json={"config_dict": classification_config},
-            )
-        except httpx.RemoteProtocolError:
-            pytest.skip(
-                "Server disconnected (likely restarting due to resource constraints)"
-            )
+        response = client.post(
+            "/custom_models_service/verify_config/",
+            json={"config_dict": classification_config},
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -189,7 +215,7 @@ class TestVerifyConfigEndpoint:
 @pytest.mark.order(5)
 class TestStartTrainingEndpoint:
     @pytest.mark.integration
-    def test_start_training_with_real_proteins(
+    def test_start_classification_training(
         self,
         client,
         classification_config,
@@ -325,16 +351,13 @@ class TestEndToEndTrainInferenceFlow:
     ):
         flush_redis()
 
-        try:
-            train_response = client.post(
-                "/custom_models_service/start_training",
-                json={
-                    "config_dict": classification_config,
-                    "training_data": classification_training_data,
-                },
-            )
-        except httpx.RemoteProtocolError:
-            pytest.skip("Server disconnected")
+        train_response = client.post(
+            "/custom_models_service/start_training",
+            json={
+                "config_dict": classification_config,
+                "training_data": classification_training_data,
+            },
+        )
 
         assert train_response.status_code == 200
         train_task_id = validate_task_response(train_response.json())
@@ -445,14 +468,14 @@ class TestEndToEndTrainInferenceFlow:
             f"model_files response missing expected keys: expected {sorted(expected_keys)}, got {sorted(data.keys())}"
         )
 
-        assert isinstance(data["BIOTRAINER_RESULT"], str), (
-            "BIOTRAINER_RESULT should be string"
-        )
-        assert isinstance(data["BIOTRAINER_LOGGING"], str), (
-            "BIOTRAINER_LOGGING should be string"
-        )
-        assert isinstance(data["BIOTRAINER_CHECKPOINT"], dict), (
-            "BIOTRAINER_CHECKPOINT should be dict"
+        expected_types = {
+            "BIOTRAINER_RESULT": str,
+            "BIOTRAINER_LOGGING": str,
+            "BIOTRAINER_CHECKPOINT": dict,
+        }
+        assert all(isinstance(data[k], t) for k, t in expected_types.items()), (
+            f"model_files type mismatches: "
+            f"{[k for k, t in expected_types.items() if not isinstance(data[k], t)]}"
         )
 
 

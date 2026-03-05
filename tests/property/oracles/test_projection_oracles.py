@@ -268,7 +268,7 @@ class DistancePreservationOracle:
 
 
 class DirectProjector:
-    # Projector using protspace directly without HTTP calls.
+    # Projector using the same protspace pipeline as ProtSpaceTask without HTTP calls.
 
     def __init__(self, config: ProjectionOracleConfig = None):
         self.config = config or ProjectionOracleConfig(method="pca")
@@ -279,6 +279,7 @@ class DirectProjector:
         if self._processor is not None:
             return
 
+        import pandas as pd 
         from protspace.data.processors import BaseProcessor
         from protspace.utils import REDUCERS
 
@@ -291,6 +292,7 @@ class DirectProjector:
         method: str,
         n_components: int,
     ) -> Dict[str, np.ndarray]:
+        import pandas as pd
         self._ensure_initialized()
 
         if method.lower() not in self._reducers:
@@ -301,47 +303,35 @@ class DirectProjector:
 
         seq_ids = list(embeddings.keys())
         embedding_matrix = []
-
         for seq_id in seq_ids:
             emb = embeddings[seq_id]
             if len(emb.shape) > 1:
                 emb = emb.mean(axis=0)
             embedding_matrix.append(emb)
 
-        embedding_matrix = np.array(embedding_matrix)
-
+        # Same pipeline as ProtSpaceTask.run_task:
+        # process_reduction -> create_output -> to_pydict
+        metadata = pd.DataFrame({"identifier": seq_ids})
         reduction = self._processor.process_reduction(
-            data=embedding_matrix,
+            data=np.array(embedding_matrix),
             method=method.lower(),
             dims=n_components,
         )
+        output = self._processor.create_output(
+            metadata=metadata, reductions=[reduction], headers=seq_ids,
+        )
+        projection_result = {key: table.to_pydict() for key, table in output.items()}
 
-        # Extract coordinates from reduction - protspace returns dict with 'data' key
-        if isinstance(reduction, dict) and "data" in reduction:
-            # Current protspace API returns {'name': ..., 'data': np.ndarray, ...}
-            coords = np.array(reduction["data"])
-        elif isinstance(reduction, dict):
-            # Try D1, D2 keys format (alternative API)
-            try:
-                coords = np.column_stack(
-                    [reduction[f"D{d + 1}"] for d in range(n_components)]
-                )
-            except KeyError:
-                raise ValueError(
-                    f"Cannot extract coordinates from reduction: {reduction.keys()}"
-                )
-        else:
-            # Old API: Reduction object with .result Arrow table
-            coords = np.column_stack(
-                [
-                    reduction.result.column(f"D{d + 1}").to_pylist()
-                    for d in range(n_components)
-                ]
-            )
-
+        # Extract per-sequence coordinate arrays from the tabular result
         projections = {}
-        for i, seq_id in enumerate(seq_ids):
-            projections[seq_id] = coords[i].astype(np.float32)
+        for method_key, table_dict in projection_result.items():
+            for i, seq_id in enumerate(table_dict["identifier"]):
+                coords = np.array(
+                    [table_dict[f"D{d + 1}"][i] for d in range(n_components)],
+                    dtype=np.float32,
+                )
+                projections[seq_id] = coords
+            break
 
         return projections
 
