@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [ 'main', 'develop', 'testing-locally' ]
+    branches: [ 'main', 'develop']
   pull_request:
-    branches: [ 'main', 'develop', 'testing-locally' ]
+    branches: [ 'main', 'develop' ]
   workflow_dispatch:
     inputs:
       skip_unit_tests:
@@ -72,7 +72,7 @@ jobs:
         with:
           name: coverage-report
           path: coverage.xml
-          retention-days: 30
+          retention-days: 1
 
   integration-test:
     runs-on: ubuntu-latest
