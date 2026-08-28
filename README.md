@@ -1,3 +1,9 @@
+# ⚠️ ARCHIVED: This project was moved
+
+This project was moved to the
+[biocentral monorepo](https://github.com/biocentral/biocentral/tree/main/biocentral_server)!
+
+
 # biocentral_server
 
 Compute functionality for biocentral. Provided via a dockerized FastAPI server.
